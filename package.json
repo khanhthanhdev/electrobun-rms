@@ -16,7 +16,6 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@hono/valibot-validator": "^0.6.1",
     "@knadh/oat": "^0.3.0",
     "drizzle-orm": "^0.45.1",
     "electrobun": "latest",
