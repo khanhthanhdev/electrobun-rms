@@ -1,45 +1,31 @@
 import {
-	number,
-	object,
-	optional,
-	parse,
-	pipe,
-	string,
-	minLength,
-	ValiError,
-	type InferOutput,
+  type InferOutput,
+  maxLength,
+  minLength,
+  object,
+  parse,
+  pipe,
+  string,
 } from "valibot";
 
-// API Request schema
-export const ApiRequestSchema = object({
-	method: pipe(string(), minLength(1, "Method is required")),
-	endpoint: pipe(string(), minLength(1, "Endpoint is required")),
-	body: optional(string()),
-	headers: optional(object({})),
+// Login request schema
+export const LoginRequestSchema = object({
+  username: pipe(string(), minLength(1), maxLength(64)),
+  password: pipe(string(), minLength(1), maxLength(128)),
 });
 
-export type ApiRequest = InferOutput<typeof ApiRequestSchema>;
+export type LoginRequest = InferOutput<typeof LoginRequestSchema>;
 
-// API Response schema
-export const ApiResponseSchema = object({
-	status: number(),
-	data: optional(object({})),
-	error: optional(string()),
+// API response schema for errors
+export const ApiErrorResponseSchema = object({
+  error: string(),
+  message: pipe(string(), minLength(0)),
 });
 
-export type ApiResponse = InferOutput<typeof ApiResponseSchema>;
+export type ApiErrorResponse = InferOutput<typeof ApiErrorResponseSchema>;
 
-export function validateApiRequest(data: unknown): ApiRequest {
-	return parse(ApiRequestSchema, data);
-}
+export const ApiRequestSchema = LoginRequestSchema;
 
-export function validateApiResponse(data: unknown): ApiResponse {
-	return parse(ApiResponseSchema, data);
-}
-
-export function handleValidationError(error: unknown): string {
-	if (error instanceof ValiError) {
-		return error.issues.map((issue) => issue.message).join(", ");
-	}
-	return "Unknown validation error";
+export function validateApiRequest(data: unknown): LoginRequest {
+  return parse(LoginRequestSchema, data);
 }

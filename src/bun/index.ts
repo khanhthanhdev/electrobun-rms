@@ -1,5 +1,5 @@
+import { join } from "node:path";
 import { BrowserWindow, Updater, Utils } from "electrobun/bun";
-import { join } from "path";
 import { initializeDatabase } from "./db/migrate";
 import { createServer } from "./server";
 
@@ -19,9 +19,9 @@ const staticDir = join(import.meta.dir, "..", "views", "mainview");
 const app = createServer(staticDir);
 
 const server = Bun.serve({
-	port: SERVER_PORT,
-	hostname: SERVER_HOST,
-	fetch: app.fetch,
+  port: SERVER_PORT,
+  hostname: SERVER_HOST,
+  fetch: app.fetch,
 });
 
 console.log(`🚀 Server running at http://${SERVER_HOST}:${SERVER_PORT}`);
@@ -32,46 +32,46 @@ const channel = await Updater.localInfo.channel();
 let windowUrl: string;
 
 if (channel === "dev") {
-	try {
-		await fetch(`http://localhost:${VITE_DEV_PORT}`, { method: "HEAD" });
-		windowUrl = `http://localhost:${VITE_DEV_PORT}`;
-		console.log("🔥 HMR enabled: Using Vite dev server");
-	} catch {
-		windowUrl = `http://localhost:${SERVER_PORT}`;
-		console.log("Using built assets via Hono server");
-	}
+  try {
+    await fetch(`http://localhost:${VITE_DEV_PORT}`, { method: "HEAD" });
+    windowUrl = `http://localhost:${VITE_DEV_PORT}`;
+    console.log("🔥 HMR enabled: Using Vite dev server");
+  } catch {
+    windowUrl = `http://localhost:${SERVER_PORT}`;
+    console.log("Using built assets via Hono server");
+  }
 } else {
-	windowUrl = `http://localhost:${SERVER_PORT}`;
+  windowUrl = `http://localhost:${SERVER_PORT}`;
 }
 
 const mainWindow = new BrowserWindow({
-	title: "ElectroBun App",
-	url: windowUrl,
-	frame: {
-		width: 1200,
-		height: 800,
-		x: 100,
-		y: 100,
-	},
+  title: "ElectroBun App",
+  url: windowUrl,
+  frame: {
+    width: 1200,
+    height: 800,
+    x: 100,
+    y: 100,
+  },
 });
 
 mainWindow.on("close", () => {
-	server.stop(true);
-	Utils.quit();
+  server.stop(true);
+  Utils.quit();
 });
 
 console.log("✅ ElectroBun app started!");
 
 // --- Helper ---
 function getLocalIP(): string {
-	const os = require("os");
-	const interfaces = os.networkInterfaces();
-	for (const name of Object.keys(interfaces)) {
-		for (const iface of interfaces[name] ?? []) {
-			if (iface.family === "IPv4" && !iface.internal) {
-				return iface.address;
-			}
-		}
-	}
-	return "localhost";
+  const os = require("node:os");
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "localhost";
 }

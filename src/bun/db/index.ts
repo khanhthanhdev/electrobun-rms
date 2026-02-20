@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+// biome-ignore lint/performance/noNamespaceImport: required by drizzle.
+// biome-ignore lint/style/noExportedImports: intentional re-export.
 import * as schema from "./schema";
 
 const DB_PATH = "./server.db";
