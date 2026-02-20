@@ -1,0 +1,81 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Build channel"
+        required: true
+        default: "canary"
+        type: choice
+        options:
+          - canary
+          - stable
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x64
+          - os: windows-latest
+            platform: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Vite frontend
+        run: bunx vite build
+
+      - name: Determine channel
+        id: channel
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "channel=${{ inputs.channel }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v*-canary* ]]; then
+            echo "channel=canary" >> $GITHUB_OUTPUT
+          else
+            echo "channel=stable" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build ElectroBun app
+        run: bunx electrobun build --env=${{ steps.channel.outputs.channel }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrobun-app-${{ matrix.platform }}-${{ steps.channel.outputs.channel }}
+          path: artifacts/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: all-artifacts/*
+          generate_release_notes: true
