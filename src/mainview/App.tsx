@@ -1,162 +1,213 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-interface Todo {
-	id: number;
-	title: string;
-	completed: boolean;
-	created_at: string;
+interface UserRole {
+	role: string;
+	event: string;
+}
+
+interface AuthUser {
+	username: string;
+	type: number;
+	roles: UserRole[];
 }
 
 const API_BASE = "/api";
+const TOKEN_STORAGE_KEY = "rtms_auth_token";
 
 function App() {
-	const [todos, setTodos] = useState<Todo[]>([]);
-	const [newTitle, setNewTitle] = useState("");
+	const [username, setUsername] = useState("admin");
+	const [password, setPassword] = useState("admin1234");
+	const [token, setToken] = useState<string | null>(() =>
+		localStorage.getItem(TOKEN_STORAGE_KEY),
+	);
+	const [user, setUser] = useState<AuthUser | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchTodos = useCallback(async () => {
-		try {
-			const res = await fetch(`${API_BASE}/todos`);
-			const data = await res.json();
-			setTodos(data);
-			setError(null);
-		} catch {
-			setError("Failed to connect to server");
-		} finally {
-			setLoading(false);
-		}
-	}, []);
-
 	useEffect(() => {
-		fetchTodos();
-	}, [fetchTodos]);
+		let cancelled = false;
 
-	const addTodo = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!newTitle.trim()) return;
-		const res = await fetch(`${API_BASE}/todos`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ title: newTitle.trim() }),
-		});
-		const todo = await res.json();
-		setTodos((prev) => [...prev, todo]);
-		setNewTitle("");
+		async function loadCurrentUser(): Promise<void> {
+			if (!token) {
+				if (!cancelled) {
+					setUser(null);
+					setLoading(false);
+				}
+				return;
+			}
+
+			try {
+				const res = await fetch(`${API_BASE}/auth/me`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				if (!res.ok) {
+					throw new Error("Session expired");
+				}
+
+				const data = (await res.json()) as { user: AuthUser };
+				if (!cancelled) {
+					setUser(data.user);
+					setError(null);
+				}
+			} catch {
+				localStorage.removeItem(TOKEN_STORAGE_KEY);
+				if (!cancelled) {
+					setToken(null);
+					setUser(null);
+					setError("Please log in.");
+				}
+			} finally {
+				if (!cancelled) {
+					setLoading(false);
+				}
+			}
+		}
+
+		void loadCurrentUser();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [token]);
+
+	const roleSummary = useMemo(() => {
+		if (!user) return "";
+		return user.roles.map((item) => `${item.role}@${item.event}`).join(", ");
+	}, [user]);
+
+	const handleLogin = async (event: FormEvent): Promise<void> => {
+		event.preventDefault();
+		setSubmitting(true);
+		setError(null);
+
+		try {
+			const res = await fetch(`${API_BASE}/auth/login`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ username, password }),
+			});
+
+			const data = (await res.json()) as
+				| { token: string; user: AuthUser }
+				| { error?: string; message?: string };
+
+			if (!res.ok || !("token" in data)) {
+				const message =
+					("message" in data && data.message) ||
+					("error" in data && data.error) ||
+					"Unable to log in.";
+				throw new Error(message);
+			}
+
+			localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+			setToken(data.token);
+			setUser(data.user);
+			setPassword("");
+		} catch (loginError) {
+			setError(
+				loginError instanceof Error ? loginError.message : "Unable to log in.",
+			);
+		} finally {
+			setSubmitting(false);
+		}
 	};
 
-	const toggleTodo = async (todo: Todo) => {
-		const res = await fetch(`${API_BASE}/todos/${todo.id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ completed: !todo.completed }),
-		});
-		const updated = await res.json();
-		setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-	};
+	const handleLogout = async (): Promise<void> => {
+		if (token) {
+			await fetch(`${API_BASE}/auth/logout`, {
+				method: "POST",
+				headers: { Authorization: `Bearer ${token}` },
+			});
+		}
 
-	const deleteTodo = async (id: number) => {
-		await fetch(`${API_BASE}/todos/${id}`, { method: "DELETE" });
-		setTodos((prev) => prev.filter((t) => t.id !== id));
+		localStorage.removeItem(TOKEN_STORAGE_KEY);
+		setToken(null);
+		setUser(null);
+		setPassword("admin1234");
+		setError(null);
 	};
-
-	const completedCount = todos.filter((t) => t.completed).length;
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-			<div className="container mx-auto px-4 py-10 max-w-2xl">
-				<header className="text-center mb-10">
-					<h1 className="text-4xl font-bold mb-2">📋 Todo App</h1>
-					<p className="text-slate-400">
-						ElectroBun + Hono + Drizzle + bun:sqlite
-					</p>
-					<p className="text-sm text-slate-500 mt-1">
-						Accessible from LAN at{" "}
-						<code className="bg-slate-700 px-2 py-0.5 rounded">
-							http://&lt;your-ip&gt;:3000
-						</code>
-					</p>
-				</header>
+		<div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+			<div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+				<div className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-2xl backdrop-blur">
+					<header className="mb-8 text-center">
+						<h1 className="text-3xl font-bold tracking-tight">
+							Robotics Tournament Management
+						</h1>
+						<p className="mt-2 text-sm text-slate-400">Server authentication console</p>
+					</header>
 
-				{error && (
-					<div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6 text-red-300">
-						{error}
-					</div>
-				)}
-
-				<form onSubmit={addTodo} className="flex gap-3 mb-8">
-					<input
-						type="text"
-						value={newTitle}
-						onChange={(e) => setNewTitle(e.target.value)}
-						placeholder="What needs to be done?"
-						className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-					/>
-					<button
-						type="submit"
-						className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
-					>
-						Add
-					</button>
-				</form>
-
-				{loading ? (
-					<div className="text-center text-slate-400 py-10">Loading...</div>
-				) : todos.length === 0 ? (
-					<div className="text-center text-slate-500 py-10">
-						<p className="text-5xl mb-4">🎉</p>
-						<p>No todos yet. Add one above!</p>
-					</div>
-				) : (
-					<>
-						<div className="text-sm text-slate-400 mb-4">
-							{completedCount}/{todos.length} completed
+					{error && (
+						<div className="mb-5 rounded-lg border border-red-500/50 bg-red-500/20 px-4 py-3 text-sm text-red-200">
+							{error}
 						</div>
-						<ul className="space-y-2">
-							{todos.map((todo) => (
-								<li
-									key={todo.id}
-									className="flex items-center gap-3 bg-slate-700/30 border border-slate-600/50 rounded-lg px-4 py-3 group"
-								>
-									<button
-										onClick={() => toggleTodo(todo)}
-										className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-											todo.completed
-												? "bg-green-500 border-green-500 text-white"
-												: "border-slate-500 hover:border-blue-500"
-										}`}
-									>
-										{todo.completed && "✓"}
-									</button>
-									<span
-										className={`flex-1 ${
-											todo.completed
-												? "line-through text-slate-500"
-												: "text-white"
-										}`}
-									>
-										{todo.title}
-									</span>
-									<button
-										onClick={() => deleteTodo(todo.id)}
-										className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-									>
-										✕
-									</button>
-								</li>
-							))}
-						</ul>
-					</>
-				)}
+					)}
 
-				<footer className="mt-12 text-center text-slate-600 text-sm">
-					<div className="flex justify-center gap-4">
-						<span>⚡ ElectroBun</span>
-						<span>🔥 Hono</span>
-						<span>💾 Drizzle + SQLite</span>
-						<span>⚛️ React</span>
-					</div>
-				</footer>
+					{loading ? (
+						<p className="py-8 text-center text-slate-400">Checking session...</p>
+					) : user ? (
+						<div className="space-y-5">
+							<div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+								<p className="text-sm text-emerald-300">Authenticated</p>
+								<p className="mt-1 text-lg font-semibold">{user.username}</p>
+								<p className="mt-1 text-sm text-slate-300">Type: {user.type}</p>
+								<p className="mt-1 text-sm text-slate-300">
+									Roles: {roleSummary || "No roles assigned"}
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={() => void handleLogout()}
+								className="w-full rounded-lg bg-slate-700 px-4 py-3 font-medium text-white transition hover:bg-slate-600"
+							>
+								Log out
+							</button>
+						</div>
+					) : (
+						<form className="space-y-4" onSubmit={(event) => void handleLogin(event)}>
+							<div>
+								<label className="mb-1 block text-sm text-slate-300" htmlFor="username">
+									Username
+								</label>
+								<input
+									id="username"
+									type="text"
+									value={username}
+									onChange={(event) => setUsername(event.target.value)}
+									autoComplete="username"
+									className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-sky-500"
+									placeholder="Enter username"
+								/>
+							</div>
+
+							<div>
+								<label className="mb-1 block text-sm text-slate-300" htmlFor="password">
+									Password
+								</label>
+								<input
+									id="password"
+									type="password"
+									value={password}
+									onChange={(event) => setPassword(event.target.value)}
+									autoComplete="current-password"
+									className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-sky-500"
+									placeholder="Enter password"
+								/>
+							</div>
+
+							<button
+								type="submit"
+								disabled={submitting}
+								className="w-full rounded-lg bg-sky-600 px-4 py-3 font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-70"
+							>
+								{submitting ? "Signing in..." : "Sign in"}
+							</button>
+						</form>
+					)}
+				</div>
 			</div>
 		</div>
 	);

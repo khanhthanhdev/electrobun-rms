@@ -13,6 +13,7 @@ export default {
 		copy: {
 			"dist/index.html": "views/mainview/index.html",
 			"dist/assets": "views/mainview/assets",
+			"docs/schema/server.sql": "docs/schema/server.sql",
 		},
 		mac: {
 			bundleCEF: false,

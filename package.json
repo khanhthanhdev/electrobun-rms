@@ -9,14 +9,17 @@
 		"build": "vite build && electrobun build",
 		"build:canary": "vite build && electrobun build --env=canary",
 		"build:stable": "vite build && electrobun build --env=stable",
+		"db:reset": "bun src/bun/db/reset.ts",
 		"start": "bun run dev"
 	},
 	"dependencies": {
+		"@hono/valibot-validator": "^0.6.1",
 		"drizzle-orm": "^0.45.1",
 		"electrobun": "latest",
 		"hono": "^4.12.0",
 		"react": "^18.3.1",
-		"react-dom": "^18.3.1"
+		"react-dom": "^18.3.1",
+		"valibot": "latest"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
