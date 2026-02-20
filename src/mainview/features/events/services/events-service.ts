@@ -5,7 +5,15 @@ interface EventsResponse {
   events: EventItem[];
 }
 
-export const fetchEvents = async (): Promise<EventItem[]> => {
-  const data = await requestJson<EventsResponse>("/events");
+export const fetchEvents = async (
+  refreshKey?: number
+): Promise<EventItem[]> => {
+  const path =
+    refreshKey === undefined
+      ? "/events"
+      : `/events?refresh=${refreshKey.toString()}`;
+  const data = await requestJson<EventsResponse>(path, {
+    cache: "no-store",
+  });
   return data.events;
 };

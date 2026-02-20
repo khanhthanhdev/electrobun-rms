@@ -5,6 +5,8 @@ interface AppHeaderProps {
   isAuthLoading: boolean;
   onLoginClick: () => void;
   onLogoutClick: () => Promise<void>;
+  onNavigate: (path: string) => void;
+  showAdminMenu: boolean;
   user: AuthUser | null;
 }
 
@@ -18,8 +20,10 @@ const getRuntimeHost = (): string => {
 
 export const AppHeader = ({
   isAuthLoading,
+  onNavigate,
   onLoginClick,
   onLogoutClick,
+  showAdminMenu,
   user,
 }: AppHeaderProps): JSX.Element => {
   const handleLogoutClick = (): void => {
@@ -27,6 +31,17 @@ export const AppHeader = ({
       // Logout errors are handled by the auth hook.
     });
   };
+
+  const handleNavigation =
+    (path: string) =>
+    (event: React.MouseEvent<HTMLAnchorElement>): void => {
+      event.preventDefault();
+      const menuRoot = event.currentTarget.closest("details");
+      if (menuRoot) {
+        menuRoot.removeAttribute("open");
+      }
+      onNavigate(path);
+    };
 
   return (
     <header className="site-header">
@@ -37,18 +52,56 @@ export const AppHeader = ({
         </p>
 
         <div className="site-header__nav">
-          <a className="site-header__brand" href="/">
-            <img
-              alt="Nation Robotics Competition logo"
-              className="site-header__logo"
-              height={56}
-              src={nrcLogo}
-              width={56}
-            />
-            <span className="site-header__brand-name">
-              Nation Robotics Competition
-            </span>
-          </a>
+          <div className="site-header__brand-group">
+            <a
+              className="site-header__brand"
+              href="/"
+              onClick={handleNavigation("/")}
+            >
+              <img
+                alt="Nation Robotics Competition logo"
+                className="site-header__logo"
+                height={56}
+                src={nrcLogo}
+                width={56}
+              />
+              <span className="site-header__brand-name">
+                Nation Robotics Competition
+              </span>
+            </a>
+
+            {showAdminMenu ? (
+              <details className="site-header__admin-menu">
+                <summary>ADMIN</summary>
+                <div className="site-header__admin-dropdown">
+                  <a
+                    href="/create/event"
+                    onClick={handleNavigation("/create/event")}
+                  >
+                    Setup Event
+                  </a>
+                  <a
+                    href="/create/account"
+                    onClick={handleNavigation("/create/account")}
+                  >
+                    Create User
+                  </a>
+                  <a
+                    href="/user/manage"
+                    onClick={handleNavigation("/user/manage")}
+                  >
+                    Manage Users
+                  </a>
+                  <a
+                    href="/manage/server"
+                    onClick={handleNavigation("/manage/server")}
+                  >
+                    Manage Server
+                  </a>
+                </div>
+              </details>
+            ) : null}
+          </div>
 
           <div className="site-header__actions">
             <a

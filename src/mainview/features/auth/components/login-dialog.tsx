@@ -31,38 +31,30 @@ export const LoginForm = ({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+    <main className="page-shell page-shell--center">
       <form
-        className="w-full max-w-sm space-y-6 rounded-lg bg-white p-8 shadow-md"
+        className="card surface-card surface-card--small stack"
         method="post"
         onSubmit={handleSubmit}
       >
-        <div>
-          <h3 className="text-center font-bold text-gray-900 text-xl">
-            Sign in
-          </h3>
-          <p className="mt-2 text-center text-gray-600 text-sm">
+        <header>
+          <h3 className="app-heading app-heading--center">Sign in</h3>
+          <p className="app-subheading app-subheading--center">
             Enter your credentials to continue.
           </p>
-        </div>
+        </header>
 
         {errorMessage ? (
-          <div className="rounded-md bg-red-50 p-3 text-red-700 text-sm">
+          <p className="message-block" data-variant="danger" role="alert">
             {errorMessage}
-          </div>
+          </p>
         ) : null}
 
-        <div className="space-y-4">
-          <div>
-            <label
-              className="block font-semibold text-gray-900 text-sm"
-              htmlFor="username"
-            >
-              Username
-            </label>
+        <div className="stack stack--compact">
+          <div className="form-row" data-field>
+            <label htmlFor="username">Username</label>
             <input
               autoComplete="username"
-              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               id="username"
               onChange={(event) => {
                 setUsername(event.target.value);
@@ -73,16 +65,10 @@ export const LoginForm = ({
             />
           </div>
 
-          <div>
-            <label
-              className="block font-semibold text-gray-900 text-sm"
-              htmlFor="password"
-            >
-              Password
-            </label>
+          <div className="form-row" data-field>
+            <label htmlFor="password">Password</label>
             <input
               autoComplete="current-password"
-              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               id="password"
               onChange={(event) => {
                 setPassword(event.target.value);
@@ -93,33 +79,23 @@ export const LoginForm = ({
             />
           </div>
 
-          <div className="flex items-center">
+          <label className="form-checkbox" htmlFor="showPassword">
             <input
               checked={showPassword}
-              className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
               id="showPassword"
               onChange={(event) => {
                 setShowPassword(event.target.checked);
               }}
               type="checkbox"
             />
-            <label
-              className="ml-2 text-gray-700 text-sm"
-              htmlFor="showPassword"
-            >
-              Show password
-            </label>
-          </div>
+            Show password
+          </label>
         </div>
 
-        <button
-          className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-          disabled={isSubmitting}
-          type="submit"
-        >
+        <button className="form-submit" disabled={isSubmitting} type="submit">
           {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
       </form>
-    </div>
+    </main>
   );
 };

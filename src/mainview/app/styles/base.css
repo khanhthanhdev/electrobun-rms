@@ -1,0 +1,115 @@
+*,
+*::before,
+*::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--app-bg);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+a:hover,
+a:active {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+:is(
+    button,
+    [type="submit"],
+    [type="reset"],
+    [type="button"],
+    a.button
+  ):active:not(:disabled) {
+  transform: none;
+}
+
+:is(button, [type="submit"], [type="reset"], [type="button"], a.button):not(
+    .outline
+  ):not(.ghost):not([data-variant]):hover:not(:disabled) {
+  background-color: var(--primary);
+}
+
+:is(
+    button,
+    [type="submit"],
+    [type="reset"],
+    [type="button"],
+    a.button
+  )[data-variant="secondary"]:hover:not(:disabled) {
+  background-color: var(--secondary);
+}
+
+:is(
+    button,
+    [type="submit"],
+    [type="reset"],
+    [type="button"],
+    a.button
+  )[data-variant="danger"]:hover:not(:disabled) {
+  background-color: var(--danger);
+}
+
+:is(
+    button,
+    [type="submit"],
+    [type="reset"],
+    [type="button"],
+    a.button
+  ).outline:hover:not(:disabled),
+:is(
+    button,
+    [type="submit"],
+    [type="reset"],
+    [type="button"],
+    a.button
+  ).ghost:hover:not(:disabled) {
+  background-color: transparent;
+}
+
+summary:hover,
+summary:active,
+tbody tr:hover,
+tbody tr:active {
+  background-color: transparent;
+}
+
+.app-heading {
+  margin: 0;
+}
+
+.app-heading--center {
+  text-align: center;
+}
+
+.app-subheading {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-7);
+  color: var(--muted-foreground);
+}
+
+.app-subheading--center {
+  text-align: center;
+}
+
+.app-note {
+  margin: 0;
+  font-size: var(--text-8);
+  color: var(--muted-foreground);
+}
+
+.app-link-inline {
+  font-size: var(--text-7);
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}

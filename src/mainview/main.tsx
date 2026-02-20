@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./app/styles/global.css";
+import "./app/styles/index.css";
 import "@knadh/oat/oat.min.js";
 import App from "./app/app";
 

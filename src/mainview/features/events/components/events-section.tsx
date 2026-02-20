@@ -6,11 +6,13 @@ import { EVENT_STATUS_LABELS } from "../constants/status-labels";
 interface EventsSectionProps {
   events: EventItem[];
   isLoading: boolean;
+  onNavigate: (path: string) => void;
 }
 
 interface EventsTableProps {
   emptyMessage: string;
   events: EventItem[];
+  onNavigate: (path: string) => void;
   title: string;
   tone: "primary" | "secondary";
 }
@@ -23,6 +25,7 @@ const formatEventStatus = (status: number): string =>
 const EventsTable = ({
   emptyMessage,
   events,
+  onNavigate,
   title,
   tone,
 }: EventsTableProps): JSX.Element => (
@@ -49,8 +52,34 @@ const EventsTable = ({
           <tbody>
             {events.map((eventItem) => (
               <tr key={`${eventItem.code}-${title}`}>
-                <td className="events-table__code">{eventItem.code}</td>
-                <td className="events-table__name">{eventItem.name}</td>
+                <td className="events-table__code">
+                  <a
+                    className="events-table__event-link"
+                    href={`/event/${encodeURIComponent(eventItem.code)}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onNavigate(
+                        `/event/${encodeURIComponent(eventItem.code)}`
+                      );
+                    }}
+                  >
+                    {eventItem.code}
+                  </a>
+                </td>
+                <td className="events-table__name">
+                  <a
+                    className="events-table__event-link"
+                    href={`/event/${encodeURIComponent(eventItem.code)}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onNavigate(
+                        `/event/${encodeURIComponent(eventItem.code)}`
+                      );
+                    }}
+                  >
+                    {eventItem.name}
+                  </a>
+                </td>
                 <td>{formatEventStatus(eventItem.status)}</td>
                 <td>
                   {formatDate(eventItem.start)} - {formatDate(eventItem.end)}
@@ -67,6 +96,7 @@ const EventsTable = ({
 export const EventsSection = ({
   events,
   isLoading,
+  onNavigate,
 }: EventsSectionProps): JSX.Element => {
   if (isLoading) {
     return (
@@ -86,12 +116,14 @@ export const EventsSection = ({
       <EventsTable
         emptyMessage="No active events available."
         events={displayedActiveEvents}
+        onNavigate={onNavigate}
         title="Active Events"
         tone="primary"
       />
       <EventsTable
         emptyMessage="No events available."
         events={events}
+        onNavigate={onNavigate}
         title="All Events"
         tone="secondary"
       />

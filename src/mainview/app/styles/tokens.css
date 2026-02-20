@@ -1,0 +1,45 @@
+/* Theme values mapped from output/steamforvietnam.org/2026-02-20T14-48-28-852Z.json */
+:root {
+  --background: #ffffff;
+  --foreground: #172b4d;
+  --card: #ffffff;
+  --card-foreground: #172b4d;
+  --primary: #447aff;
+  --primary-foreground: #ffffff;
+  --secondary: #d7defa;
+  --secondary-foreground: #172b4d;
+  --muted: #ebecf0;
+  --muted-foreground: #6b778c;
+  --faint: #f4f6fa;
+  --accent: #54c9c2;
+  --danger: #d0021b;
+  --danger-foreground: #ffffff;
+  --success: #22a861;
+  --success-foreground: #ffffff;
+  --warning: #ffc400;
+  --warning-foreground: #172b4d;
+  --border: #c1c7d0;
+  --input: #c1c7d0;
+  --ring: #ffab00;
+  --font-sans: "Quicksand", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --radius-small: 0.25rem;
+  --radius-medium: 0.25rem;
+  --radius-large: 0.25rem;
+  --shadow-small: none;
+  --shadow-medium: none;
+  --shadow-large: none;
+  --transition-fast: 0s;
+  --transition: 0s;
+
+  --app-bg: var(--background);
+  --app-header-bg: #172b4d;
+  --app-header-border: #2f3a7e;
+  --app-header-fg: #ffffff;
+  --app-header-muted: #d6e1ff;
+  --app-surface-max: 72rem;
+  color-scheme: light;
+}

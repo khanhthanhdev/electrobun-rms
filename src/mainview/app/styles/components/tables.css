@@ -1,0 +1,24 @@
+.table-credentials {
+  min-width: 34rem;
+}
+
+.table-users {
+  min-width: 30rem;
+}
+
+.table-role-matrix {
+  min-width: 48rem;
+}
+
+.table-role-matrix td:first-child {
+  font-weight: var(--font-medium);
+}
+
+.table-credentials td:first-child,
+.table-credentials td:last-child {
+  font-family: var(--font-mono);
+}
+
+.table-action-cell {
+  width: 10rem;
+}

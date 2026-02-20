@@ -1,0 +1,19 @@
+.event-card > header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.event-card > header h3 {
+  margin: 0;
+}
+
+.event-meta {
+  margin-top: var(--space-4);
+}
+
+.event-meta td:first-child {
+  width: 8rem;
+  color: var(--muted-foreground);
+}

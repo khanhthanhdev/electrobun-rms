@@ -1,7 +1,7 @@
 import { extname, join, resolve } from "node:path";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { api } from "./routes";
+import { api } from "./api";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

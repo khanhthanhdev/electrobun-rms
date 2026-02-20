@@ -62,3 +62,15 @@ CREATE TABLE IF NOT EXISTS event_log (
 
 CREATE INDEX IF NOT EXISTS idx_event_log_timestamp ON event_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_event_log_event ON event_log(event);
+
+-- account_secrets
+CREATE TABLE IF NOT EXISTS account_secrets (
+  username TEXT NOT NULL,
+  event TEXT NOT NULL,
+  secret_encrypted TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (username, event),
+  FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_secrets_event ON account_secrets(event);

@@ -1,0 +1,38 @@
+[data-field] > label,
+.form-row > label,
+.form-section-label {
+  font-weight: var(--font-medium);
+}
+
+.form-help {
+  margin-top: var(--space-1);
+  font-size: var(--text-8);
+  color: var(--muted-foreground);
+}
+
+.form-checkbox {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.form-description {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-7);
+  color: var(--muted-foreground);
+}
+
+.form-note {
+  margin: 0;
+  font-size: var(--text-7);
+  color: var(--muted-foreground);
+}
+
+.form-note--spaced {
+  margin-top: var(--space-2);
+}
+
+.message-block {
+  margin: 0;
+}

@@ -101,5 +101,29 @@ export type NewRole = typeof roles.$inferInsert;
 export type Config = typeof config.$inferSelect;
 export type NewConfig = typeof config.$inferInsert;
 
+export const accountSecrets = sqliteTable(
+  "account_secrets",
+  {
+    username: text("username").notNull(),
+    event: text("event").notNull(),
+    secret: text("secret_encrypted").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.username, table.event],
+    }),
+    foreignKey({
+      columns: [table.username],
+      foreignColumns: [users.username],
+      name: "account_secrets_user_fk",
+    }).onDelete("cascade"),
+    index("idx_account_secrets_event").on(table.event),
+  ]
+);
+
 export type EventLog = typeof eventLog.$inferSelect;
 export type NewEventLog = typeof eventLog.$inferInsert;
+
+export type AccountSecret = typeof accountSecrets.$inferSelect;
+export type NewAccountSecret = typeof accountSecrets.$inferInsert;

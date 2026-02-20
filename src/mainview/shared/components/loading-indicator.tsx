@@ -5,7 +5,7 @@ interface LoadingIndicatorProps {
 export const LoadingIndicator = ({
   className = "loading-center",
 }: LoadingIndicatorProps): JSX.Element => (
-  <div className={className}>
-    <div className="spinner" />
-  </div>
+  <output aria-live="polite" className={className}>
+    Loading...
+  </output>
 );
