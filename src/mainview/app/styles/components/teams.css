@@ -1,0 +1,73 @@
+.teams-actions-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.teams-actions-row .form-row {
+  flex: 1;
+  max-width: none;
+}
+
+.teams-actions-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.teams-file-input {
+  display: none;
+}
+
+.teams-form-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.table-teams {
+  min-width: 64rem;
+}
+
+.table-teams-team-number {
+  font-family: var(--font-mono);
+  font-weight: var(--font-semibold);
+}
+
+.table-teams td input {
+  min-width: 8rem;
+}
+
+.table-teams-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 920px) {
+  .teams-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .teams-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teams-actions-tools {
+    justify-content: flex-start;
+  }
+
+  .teams-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .teams-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

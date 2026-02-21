@@ -62,6 +62,14 @@
   text-underline-offset: 0.16em;
 }
 
+.events-table__event-link-button {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
 @media (max-width: 640px) {
   .events-table {
     min-width: 34rem;

@@ -28,3 +28,42 @@
 .table-action-cell {
   width: 10rem;
 }
+
+.table-report {
+  min-width: 44rem;
+}
+
+.report-collapsible {
+  padding: var(--space-3) var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-collapsible-summary {
+  font-size: var(--text-6);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  list-style: none;
+}
+
+.report-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-collapsible-summary::before {
+  display: inline-block;
+  margin-right: var(--space-2);
+  content: "▸";
+}
+
+.report-collapsible[open] .report-collapsible-summary::before {
+  content: "▾";
+}
+
+.report-collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

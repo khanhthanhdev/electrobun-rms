@@ -11,6 +11,7 @@ import {
   createEventFromManualPayload,
   getEvent,
   listDefaultEventAccounts,
+  listEventPrintLists,
   listEvents,
   regenerateDefaultEventAccounts,
   updateEvent,
@@ -75,7 +76,7 @@ eventsRoutes.put("/:eventCode", requireAuth, async (c) => {
   }
 
   const eventCode = c.req.param("eventCode");
-  const existing = getEvent(eventCode);
+  const existing = await getEvent(eventCode);
   if (!existing) {
     return c.json({ error: "Event not found" }, 404);
   }
@@ -96,8 +97,18 @@ eventsRoutes.put("/:eventCode", requireAuth, async (c) => {
     );
   }
 
-  const updatedEvent = updateEvent(eventCode, bodyResult.output);
-  return c.json({ event: updatedEvent });
+  try {
+    const updatedEvent = await updateEvent(eventCode, bodyResult.output);
+    return c.json({ event: updatedEvent });
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return c.json(
+        { error: "Event update failed", message: error.message },
+        error.status as 400 | 409 | 500
+      );
+    }
+    throw error;
+  }
 });
 
 eventsRoutes.get("/:eventCode/default-accounts", requireAuth, async (c) => {
@@ -148,3 +159,25 @@ eventsRoutes.post(
     }
   }
 );
+
+eventsRoutes.get("/:eventCode/print-lists", requireAuth, (c) => {
+  const forbiddenResponse = requireGlobalAdmin(c);
+  if (forbiddenResponse) {
+    return forbiddenResponse;
+  }
+
+  const eventCode = c.req.param("eventCode");
+
+  try {
+    const reportLists = listEventPrintLists(eventCode);
+    return c.json(reportLists);
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return c.json(
+        { error: "Failed to load printable lists", message: error.message },
+        error.status as 400 | 404 | 500
+      );
+    }
+    throw error;
+  }
+});

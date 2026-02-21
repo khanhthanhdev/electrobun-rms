@@ -1,8 +1,5 @@
 import { type FormEvent, useState } from "react";
-import type {
-  CreateManualEventPayload,
-  DefaultAccountInfo,
-} from "../../features/events/services/manual-event-service";
+import type { CreateManualEventPayload } from "../../features/events/services/manual-event-service";
 import { createManualEvent } from "../../features/events/services/manual-event-service";
 
 interface CreateEventPageProps {
@@ -25,10 +22,6 @@ export const CreateEventPage = ({
   const [form, setForm] = useState<CreateManualEventPayload>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [createdAccounts, setCreatedAccounts] = useState<
-    DefaultAccountInfo[] | null
-  >(null);
-  const [createdEventCode, setCreatedEventCode] = useState<string | null>(null);
 
   const updateField = <K extends keyof CreateManualEventPayload>(
     key: K,
@@ -49,8 +42,6 @@ export const CreateEventPage = ({
 
     try {
       const result = await createManualEvent(form, token);
-      setCreatedAccounts(result.defaultAccounts);
-      setCreatedEventCode(result.event.code);
 
       window.history.pushState(
         {},
@@ -67,15 +58,6 @@ export const CreateEventPage = ({
     }
   };
 
-  if (createdAccounts && createdEventCode) {
-    return (
-      <DefaultAccountsDisplay
-        accounts={createdAccounts}
-        eventCode={createdEventCode}
-      />
-    );
-  }
-
   return (
     <main className="page-shell page-shell--top">
       <form
@@ -87,7 +69,7 @@ export const CreateEventPage = ({
             Create Manual Event
           </h2>
           <p className="app-subheading app-subheading--center">
-            Set up a new event with default accounts.
+            Set up a new event.
           </p>
         </header>
 
@@ -166,6 +148,7 @@ export const CreateEventPage = ({
               <label htmlFor="endDate">End Date</label>
               <input
                 id="endDate"
+                min={form.startDate || undefined}
                 onChange={(e) => {
                   updateField("endDate", e.target.value);
                 }}
@@ -213,52 +196,3 @@ export const CreateEventPage = ({
     </main>
   );
 };
-
-interface DefaultAccountsDisplayProps {
-  accounts: DefaultAccountInfo[];
-  eventCode: string;
-}
-
-const DefaultAccountsDisplay = ({
-  accounts,
-  eventCode,
-}: DefaultAccountsDisplayProps): JSX.Element => (
-  <main className="page-shell page-shell--top">
-    <div className="card surface-card surface-card--medium stack stack--compact">
-      <header>
-        <h2 className="app-heading">Default Accounts - {eventCode}</h2>
-        <p className="app-subheading">
-          Save these credentials. Passwords are shown only here and on the
-          default accounts page.
-        </p>
-      </header>
-
-      <div className="table-wrap">
-        <table className="table-credentials">
-          <thead>
-            <tr>
-              <th scope="col">Username</th>
-              <th scope="col">Role</th>
-              <th scope="col">Password</th>
-            </tr>
-          </thead>
-          <tbody>
-            {accounts.map((account) => (
-              <tr key={account.username}>
-                <td>{account.username}</td>
-                <td>{account.role}</td>
-                <td>{account.password}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        <a className="button" href="/">
-          Back to Home
-        </a>
-      </div>
-    </div>
-  </main>
-);

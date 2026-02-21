@@ -34,7 +34,6 @@ export interface DefaultAccountInfo {
 }
 
 export interface ManualEventResult {
-  defaultAccounts: DefaultAccountInfo[];
   event: {
     code: string;
     name: string;
@@ -285,8 +284,6 @@ export async function createManualEvent(
 
   try {
     const now = Date.now();
-    const accountsWithPasswords =
-      await createDefaultAccountsWithPasswords(eventCode);
 
     await db.transaction(async (tx) => {
       await tx.insert(schema.events).values({
@@ -301,40 +298,13 @@ export async function createManualEvent(
         region,
       });
 
-      await tx.insert(schema.users).values(
-        accountsWithPasswords.map((a) => ({
-          username: a.username,
-          hashedPassword: a.hashedPassword,
-          type: 0,
-          used: true,
-          generic: true,
-        }))
-      );
-
-      await tx.insert(schema.roles).values(
-        accountsWithPasswords.map((a) => ({
-          username: a.username,
-          role: a.role,
-          event: eventCode,
-        }))
-      );
-
-      await tx.insert(schema.accountSecrets).values(
-        accountsWithPasswords.map((a) => ({
-          username: a.username,
-          event: eventCode,
-          secret: a.password,
-          createdAt: now,
-        }))
-      );
-
       await tx.insert(schema.eventLog).values({
         timestamp: now,
         type: "EVENT_CREATED",
         event: eventCode,
         info: `Manual event created: ${eventName}`,
         extra: JSON.stringify({
-          accounts: accountsWithPasswords.map((a) => a.username),
+          defaultAccountsInitialized: false,
         }),
       });
     });
@@ -351,11 +321,6 @@ export async function createManualEvent(
         end: endTs,
         region,
       },
-      defaultAccounts: accountsWithPasswords.map((a) => ({
-        username: a.username,
-        role: a.role,
-        password: a.password,
-      })),
     };
   } catch (error) {
     cleanupEventDb(dbPath);
@@ -512,13 +477,6 @@ export function getDefaultAccounts(eventCode: string): {
     )
     .where(eq(schema.accountSecrets.event, eventCode))
     .all();
-
-  if (rows.length === 0) {
-    throw new ServiceError(
-      `Default accounts for event "${eventCode}" were not found.`,
-      404
-    );
-  }
 
   return {
     eventCode,

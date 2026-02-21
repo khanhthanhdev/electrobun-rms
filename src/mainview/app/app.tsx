@@ -1,17 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { LoginForm } from "../features/auth/components/login-dialog";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "../features/auth/hooks/use-auth";
 import { useEvents } from "../features/events/hooks/use-events";
-import { AdminPlaceholderPage } from "../pages/admin/admin-placeholder-page";
-import { CreateEventPage } from "../pages/events/create-event-page";
-import { DefaultAccountsPage } from "../pages/events/default-accounts-page";
-import { EditEventPage } from "../pages/events/edit-event-page";
-import { EventDashboardPage } from "../pages/events/event-dashboard-page";
-import { EventPage } from "../pages/events/event-page";
-import { HomePage } from "../pages/home/home-page";
-import { CreateAccountPage } from "../pages/users/create-account-page";
-import { ManageUserPage } from "../pages/users/manage-user-page";
-import { ManageUsersPage } from "../pages/users/manage-users-page";
 import { LoadingIndicator } from "../shared/components/loading-indicator";
 import type { AuthUser, LoginCredentials } from "../shared/types/auth";
 import { AppHeader } from "../widgets/app-header/app-header";
@@ -26,6 +15,8 @@ const readCurrentPath = (): string => {
 
 const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
 const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
+const EVENT_REPORTS_PATTERN = /^\/event\/([^/]+)\/dashboard\/reports\/?$/;
+const EVENT_TEAMS_PATTERN = /^\/event\/([^/]+)\/dashboard\/teams\/?$/;
 const DEFAULT_ACCOUNTS_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
 const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
@@ -37,9 +28,84 @@ const MANAGE_USER_DETAIL_PATTERN =
   /^(?:\/(?:user|users)\/manage\/([^/]+)|\/manage\/users\/([^/]+))\/?$/;
 const MANAGE_SERVER_PATTERN = /^\/manage\/server\/?$/;
 
+const LoginForm = lazy(() =>
+  import("../features/auth/components/login-dialog").then((module) => ({
+    default: module.LoginForm,
+  }))
+);
+const AdminPlaceholderPage = lazy(() =>
+  import("../pages/admin/admin-placeholder-page").then((module) => ({
+    default: module.AdminPlaceholderPage,
+  }))
+);
+const CreateEventPage = lazy(() =>
+  import("../pages/events/create-event-page").then((module) => ({
+    default: module.CreateEventPage,
+  }))
+);
+const DefaultAccountsPage = lazy(() =>
+  import("../pages/events/default-accounts-page").then((module) => ({
+    default: module.DefaultAccountsPage,
+  }))
+);
+const EditEventPage = lazy(() =>
+  import("../pages/events/edit-event-page").then((module) => ({
+    default: module.EditEventPage,
+  }))
+);
+const EventDashboardPage = lazy(() =>
+  import("../pages/events/event-dashboard-page").then((module) => ({
+    default: module.EventDashboardPage,
+  }))
+);
+const EventPage = lazy(() =>
+  import("../pages/events/event-page").then((module) => ({
+    default: module.EventPage,
+  }))
+);
+const EventReportsPage = lazy(() =>
+  import("../pages/events/event-reports-page").then((module) => ({
+    default: module.EventReportsPage,
+  }))
+);
+const TeamsPage = lazy(() =>
+  import("../pages/events/teams-page").then((module) => ({
+    default: module.TeamsPage,
+  }))
+);
+const HomePage = lazy(() =>
+  import("../pages/home/home-page").then((module) => ({
+    default: module.HomePage,
+  }))
+);
+const CreateAccountPage = lazy(() =>
+  import("../pages/users/create-account-page").then((module) => ({
+    default: module.CreateAccountPage,
+  }))
+);
+const ManageUserPage = lazy(() =>
+  import("../pages/users/manage-user-page").then((module) => ({
+    default: module.ManageUserPage,
+  }))
+);
+const ManageUsersPage = lazy(() =>
+  import("../pages/users/manage-users-page").then((module) => ({
+    default: module.ManageUsersPage,
+  }))
+);
+
 const hasAdminGlobalRole = (user: AuthUser | null): boolean =>
   Boolean(
     user?.roles.some((role) => role.role === "ADMIN" && role.event === "*")
+  );
+
+const hasEventAdminRole = (user: AuthUser | null, eventCode: string): boolean =>
+  Boolean(
+    user?.roles.some(
+      (role) =>
+        role.role === "ADMIN" &&
+        (role.event === "*" || role.event === eventCode)
+    )
   );
 
 const decodePathSegment = (value: string): string | null => {
@@ -62,6 +128,64 @@ const RouteErrorPage = ({ message }: { message: string }): JSX.Element => (
     </div>
   </main>
 );
+
+const PageLoadingFallback = (): JSX.Element => (
+  <main className="page-shell page-shell--center">
+    <LoadingIndicator />
+  </main>
+);
+
+interface AppPageContentProps {
+  errorMessage: string | null;
+  handleLoginSubmit: (credentials: LoginCredentials) => Promise<boolean>;
+  isLoginPage: boolean;
+  isLoginSubmitting: boolean;
+  renderAdminRoutePage: () => JSX.Element | null;
+  renderDefaultAccountsPage: () => JSX.Element;
+  renderEventDetailPage: () => JSX.Element | null;
+}
+
+const AppPageContent = ({
+  errorMessage,
+  handleLoginSubmit,
+  isLoginPage,
+  isLoginSubmitting,
+  renderAdminRoutePage,
+  renderDefaultAccountsPage,
+  renderEventDetailPage,
+}: AppPageContentProps): JSX.Element => {
+  if (isLoginPage) {
+    return (
+      <LoginForm
+        errorMessage={errorMessage}
+        isSubmitting={isLoginSubmitting}
+        onSubmit={handleLoginSubmit}
+      />
+    );
+  }
+
+  const adminRoutePage = renderAdminRoutePage();
+  if (adminRoutePage) {
+    return adminRoutePage;
+  }
+
+  const eventDetailPage = renderEventDetailPage();
+  if (eventDetailPage) {
+    return eventDetailPage;
+  }
+
+  return renderDefaultAccountsPage();
+};
+
+type EventScopedAdminRouteResolution =
+  | {
+      eventCode: string;
+      kind: "allowed";
+    }
+  | {
+      kind: "blocked";
+      page: JSX.Element;
+    };
 
 const App = (): JSX.Element => {
   const [currentPath, setCurrentPath] = useState(readCurrentPath);
@@ -132,6 +256,8 @@ const App = (): JSX.Element => {
   const isAdminUser = hasAdminGlobalRole(user);
   const editEventMatch = EDIT_EVENT_PATTERN.exec(currentPath);
   const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
+  const eventReportsMatch = EVENT_REPORTS_PATTERN.exec(currentPath);
+  const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
   const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
   const navigateTo = (path: string): void => {
     if (window.location.pathname === path) {
@@ -202,6 +328,52 @@ const App = (): JSX.Element => {
     );
   };
 
+  const resolveEventScopedAdminRoute = (
+    encodedEventCode: string | undefined
+  ): EventScopedAdminRouteResolution => {
+    if (!encodedEventCode) {
+      return {
+        kind: "blocked",
+        page: <RouteErrorPage message="Invalid event code in URL." />,
+      };
+    }
+
+    const decodedEventCode = decodePathSegment(encodedEventCode);
+    if (decodedEventCode === null) {
+      return {
+        kind: "blocked",
+        page: <RouteErrorPage message="Invalid event code in URL." />,
+      };
+    }
+
+    if (isAuthLoading) {
+      return {
+        kind: "blocked",
+        page: (
+          <main className="page-shell page-shell--center">
+            <LoadingIndicator />
+          </main>
+        ),
+      };
+    }
+
+    if (!hasEventAdminRole(user, decodedEventCode)) {
+      return {
+        kind: "blocked",
+        page: (
+          <RouteErrorPage
+            message={`Admin access for event "${decodedEventCode}" is required.`}
+          />
+        ),
+      };
+    }
+
+    return {
+      eventCode: decodedEventCode,
+      kind: "allowed",
+    };
+  };
+
   const renderEventDetailPage = (): JSX.Element | null => {
     if (!eventDetailMatch) {
       return null;
@@ -220,6 +392,57 @@ const App = (): JSX.Element => {
         user={user}
       />
     );
+  };
+
+  const renderEventScopedAdminRoutePage = (): JSX.Element | null => {
+    if (editEventMatch) {
+      const routeResolution = resolveEventScopedAdminRoute(editEventMatch[1]);
+      if (routeResolution.kind === "blocked") {
+        return routeResolution.page;
+      }
+      return (
+        <EditEventPage eventCode={routeResolution.eventCode} token={token} />
+      );
+    }
+
+    if (eventDashboardMatch) {
+      const routeResolution = resolveEventScopedAdminRoute(
+        eventDashboardMatch[1]
+      );
+      if (routeResolution.kind === "blocked") {
+        return routeResolution.page;
+      }
+      return (
+        <EventDashboardPage
+          eventCode={routeResolution.eventCode}
+          events={events}
+          isEventsLoading={isEventsLoading}
+          user={user}
+        />
+      );
+    }
+
+    if (eventReportsMatch) {
+      const routeResolution = resolveEventScopedAdminRoute(
+        eventReportsMatch[1]
+      );
+      if (routeResolution.kind === "blocked") {
+        return routeResolution.page;
+      }
+      return (
+        <EventReportsPage eventCode={routeResolution.eventCode} token={token} />
+      );
+    }
+
+    if (eventTeamsMatch) {
+      const routeResolution = resolveEventScopedAdminRoute(eventTeamsMatch[1]);
+      if (routeResolution.kind === "blocked") {
+        return routeResolution.page;
+      }
+      return <TeamsPage eventCode={routeResolution.eventCode} token={token} />;
+    }
+
+    return null;
   };
 
   const renderAdminRoutePage = (): JSX.Element | null => {
@@ -254,57 +477,7 @@ const App = (): JSX.Element => {
         />
       );
     }
-
-    if (editEventMatch) {
-      const editEventCode = decodePathSegment(editEventMatch[1]);
-      if (editEventCode === null) {
-        return <RouteErrorPage message="Invalid event code in URL." />;
-      }
-      return renderAdminPage(
-        <EditEventPage eventCode={editEventCode} token={token} />
-      );
-    }
-
-    if (eventDashboardMatch) {
-      const dashboardEventCode = decodePathSegment(eventDashboardMatch[1]);
-      if (dashboardEventCode === null) {
-        return <RouteErrorPage message="Invalid event code in URL." />;
-      }
-      return renderAdminPage(
-        <EventDashboardPage
-          eventCode={dashboardEventCode}
-          events={events}
-          isEventsLoading={isEventsLoading}
-          user={user}
-        />
-      );
-    }
-
-    return null;
-  };
-
-  const renderPage = (): JSX.Element => {
-    if (isLoginPage) {
-      return (
-        <LoginForm
-          errorMessage={errorMessage}
-          isSubmitting={isLoginSubmitting}
-          onSubmit={handleLoginSubmit}
-        />
-      );
-    }
-
-    const adminRoutePage = renderAdminRoutePage();
-    if (adminRoutePage) {
-      return adminRoutePage;
-    }
-
-    const eventDetailPage = renderEventDetailPage();
-    if (eventDetailPage) {
-      return eventDetailPage;
-    }
-
-    return renderDefaultAccountsPage();
+    return renderEventScopedAdminRoutePage();
   };
 
   return (
@@ -317,7 +490,17 @@ const App = (): JSX.Element => {
         showAdminMenu={isAdminUser}
         user={user}
       />
-      {renderPage()}
+      <Suspense fallback={<PageLoadingFallback />}>
+        <AppPageContent
+          errorMessage={errorMessage}
+          handleLoginSubmit={handleLoginSubmit}
+          isLoginPage={isLoginPage}
+          isLoginSubmitting={isLoginSubmitting}
+          renderAdminRoutePage={renderAdminRoutePage}
+          renderDefaultAccountsPage={renderDefaultAccountsPage}
+          renderEventDetailPage={renderEventDetailPage}
+        />
+      </Suspense>
     </>
   );
 };

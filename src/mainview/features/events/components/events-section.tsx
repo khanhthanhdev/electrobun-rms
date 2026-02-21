@@ -22,6 +22,16 @@ const ACTIVE_EVENT_STATUS = 1;
 const formatEventStatus = (status: number): string =>
   EVENT_STATUS_LABELS[status] ?? `Status ${status}`;
 
+const resolveEventPath = (eventCode: string): string =>
+  `/event/${encodeURIComponent(eventCode)}`;
+
+const navigateToEvent = (
+  eventCode: string,
+  onNavigate: (path: string) => void
+): void => {
+  onNavigate(resolveEventPath(eventCode));
+};
+
 const EventsTable = ({
   emptyMessage,
   events,
@@ -53,32 +63,22 @@ const EventsTable = ({
             {events.map((eventItem) => (
               <tr key={`${eventItem.code}-${title}`}>
                 <td className="events-table__code">
-                  <a
-                    className="events-table__event-link"
-                    href={`/event/${encodeURIComponent(eventItem.code)}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      onNavigate(
-                        `/event/${encodeURIComponent(eventItem.code)}`
-                      );
-                    }}
+                  <button
+                    className="events-table__event-link events-table__event-link-button"
+                    onClick={() => navigateToEvent(eventItem.code, onNavigate)}
+                    type="button"
                   >
                     {eventItem.code}
-                  </a>
+                  </button>
                 </td>
                 <td className="events-table__name">
-                  <a
-                    className="events-table__event-link"
-                    href={`/event/${encodeURIComponent(eventItem.code)}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      onNavigate(
-                        `/event/${encodeURIComponent(eventItem.code)}`
-                      );
-                    }}
+                  <button
+                    className="events-table__event-link events-table__event-link-button"
+                    onClick={() => navigateToEvent(eventItem.code, onNavigate)}
+                    type="button"
                   >
                     {eventItem.name}
-                  </a>
+                  </button>
                 </td>
                 <td>{formatEventStatus(eventItem.status)}</td>
                 <td>

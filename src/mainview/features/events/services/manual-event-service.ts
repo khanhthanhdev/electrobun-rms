@@ -20,7 +20,6 @@ interface CreateManualEventPayload {
 }
 
 interface CreateManualEventResponse {
-  defaultAccounts: DefaultAccountInfo[];
   event: EventItem;
 }
 

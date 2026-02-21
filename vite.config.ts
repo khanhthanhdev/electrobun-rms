@@ -1,12 +1,31 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin } from "vite";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), splitVendorChunkPlugin()],
   root: "src/mainview",
   build: {
     outDir: "../../dist",
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id): string | undefined => {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (
+            id.includes("react-dom") ||
+            id.includes("/react/") ||
+            id.includes("scheduler")
+          ) {
+            return "vendor-react";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     port: 5173,

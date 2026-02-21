@@ -10,6 +10,7 @@
     "build:canary": "vite build && electrobun build --env=canary",
     "build:stable": "vite build && electrobun build --env=stable",
     "db:reset": "bun src/bun/db/reset.ts",
+    "db:seed:s4v1:teams": "bun src/bun/db/seed-s4v1-teams.ts",
     "start": "bun run dev",
     "check": "ultracite check",
     "fix": "ultracite fix",
