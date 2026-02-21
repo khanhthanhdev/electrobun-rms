@@ -1,5 +1,5 @@
-import { EventsSection } from "../features/events/components/events-section";
-import type { EventItem } from "../shared/types/event";
+import { EventsSection } from "../../features/events/components/events-section";
+import type { EventItem } from "../../shared/types/event";
 
 interface HomePageProps {
   events: EventItem[];

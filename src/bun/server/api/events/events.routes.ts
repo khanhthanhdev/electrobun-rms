@@ -6,11 +6,14 @@ import type { AppEnv } from "../common/app-env";
 import { requireGlobalAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
-import { manualEventBodySchema } from "./events.schema";
+import { manualEventBodySchema, updateEventBodySchema } from "./events.schema";
 import {
   createEventFromManualPayload,
+  getEvent,
   listDefaultEventAccounts,
   listEvents,
+  regenerateDefaultEventAccounts,
+  updateEvent,
 } from "./events.service";
 
 export const eventsRoutes = new Hono<AppEnv>();
@@ -56,6 +59,47 @@ eventsRoutes.post("/manual", requireAuth, async (c) => {
   }
 });
 
+eventsRoutes.get("/:eventCode", (c) => {
+  const eventCode = c.req.param("eventCode");
+  const event = getEvent(eventCode);
+  if (!event) {
+    return c.json({ error: "Event not found" }, 404);
+  }
+  return c.json({ event });
+});
+
+eventsRoutes.put("/:eventCode", requireAuth, async (c) => {
+  const forbiddenResponse = requireGlobalAdmin(c);
+  if (forbiddenResponse) {
+    return forbiddenResponse;
+  }
+
+  const eventCode = c.req.param("eventCode");
+  const existing = getEvent(eventCode);
+  if (!existing) {
+    return c.json({ error: "Event not found" }, 404);
+  }
+
+  const body = await parseJsonBody(c);
+  if (body === null) {
+    return c.json({ error: "Body must be valid JSON" }, 400);
+  }
+
+  const bodyResult = safeParse(updateEventBodySchema, body);
+  if (!bodyResult.success) {
+    return c.json(
+      {
+        error: "Validation failed",
+        message: formatValidationIssues(bodyResult.issues),
+      },
+      400
+    );
+  }
+
+  const updatedEvent = updateEvent(eventCode, bodyResult.output);
+  return c.json({ event: updatedEvent });
+});
+
 eventsRoutes.get("/:eventCode/default-accounts", requireAuth, async (c) => {
   const forbiddenResponse = requireGlobalAdmin(c);
   if (forbiddenResponse) {
@@ -76,3 +120,31 @@ eventsRoutes.get("/:eventCode/default-accounts", requireAuth, async (c) => {
     throw error;
   }
 });
+
+eventsRoutes.post(
+  "/:eventCode/default-accounts/regenerate",
+  requireAuth,
+  async (c) => {
+    const forbiddenResponse = requireGlobalAdmin(c);
+    if (forbiddenResponse) {
+      return forbiddenResponse;
+    }
+
+    const eventCode = c.req.param("eventCode");
+    try {
+      const accounts = await regenerateDefaultEventAccounts(eventCode);
+      return c.json(accounts);
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        return c.json(
+          {
+            error: "Failed to regenerate default accounts",
+            message: error.message,
+          },
+          error.status as 400 | 404 | 409
+        );
+      }
+      throw error;
+    }
+  }
+);

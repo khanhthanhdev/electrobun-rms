@@ -1,12 +1,13 @@
-import { useAuth } from "../features/auth/hooks/use-auth";
-import { LoadingIndicator } from "../shared/components/loading-indicator";
-import type { EventItem } from "../shared/types/event";
-import "../app/styles/components/event-directory.css";
+import { LoadingIndicator } from "../../shared/components/loading-indicator";
+import type { AuthUser } from "../../shared/types/auth";
+import type { EventItem } from "../../shared/types/event";
+import "../../app/styles/components/event-directory.css";
 
 interface EventPageProps {
   eventCode: string;
   events: EventItem[];
   isEventsLoading: boolean;
+  user: AuthUser | null;
 }
 
 interface DirectorySection {
@@ -211,11 +212,11 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
     {
       title: "Event Administration",
       items: [
-        { type: "item", label: "Event Dashboard", path: "/admin/dashboard" },
+        { type: "item", label: "Event Dashboard", path: "/dashboard" },
         {
           type: "item",
           label: "Match Control Page",
-          path: "/admin/match-control",
+          path: "/match-control",
         },
       ],
     },
@@ -250,9 +251,8 @@ export const EventPage = ({
   eventCode,
   events,
   isEventsLoading,
+  user,
 }: EventPageProps): JSX.Element => {
-  const { user } = useAuth();
-
   if (isEventsLoading) {
     return (
       <main className="page-shell page-shell--center">

@@ -11,14 +11,14 @@ body {
   background: var(--app-bg);
 }
 
-a {
+a:not(.button) {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.16em;
 }
 
-a:hover,
-a:active {
+a:not(.button):hover,
+a:not(.button):active {
   color: var(--primary);
   text-decoration: underline;
 }

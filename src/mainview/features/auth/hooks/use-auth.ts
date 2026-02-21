@@ -20,6 +20,7 @@ interface UseAuthResult {
   logout: () => Promise<void>;
   navigateToHome: () => void;
   navigateToLogin: () => void;
+  token: string | null;
   user: AuthUser | null;
 }
 
@@ -159,6 +160,7 @@ export const useAuth = (): UseAuthResult => {
     logout,
     navigateToHome,
     navigateToLogin,
+    token,
     user,
   };
 };

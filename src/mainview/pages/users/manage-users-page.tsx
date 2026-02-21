@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import {
   listUsers,
   type ManagedUserItem,
-} from "../features/users/services/users-service";
-import { LoadingIndicator } from "../shared/components/loading-indicator";
+} from "../../features/users/services/users-service";
+import { LoadingIndicator } from "../../shared/components/loading-indicator";
 
 interface ManageUsersPageProps {
   token: string | null;

@@ -2,8 +2,8 @@ import { type FormEvent, useState } from "react";
 import type {
   CreateManualEventPayload,
   DefaultAccountInfo,
-} from "../features/events/services/manual-event-service";
-import { createManualEvent } from "../features/events/services/manual-event-service";
+} from "../../features/events/services/manual-event-service";
+import { createManualEvent } from "../../features/events/services/manual-event-service";
 
 interface CreateEventPageProps {
   token: string | null;

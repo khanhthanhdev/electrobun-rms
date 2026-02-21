@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getTableConfig, type SQLiteTable } from "drizzle-orm/sqlite-core";
 import { DATA_DIR, db, schema } from "../../db";
 // biome-ignore lint/performance/noNamespaceImport: required to iterate all table exports.
@@ -161,15 +161,7 @@ function cleanupEventDb(dbPath: string): void {
   }
 }
 
-export async function createManualEvent(
-  payload: ManualEventPayload
-): Promise<ManualEventResult> {
-  const { eventCode, eventName, region, eventType, startDate, endDate } =
-    payload;
-  const divisions = payload.divisions;
-  const finals = payload.finals ?? 0;
-  const status = payload.status ?? 1;
-
+function assertValidEventCode(eventCode: string): void {
   if (
     !eventCode ||
     eventCode.length > MAX_EVENT_CODE_LENGTH ||
@@ -180,6 +172,52 @@ export async function createManualEvent(
       400
     );
   }
+}
+
+function assertEventExists(eventCode: string): void {
+  const [eventRow] = db
+    .select({ code: schema.events.code })
+    .from(schema.events)
+    .where(eq(schema.events.code, eventCode))
+    .limit(1)
+    .all();
+
+  if (!eventRow) {
+    throw new ServiceError(`Event "${eventCode}" was not found.`, 404);
+  }
+}
+
+function createDefaultAccountsWithPasswords(eventCode: string): Promise<
+  Array<{
+    hashedPassword: string;
+    password: string;
+    role: RoleValue;
+    username: string;
+  }>
+> {
+  const accountDefs = buildDefaultAccounts(eventCode);
+  return Promise.all(
+    accountDefs.map(async (account) => {
+      const password = generatePassword();
+      const hashedPassword = await Bun.password.hash(password, {
+        algorithm: "bcrypt",
+        cost: 10,
+      });
+      return { ...account, password, hashedPassword };
+    })
+  );
+}
+
+export async function createManualEvent(
+  payload: ManualEventPayload
+): Promise<ManualEventResult> {
+  const { eventCode, eventName, region, eventType, startDate, endDate } =
+    payload;
+  const divisions = payload.divisions;
+  const finals = payload.finals ?? 0;
+  const status = payload.status ?? 1;
+
+  assertValidEventCode(eventCode);
 
   if (RESERVED_CODES.has(eventCode)) {
     throw new ServiceError(
@@ -246,19 +284,9 @@ export async function createManualEvent(
   }
 
   try {
-    const accountDefs = buildDefaultAccounts(eventCode);
     const now = Date.now();
-
-    const accountsWithPasswords = await Promise.all(
-      accountDefs.map(async (account) => {
-        const password = generatePassword();
-        const hashedPassword = await Bun.password.hash(password, {
-          algorithm: "bcrypt",
-          cost: 10,
-        });
-        return { ...account, password, hashedPassword };
-      })
-    );
+    const accountsWithPasswords =
+      await createDefaultAccountsWithPasswords(eventCode);
 
     await db.transaction(async (tx) => {
       await tx.insert(schema.events).values({
@@ -335,31 +363,138 @@ export async function createManualEvent(
   }
 }
 
+export async function regenerateEventDefaultAccounts(
+  eventCode: string
+): Promise<{
+  eventCode: string;
+  accounts: DefaultAccountInfo[];
+}> {
+  assertValidEventCode(eventCode);
+  assertEventExists(eventCode);
+
+  const now = Date.now();
+  const accountsWithPasswords =
+    await createDefaultAccountsWithPasswords(eventCode);
+  const defaultUsernames = accountsWithPasswords.map(
+    (account) => account.username
+  );
+
+  await db.transaction(async (tx) => {
+    const existingEventRoleRows = await tx
+      .select({ username: schema.roles.username })
+      .from(schema.roles)
+      .where(eq(schema.roles.event, eventCode))
+      .all();
+
+    const existingEventSecretRows = await tx
+      .select({ username: schema.accountSecrets.username })
+      .from(schema.accountSecrets)
+      .where(eq(schema.accountSecrets.event, eventCode))
+      .all();
+
+    const usernamesToCleanup = Array.from(
+      new Set([
+        ...defaultUsernames,
+        ...existingEventRoleRows.map((row) => row.username),
+        ...existingEventSecretRows.map((row) => row.username),
+      ])
+    );
+
+    await tx
+      .delete(schema.accountSecrets)
+      .where(eq(schema.accountSecrets.event, eventCode));
+
+    await tx.delete(schema.roles).where(eq(schema.roles.event, eventCode));
+
+    const remainingRoleRows =
+      usernamesToCleanup.length === 0
+        ? []
+        : await tx
+            .select({ username: schema.roles.username })
+            .from(schema.roles)
+            .where(inArray(schema.roles.username, usernamesToCleanup))
+            .all();
+
+    const usernamesWithRemainingRoles = new Set(
+      remainingRoleRows.map((row) => row.username)
+    );
+    const conflictingDefaultUsernames = defaultUsernames.filter((username) =>
+      usernamesWithRemainingRoles.has(username)
+    );
+
+    if (conflictingDefaultUsernames.length > 0) {
+      throw new ServiceError(
+        `Cannot regenerate default accounts because these usernames are assigned outside "${eventCode}": ${conflictingDefaultUsernames.join(", ")}.`,
+        409
+      );
+    }
+
+    const usernamesToDelete = usernamesToCleanup.filter(
+      (username) => !usernamesWithRemainingRoles.has(username)
+    );
+    if (usernamesToDelete.length > 0) {
+      await tx
+        .delete(schema.users)
+        .where(inArray(schema.users.username, usernamesToDelete));
+    }
+
+    await tx.insert(schema.users).values(
+      accountsWithPasswords.map((account) => ({
+        username: account.username,
+        hashedPassword: account.hashedPassword,
+        type: 0,
+        used: true,
+        generic: true,
+      }))
+    );
+
+    await tx.insert(schema.roles).values(
+      accountsWithPasswords.map((account) => ({
+        username: account.username,
+        role: account.role,
+        event: eventCode,
+      }))
+    );
+
+    await tx.insert(schema.accountSecrets).values(
+      accountsWithPasswords.map((account) => ({
+        username: account.username,
+        event: eventCode,
+        secret: account.password,
+        createdAt: now,
+      }))
+    );
+
+    await tx.insert(schema.eventLog).values({
+      timestamp: now,
+      type: "DEFAULT_ACCOUNTS_REGENERATED",
+      event: eventCode,
+      info: `Default accounts regenerated for event "${eventCode}"`,
+      extra: JSON.stringify({
+        deletedAccounts: usernamesToDelete,
+        regeneratedAccounts: accountsWithPasswords.map(
+          (account) => account.username
+        ),
+      }),
+    });
+  });
+
+  return {
+    eventCode,
+    accounts: accountsWithPasswords.map((account) => ({
+      username: account.username,
+      role: account.role,
+      password: account.password,
+    })),
+  };
+}
+
 export function getDefaultAccounts(eventCode: string): {
   eventCode: string;
   accounts: DefaultAccountInfo[];
 } {
-  if (
-    !eventCode ||
-    eventCode.length > MAX_EVENT_CODE_LENGTH ||
-    !EVENT_CODE_PATTERN.test(eventCode)
-  ) {
-    throw new ServiceError(
-      `Event code must be 1-${MAX_EVENT_CODE_LENGTH} lowercase alphanumeric characters or underscores.`,
-      400
-    );
-  }
-
-  const [eventRow] = db
-    .select({ code: schema.events.code })
-    .from(schema.events)
-    .where(eq(schema.events.code, eventCode))
-    .limit(1)
-    .all();
-
-  if (!eventRow) {
-    throw new ServiceError(`Event "${eventCode}" was not found.`, 404);
-  }
+  assertValidEventCode(eventCode);
+  assertEventExists(eventCode);
 
   const rows = db
     .select({

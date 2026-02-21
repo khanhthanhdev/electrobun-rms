@@ -2,15 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../features/auth/components/login-dialog";
 import { useAuth } from "../features/auth/hooks/use-auth";
 import { useEvents } from "../features/events/hooks/use-events";
-import { AdminPlaceholderPage } from "../pages/admin-placeholder-page";
-import { CreateAccountPage } from "../pages/create-account-page";
-import { CreateEventPage } from "../pages/create-event-page";
-import { DefaultAccountsPage } from "../pages/default-accounts-page";
-import { EventPage } from "../pages/event-page";
-import { HomePage } from "../pages/home-page";
-import { ManageUserPage } from "../pages/manage-user-page";
-import { ManageUsersPage } from "../pages/manage-users-page";
-import { TOKEN_STORAGE_KEY } from "../shared/constants/storage";
+import { AdminPlaceholderPage } from "../pages/admin/admin-placeholder-page";
+import { CreateEventPage } from "../pages/events/create-event-page";
+import { DefaultAccountsPage } from "../pages/events/default-accounts-page";
+import { EditEventPage } from "../pages/events/edit-event-page";
+import { EventDashboardPage } from "../pages/events/event-dashboard-page";
+import { EventPage } from "../pages/events/event-page";
+import { HomePage } from "../pages/home/home-page";
+import { CreateAccountPage } from "../pages/users/create-account-page";
+import { ManageUserPage } from "../pages/users/manage-user-page";
+import { ManageUsersPage } from "../pages/users/manage-users-page";
+import { LoadingIndicator } from "../shared/components/loading-indicator";
 import type { AuthUser, LoginCredentials } from "../shared/types/auth";
 import { AppHeader } from "../widgets/app-header/app-header";
 
@@ -22,6 +24,8 @@ const readCurrentPath = (): string => {
   return window.location.pathname;
 };
 
+const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
+const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
 const DEFAULT_ACCOUNTS_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
 const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
@@ -70,6 +74,7 @@ const App = (): JSX.Element => {
     logout,
     navigateToHome,
     navigateToLogin,
+    token,
     user,
   } = useAuth();
   const { events, isEventsLoading, refreshEvents } = useEvents();
@@ -125,8 +130,9 @@ const App = (): JSX.Element => {
   const manageUserDetailMatch = MANAGE_USER_DETAIL_PATTERN.exec(currentPath);
   const isManageServerPage = MANAGE_SERVER_PATTERN.test(currentPath);
   const isAdminUser = hasAdminGlobalRole(user);
+  const editEventMatch = EDIT_EVENT_PATTERN.exec(currentPath);
+  const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
   const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   const navigateTo = (path: string): void => {
     if (window.location.pathname === path) {
       return;
@@ -137,6 +143,14 @@ const App = (): JSX.Element => {
   };
 
   const renderAdminPage = (page: JSX.Element): JSX.Element => {
+    if (isAuthLoading) {
+      return (
+        <main className="page-shell page-shell--center">
+          <LoadingIndicator />
+        </main>
+      );
+    }
+
     if (!isAdminUser) {
       return <RouteErrorPage message="Admin access required." />;
     }
@@ -203,21 +217,12 @@ const App = (): JSX.Element => {
         eventCode={eventCode}
         events={events}
         isEventsLoading={isEventsLoading}
+        user={user}
       />
     );
   };
 
-  const renderPage = (): JSX.Element => {
-    if (isLoginPage) {
-      return (
-        <LoginForm
-          errorMessage={errorMessage}
-          isSubmitting={isLoginSubmitting}
-          onSubmit={handleLoginSubmit}
-        />
-      );
-    }
-
+  const renderAdminRoutePage = (): JSX.Element | null => {
     if (isCreateEventPage) {
       return renderAdminPage(<CreateEventPage token={token} />);
     }
@@ -248,6 +253,50 @@ const App = (): JSX.Element => {
           title="Manage Server"
         />
       );
+    }
+
+    if (editEventMatch) {
+      const editEventCode = decodePathSegment(editEventMatch[1]);
+      if (editEventCode === null) {
+        return <RouteErrorPage message="Invalid event code in URL." />;
+      }
+      return renderAdminPage(
+        <EditEventPage eventCode={editEventCode} token={token} />
+      );
+    }
+
+    if (eventDashboardMatch) {
+      const dashboardEventCode = decodePathSegment(eventDashboardMatch[1]);
+      if (dashboardEventCode === null) {
+        return <RouteErrorPage message="Invalid event code in URL." />;
+      }
+      return renderAdminPage(
+        <EventDashboardPage
+          eventCode={dashboardEventCode}
+          events={events}
+          isEventsLoading={isEventsLoading}
+          user={user}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const renderPage = (): JSX.Element => {
+    if (isLoginPage) {
+      return (
+        <LoginForm
+          errorMessage={errorMessage}
+          isSubmitting={isLoginSubmitting}
+          onSubmit={handleLoginSubmit}
+        />
+      );
+    }
+
+    const adminRoutePage = renderAdminRoutePage();
+    if (adminRoutePage) {
+      return adminRoutePage;
     }
 
     const eventDetailPage = renderEventDetailPage();

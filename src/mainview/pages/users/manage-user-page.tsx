@@ -3,13 +3,13 @@ import {
   deleteUser,
   getUser,
   updateUser,
-} from "../features/users/services/users-service";
-import { LoadingIndicator } from "../shared/components/loading-indicator";
+} from "../../features/users/services/users-service";
+import { LoadingIndicator } from "../../shared/components/loading-indicator";
 import {
   CREATE_ACCOUNT_ROLE_COLUMNS,
   type RoleValue,
-} from "../shared/constants/roles";
-import type { EventItem } from "../shared/types/event";
+} from "../../shared/constants/roles";
+import type { EventItem } from "../../shared/types/event";
 
 interface ManageUserPageProps {
   events: EventItem[];

@@ -29,3 +29,16 @@ export const manualEventBodySchema = object({
 });
 
 export type ManualEventBody = InferOutput<typeof manualEventBodySchema>;
+
+export const updateEventBodySchema = object({
+  eventName: pipe(string(), minLength(1), maxLength(256)),
+  region: pipe(string(), minLength(1), maxLength(64)),
+  eventType: number(),
+  startDate: pipe(string(), minLength(1)),
+  endDate: pipe(string(), minLength(1)),
+  divisions: number(),
+  finals: optional(number()),
+  status: optional(number()),
+});
+
+export type UpdateEventBody = InferOutput<typeof updateEventBodySchema>;
