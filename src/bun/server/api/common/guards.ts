@@ -38,3 +38,57 @@ export function requireEventAdmin(
     403
   );
 }
+
+function hasInspectorRole(c: Context<AppEnv>, eventCode: string): boolean {
+  const auth = c.get("auth");
+  const inspectorRoles = new Set([
+    "ADMIN",
+    "INSPECTOR",
+    "LEAD_INSPECTOR",
+    "TSO",
+    "HEAD_REFEREE",
+  ]);
+  return auth.roles.some(
+    (role) =>
+      inspectorRoles.has(role.role) &&
+      (role.event === "*" || role.event === eventCode)
+  );
+}
+
+export function requireInspector(
+  c: Context<AppEnv>,
+  eventCode: string
+): Response | null {
+  if (hasInspectorRole(c, eventCode)) {
+    return null;
+  }
+
+  return c.json(
+    { error: "Forbidden", message: "Inspector access required." },
+    403
+  );
+}
+
+function hasLeadInspectorRole(c: Context<AppEnv>, eventCode: string): boolean {
+  const auth = c.get("auth");
+  const leadRoles = new Set(["ADMIN", "LEAD_INSPECTOR"]);
+  return auth.roles.some(
+    (role) =>
+      leadRoles.has(role.role) &&
+      (role.event === "*" || role.event === eventCode)
+  );
+}
+
+export function requireLeadInspector(
+  c: Context<AppEnv>,
+  eventCode: string
+): Response | null {
+  if (hasLeadInspectorRole(c, eventCode)) {
+    return null;
+  }
+
+  return c.json(
+    { error: "Forbidden", message: "Lead Inspector access required." },
+    403
+  );
+}

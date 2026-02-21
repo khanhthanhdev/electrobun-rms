@@ -28,6 +28,11 @@ const MANAGE_USERS_PATTERN =
 const MANAGE_USER_DETAIL_PATTERN =
   /^(?:\/(?:user|users)\/manage\/([^/]+)|\/manage\/users\/([^/]+))\/?$/;
 const MANAGE_SERVER_PATTERN = /^\/manage\/server\/?$/;
+const INSPECTION_TEAMS_PATTERN = /^\/event\/([^/]+)\/inspection\/?$/;
+const INSPECTION_DETAIL_PATTERN = /^\/event\/([^/]+)\/inspection\/(\d+)\/?$/;
+const INSPECTION_NOTES_PATTERN = /^\/event\/([^/]+)\/inspection\/notes\/?$/;
+const INSPECTION_EVENT_OVERRIDE_PATTERN =
+  /^\/event\/([^/]+)\/inspection\/override\/?$/;
 
 const LoginForm = lazy(() =>
   import("../features/auth/components/login-dialog").then((module) => ({
@@ -87,6 +92,26 @@ const CreateAccountPage = lazy(() =>
 const ManageUserPage = lazy(() =>
   import("../pages/users/manage-user-page").then((module) => ({
     default: module.ManageUserPage,
+  }))
+);
+const InspectionDetailPage = lazy(() =>
+  import("../pages/events/inspection-detail-page").then((module) => ({
+    default: module.InspectionDetailPage,
+  }))
+);
+const InspectionEventOverridePage = lazy(() =>
+  import("../pages/events/inspection-event-override-page").then((module) => ({
+    default: module.InspectionEventOverridePage,
+  }))
+);
+const InspectionNotesPage = lazy(() =>
+  import("../pages/events/inspection-notes-page").then((module) => ({
+    default: module.InspectionNotesPage,
+  }))
+);
+const InspectionTeamsPage = lazy(() =>
+  import("../pages/events/inspection-teams-page").then((module) => ({
+    default: module.InspectionTeamsPage,
   }))
 );
 const ManageUsersPage = lazy(() =>
@@ -581,6 +606,11 @@ const AppRouteContent = ({
   const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
   const eventDetailMatch = EVENT_DETAIL_PATTERN.exec(currentPath);
   const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
+  const inspectionTeamsMatch = INSPECTION_TEAMS_PATTERN.exec(currentPath);
+  const inspectionNotesMatch = INSPECTION_NOTES_PATTERN.exec(currentPath);
+  const inspectionDetailMatch = INSPECTION_DETAIL_PATTERN.exec(currentPath);
+  const inspectionEventOverrideMatch =
+    INSPECTION_EVENT_OVERRIDE_PATTERN.exec(currentPath);
 
   const hasAdminRoute =
     isCreateEventPage ||
@@ -613,6 +643,64 @@ const AppRouteContent = ({
         manageUserDetailMatch={manageUserDetailMatch}
         token={token}
         user={user}
+      />
+    );
+  }
+
+  if (inspectionEventOverrideMatch) {
+    const eventCode = decodePathSegment(inspectionEventOverrideMatch[1]);
+    if (eventCode === null) {
+      return <RouteErrorPage message="Invalid event code in URL." />;
+    }
+    return (
+      <InspectionEventOverridePage
+        eventCode={eventCode}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  if (inspectionNotesMatch) {
+    const eventCode = decodePathSegment(inspectionNotesMatch[1]);
+    if (eventCode === null) {
+      return <RouteErrorPage message="Invalid event code in URL." />;
+    }
+    return (
+      <InspectionNotesPage
+        eventCode={eventCode}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  if (inspectionDetailMatch) {
+    const eventCode = decodePathSegment(inspectionDetailMatch[1]);
+    const teamNumber = Number.parseInt(inspectionDetailMatch[2], 10);
+    if (eventCode === null || !Number.isInteger(teamNumber)) {
+      return <RouteErrorPage message="Invalid inspection URL." />;
+    }
+    return (
+      <InspectionDetailPage
+        eventCode={eventCode}
+        onNavigate={onNavigate}
+        teamNumber={teamNumber}
+        token={token}
+      />
+    );
+  }
+
+  if (inspectionTeamsMatch) {
+    const eventCode = decodePathSegment(inspectionTeamsMatch[1]);
+    if (eventCode === null) {
+      return <RouteErrorPage message="Invalid event code in URL." />;
+    }
+    return (
+      <InspectionTeamsPage
+        eventCode={eventCode}
+        onNavigate={onNavigate}
+        token={token}
       />
     );
   }

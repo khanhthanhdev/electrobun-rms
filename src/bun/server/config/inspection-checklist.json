@@ -1,0 +1,308 @@
+{
+  "version": 1,
+  "season": "2025-2026",
+  "sections": [
+    {
+      "id": "section-general",
+      "key": "general",
+      "label": "General",
+      "order": 1
+    },
+    {
+      "id": "section-mechanical",
+      "key": "mechanical",
+      "label": "Mechanical",
+      "order": 2
+    },
+    {
+      "id": "section-electrical",
+      "key": "electrical",
+      "label": "Electrical",
+      "order": 3
+    },
+    {
+      "id": "section-control",
+      "key": "control",
+      "label": "Control",
+      "order": 4
+    },
+    {
+      "id": "section-operation",
+      "key": "operation",
+      "label": "Operation",
+      "order": 5
+    },
+    {
+      "id": "section-sizing",
+      "key": "sizing",
+      "label": "Sizing",
+      "order": 6
+    }
+  ],
+  "items": [
+    {
+      "key": "robot_presented",
+      "sectionId": "section-general",
+      "ruleCode": "I304",
+      "label": "ROBOT is presented at inspection with all MECHANISMS (including all COMPONENTS of each MECHANISM), configurations, and decorations used on the ROBOT.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "robot_signs",
+      "sectionId": "section-general",
+      "ruleCode": "R401",
+      "label": "ROBOT has two ROBOT SIGNS that are located on opposite or adjacent sides of the ROBOT and visible to FIELD STAFF from at least 12 feet away and meet minimal size requirements.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "signs_alliance_colors",
+      "sectionId": "section-general",
+      "ruleCode": "R402",
+      "label": "ROBOT SIGNS can indicate both ALLIANCE colors and meets markings requirements, unpowered.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "team_number_display",
+      "sectionId": "section-general",
+      "ruleCode": "R403",
+      "label": "Team number is displayed on ROBOT SIGNS and meets number size requirements, unpowered.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_harmful_components",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R201, R202",
+      "label": "ROBOT does not contain any COMPONENTS that could harm people, damage the ARENA, or damage other ROBOTS. This includes sharp edges, protrusions, or hazards to the ARENA elements.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_sound_devices",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R203.B",
+      "label": "ROBOT does not contain devices that generate sound at a level sufficient to be a distraction.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_hazardous_materials",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R203.D, E, G, H",
+      "label": "ROBOT does not contain materials that are hazardous (i.e., flammable materials/gasses, mercury switches, exposed untreated hazardous materials).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_delay_materials",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R205",
+      "label": "ROBOT does not contain materials that would cause a delay of game if released (e.g., coffee beans).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_pneumatic_hydraulic",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R203.F, R207",
+      "label": "ROBOT does not contain any closed air or hydraulic devices (i.e., gas springs, compressors, vacuum generating devices). Air-filled pneumatic wheels are exempt from this rule.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_prohibited_cots",
+      "sectionId": "section-mechanical",
+      "ruleCode": "R303",
+      "label": "ROBOT does not contain prohibited COTS MECHANISMS (multi DoF, game task solving, etc.).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "motor_servo_count",
+      "sectionId": "section-electrical",
+      "ruleCode": "R503",
+      "label": "ROBOT does not contain more than 8 allowed motors and 10 allowed servos.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "actuators_unmodified",
+      "sectionId": "section-electrical",
+      "ruleCode": "R504",
+      "label": "Actuators are not modified except as explicitly allowed.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "actuators_approved_power",
+      "sectionId": "section-electrical",
+      "ruleCode": "R505",
+      "label": "Actuators are powered and controlled only from approved devices.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "no_relays_electromagnets",
+      "sectionId": "section-electrical",
+      "ruleCode": "R506",
+      "label": "No relays, electromagnets, electrical solenoid actuators, or related systems.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "battery_connected",
+      "sectionId": "section-electrical",
+      "ruleCode": "R601, R606",
+      "label": "Exactly 1 main battery pack of an approved type is on the ROBOT and it is properly connected to the main power switch, securely mounted.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "main_power_switch",
+      "sectionId": "section-electrical",
+      "ruleCode": "R609",
+      "label": "Exactly 1 approved main power switch must control all power provided by the ROBOT battery.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "usb_batteries_isolated",
+      "sectionId": "section-electrical",
+      "ruleCode": "R602",
+      "label": "COTS USB batteries on the ROBOT remain isolated from the ROBOT power systems.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "fuses_correct",
+      "sectionId": "section-electrical",
+      "ruleCode": "R610",
+      "label": "Fuses must not be replaced with fuses of higher rating than allowed, no self-resetting fuses allowed.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "grounding_approved",
+      "sectionId": "section-electrical",
+      "ruleCode": "R611",
+      "label": "If electronics are grounded to the ROBOT frame, the only approved methods are the REV, SWYFT or AndyMark resistive grounding strap and must be connected to a fully COTS XT30 COMPONENT.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "custom_circuits_compliant",
+      "sectionId": "section-electrical",
+      "ruleCode": "R613, R618",
+      "label": "CUSTOM CIRCUITS cannot provide >5V regulated power (except for LEDs) and cannot alter critical power paths.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "wiring_sized",
+      "sectionId": "section-electrical",
+      "ruleCode": "R615",
+      "label": "Circuits are wired with the appropriately sized insulated copper wire (non-SIGNAL LEVEL wires).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "wiring_color_coded",
+      "sectionId": "section-electrical",
+      "ruleCode": "R616",
+      "label": "All non-SIGNAL LEVEL wiring is consistently color-coded with different colors used for the positive and negative/common wires.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "robot_controller_compliant",
+      "sectionId": "section-electrical",
+      "ruleCode": "R701, R704, R705, R711",
+      "label": "The ROBOT must be controlled via 1 ROBOT CONTROLLER (REV Control Hub via USB or RS485, or allowed Android device via USB). The ROBOT CONTROLLER must be visible for inspection.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "usb_devices_allowed",
+      "sectionId": "section-electrical",
+      "ruleCode": "R714",
+      "label": "Only allowed USB devices may be connected to USB (no LEDs, etc.).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "video_recording_wireless_off",
+      "sectionId": "section-electrical",
+      "ruleCode": "R716",
+      "label": "Self-contained video recording devices, if used, must turn off or disable wireless communication.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "operator_console_device",
+      "sectionId": "section-control",
+      "ruleCode": "R901, R704",
+      "label": "The OPERATOR CONSOLE consists of only one allowed Android device or REV Driver Hub.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "driver_station_display",
+      "sectionId": "section-control",
+      "ruleCode": "R902",
+      "label": "The touch display screen of the DRIVER STATION device is functional, accessible, and visible to FIELD STAFF.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "gamepads_count",
+      "sectionId": "section-control",
+      "ruleCode": "R903",
+      "label": "The OPERATOR CONSOLE consists of no more than two of the allowed gamepads.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "self_inspect_screens",
+      "sectionId": "section-operation",
+      "ruleCode": "R707, R708, R710, R718",
+      "label": "The two self-inspect screens on the OPERATOR CONSOLE do not display any issues except for any app version warnings. (no red exclamation marks)",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "robot_starting_config",
+      "sectionId": "section-sizing",
+      "ruleCode": "R101",
+      "label": "The ROBOT, in its STARTING CONFIGURATION, fits within an 18 in. (45.70 cm) cube.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "robot_horizontal_extension",
+      "sectionId": "section-sizing",
+      "ruleCode": "R105.A",
+      "label": "The ROBOT, at maximum mechanical extension, fits within an 18 in. (45.70 cm) horizontal square.",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "robot_height_extension",
+      "sectionId": "section-sizing",
+      "ruleCode": "R105.C",
+      "label": "The ROBOT, at maximum extension, fits within a height of 38 in. (96.50 cm).",
+      "inputType": "CHECKBOX",
+      "required": true
+    },
+    {
+      "key": "operator_console_size",
+      "sectionId": "section-sizing",
+      "ruleCode": "R904",
+      "label": "OPERATOR CONSOLE does not exceed 3ft wide, 1ft 2 in deep and 2 ft tall (91.4cm by 35.5cm by 61.0 cm).",
+      "inputType": "CHECKBOX",
+      "required": true
+    }
+  ]
+}

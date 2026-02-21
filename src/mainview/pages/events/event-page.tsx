@@ -135,7 +135,6 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
             { type: "item", label: "Bracket", path: "/playoff/bracket" },
           ],
         },
-        { type: "item", label: "Match Results", path: "/match-results" },
         { type: "item", label: "Pit Display", path: "/pit-display" },
         { type: "item", label: "Event Reports", path: "/event-reports" },
       ],
@@ -206,6 +205,16 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
             },
             { type: "item", label: "Head Referee", path: "/referee/head" },
           ],
+        },
+      ],
+    },
+    {
+      title: "Inspection",
+      items: [
+        {
+          type: "item",
+          label: "Robot Inspection",
+          path: "/inspection",
         },
       ],
     },
