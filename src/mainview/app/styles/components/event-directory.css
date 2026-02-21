@@ -1,0 +1,80 @@
+.event-directory-page {
+  min-height: 100vh;
+  padding: var(--space-6);
+  background-color: var(--app-bg);
+}
+
+.event-directory-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.event-directory-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+@media (max-width: 768px) {
+  .event-directory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.event-directory-title {
+  padding-bottom: var(--space-3);
+  margin: 0 0 var(--space-6) 0;
+  font-size: var(--text-5);
+  font-weight: 600;
+  color: var(--foreground);
+  border-bottom: 3px solid var(--primary);
+}
+
+.event-directory-section {
+  margin-bottom: var(--space-7);
+}
+
+.event-directory-section-title {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--text-4);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.event-directory-list {
+  padding-left: var(--space-5);
+  margin: 0;
+  list-style: disc;
+}
+
+.event-directory-list li {
+  margin-bottom: var(--space-2);
+  line-height: 1.6;
+}
+
+.event-directory-list a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.event-directory-list a:hover,
+.event-directory-list a:active {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.event-directory-list ul {
+  padding-left: var(--space-5);
+  margin: var(--space-2) 0 0 0;
+  list-style: circle;
+}
+
+.event-directory-list ul li {
+  margin-bottom: var(--space-1);
+}
+
+.event-directory-list ul ul {
+  padding-left: var(--space-5);
+  list-style: square;
+}
