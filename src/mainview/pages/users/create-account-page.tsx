@@ -1,11 +1,15 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type Dispatch, type FormEvent, useMemo, useReducer } from "react";
 import { createUserAccount } from "../../features/users/services/users-service";
-import { LoadingIndicator } from "../../shared/components/loading-indicator";
-import {
-  CREATE_ACCOUNT_ROLE_COLUMNS,
-  type RoleValue,
-} from "../../shared/constants/roles";
+import type { RoleValue } from "../../shared/constants/roles";
 import type { EventItem } from "../../shared/types/event";
+import {
+  buildEventRows,
+  PasswordField,
+  parseRoleKey,
+  RoleMatrix,
+  roleKey,
+  StatusMessages,
+} from "./account-form-sections";
 
 interface CreateAccountPageProps {
   events: EventItem[];
@@ -13,50 +17,76 @@ interface CreateAccountPageProps {
   token: string | null;
 }
 
-const ALL_EVENTS_CODE = "*" as const;
-
-function roleKey(eventCode: string, role: RoleValue): string {
-  return `${eventCode}:${role}`;
+interface CreateAccountPageState {
+  errorMessage: string | null;
+  isSubmitting: boolean;
+  password: string;
+  passwordConfirm: string;
+  selectedRoles: Set<string>;
+  showPassword: boolean;
+  showPasswordConfirm: boolean;
+  successMessage: string | null;
+  username: string;
 }
 
-function parseRoleKey(value: string): { event: string; role: RoleValue } {
-  const [event, role] = value.split(":", 2);
-  return {
-    event,
-    role: role as RoleValue,
-  };
-}
+type CreateAccountPageAction =
+  | {
+      type: "set";
+      payload: Partial<CreateAccountPageState>;
+    }
+  | {
+      type: "toggleRole";
+      key: string;
+    };
 
-export const CreateAccountPage = ({
+const createAccountPageInitialState: CreateAccountPageState = {
+  username: "",
+  password: "",
+  passwordConfirm: "",
+  showPassword: false,
+  showPasswordConfirm: false,
+  selectedRoles: new Set(),
+  isSubmitting: false,
+  errorMessage: null,
+  successMessage: null,
+};
+
+const createAccountPageReducer = (
+  state: CreateAccountPageState,
+  action: CreateAccountPageAction
+): CreateAccountPageState => {
+  switch (action.type) {
+    case "set":
+      return { ...state, ...action.payload };
+    case "toggleRole": {
+      const nextRoles = new Set(state.selectedRoles);
+      if (nextRoles.has(action.key)) {
+        nextRoles.delete(action.key);
+      } else {
+        nextRoles.add(action.key);
+      }
+      return { ...state, selectedRoles: nextRoles };
+    }
+    default:
+      return state;
+  }
+};
+
+const useCreateAccountPageController = ({
   events,
-  isEventsLoading,
   token,
-}: CreateAccountPageProps): JSX.Element => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+}: Pick<CreateAccountPageProps, "events" | "token">) => {
+  const [state, dispatch] = useReducer(
+    createAccountPageReducer,
+    createAccountPageInitialState
+  );
 
-  const eventRows = useMemo(() => {
-    const dedupedCodes = Array.from(new Set(events.map((event) => event.code)));
-    return [ALL_EVENTS_CODE, ...dedupedCodes];
-  }, [events]);
+  const eventRows = useMemo(() => buildEventRows(events), [events]);
 
   const handleRoleToggle = (eventCode: string, role: RoleValue): void => {
-    const key = roleKey(eventCode, role);
-    setSelectedRoles((currentRoles) => {
-      const nextRoles = new Set(currentRoles);
-      if (nextRoles.has(key)) {
-        nextRoles.delete(key);
-      } else {
-        nextRoles.add(key);
-      }
-      return nextRoles;
+    dispatch({
+      type: "toggleRole",
+      key: roleKey(eventCode, role),
     });
   };
 
@@ -64,225 +94,271 @@ export const CreateAccountPage = ({
     event: FormEvent<HTMLFormElement>
   ): Promise<void> => {
     event.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        errorMessage: null,
+        successMessage: null,
+      },
+    });
 
-    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedUsername = state.username.trim().toLowerCase();
     if (!normalizedUsername) {
-      setErrorMessage("Username is required.");
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Username is required.",
+        },
+      });
       return;
     }
 
-    if (!(password && passwordConfirm)) {
-      setErrorMessage("Password and re-enter password are required.");
+    if (!(state.password && state.passwordConfirm)) {
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Password and re-enter password are required.",
+        },
+      });
       return;
     }
 
-    if (password !== passwordConfirm) {
-      setErrorMessage("Password and re-enter password must match.");
+    if (state.password !== state.passwordConfirm) {
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Password and re-enter password must match.",
+        },
+      });
       return;
     }
 
-    if (selectedRoles.size === 0) {
-      setErrorMessage("Select at least one role assignment.");
+    if (state.selectedRoles.size === 0) {
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Select at least one role assignment.",
+        },
+      });
       return;
     }
 
     if (!token) {
-      setErrorMessage("You must be logged in as an admin user.");
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in as an admin user.",
+        },
+      });
       return;
     }
 
-    const payloadRoles = Array.from(selectedRoles).map(parseRoleKey);
+    const payloadRoles = Array.from(state.selectedRoles).map(parseRoleKey);
 
-    setIsSubmitting(true);
+    dispatch({
+      type: "set",
+      payload: {
+        isSubmitting: true,
+      },
+    });
+
     try {
       const result = await createUserAccount(
         {
           username: normalizedUsername,
-          password,
-          passwordConfirm,
+          password: state.password,
+          passwordConfirm: state.passwordConfirm,
           roles: payloadRoles,
         },
         token
       );
 
-      setSuccessMessage(`Account "${result.user.username}" was created.`);
-      setUsername("");
-      setPassword("");
-      setPasswordConfirm("");
-      setSelectedRoles(new Set());
+      dispatch({
+        type: "set",
+        payload: {
+          successMessage: `Account "${result.user.username}" was created.`,
+          username: "",
+          password: "",
+          passwordConfirm: "",
+          selectedRoles: new Set(),
+        },
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to create account."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to create account.",
+        },
+      });
     } finally {
-      setIsSubmitting(false);
+      dispatch({
+        type: "set",
+        payload: {
+          isSubmitting: false,
+        },
+      });
     }
   };
+
+  return {
+    dispatch,
+    eventRows,
+    handleRoleToggle,
+    handleSubmit,
+    state,
+  };
+};
+
+interface CreateAccountFormProps {
+  dispatch: Dispatch<CreateAccountPageAction>;
+  eventRows: readonly string[];
+  hasEvents: boolean;
+  isEventsLoading: boolean;
+  onRoleToggle: (eventCode: string, role: RoleValue) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  state: CreateAccountPageState;
+}
+
+const CreateAccountForm = ({
+  dispatch,
+  eventRows,
+  hasEvents,
+  isEventsLoading,
+  onRoleToggle,
+  onSubmit,
+  state,
+}: CreateAccountFormProps): JSX.Element => (
+  <form
+    className="card surface-card surface-card--xlarge stack"
+    onSubmit={onSubmit}
+  >
+    <div className="stack">
+      <div className="form-row" data-field>
+        <label htmlFor="username">Username:</label>
+        <input
+          id="username"
+          onChange={(nextEvent) => {
+            dispatch({
+              type: "set",
+              payload: {
+                username: nextEvent.target.value,
+              },
+            });
+          }}
+          placeholder="Enter username"
+          required
+          type="text"
+          value={state.username}
+        />
+      </div>
+
+      <PasswordField
+        id="password"
+        isVisible={state.showPassword}
+        label="Password:"
+        onValueChange={(value) => {
+          dispatch({
+            type: "set",
+            payload: {
+              password: value,
+            },
+          });
+        }}
+        onVisibilityChange={(checked) => {
+          dispatch({
+            type: "set",
+            payload: {
+              showPassword: checked,
+            },
+          });
+        }}
+        placeholder="Password"
+        required
+        value={state.password}
+        visibilityToggleId="showPassword"
+      />
+
+      <PasswordField
+        id="passwordConfirm"
+        isVisible={state.showPasswordConfirm}
+        label="Re-enter Password:"
+        onValueChange={(value) => {
+          dispatch({
+            type: "set",
+            payload: {
+              passwordConfirm: value,
+            },
+          });
+        }}
+        onVisibilityChange={(checked) => {
+          dispatch({
+            type: "set",
+            payload: {
+              showPasswordConfirm: checked,
+            },
+          });
+        }}
+        placeholder="Re-enter Password"
+        required
+        value={state.passwordConfirm}
+        visibilityToggleId="showPasswordConfirm"
+      />
+
+      <RoleMatrix
+        eventRows={eventRows}
+        isEventsLoading={isEventsLoading}
+        onRoleToggle={onRoleToggle}
+        selectedRoles={state.selectedRoles}
+      />
+
+      {isEventsLoading || hasEvents ? null : (
+        <p className="form-note">
+          No event-specific rows available yet. You can still assign roles in
+          "All Events".
+        </p>
+      )}
+
+      <StatusMessages
+        errorMessage={state.errorMessage}
+        successMessage={state.successMessage}
+      />
+
+      <div>
+        <button disabled={state.isSubmitting || isEventsLoading} type="submit">
+          {state.isSubmitting ? "Creating Account..." : "Create Account"}
+        </button>
+      </div>
+    </div>
+  </form>
+);
+
+export const CreateAccountPage = ({
+  events,
+  isEventsLoading,
+  token,
+}: CreateAccountPageProps): JSX.Element => {
+  const { dispatch, eventRows, handleRoleToggle, handleSubmit, state } =
+    useCreateAccountPageController({
+      events,
+      token,
+    });
 
   const hasEvents = eventRows.length > 1;
 
   return (
     <main className="page-shell page-shell--top">
-      <form
-        className="card surface-card surface-card--xlarge stack"
+      <CreateAccountForm
+        dispatch={dispatch}
+        eventRows={eventRows}
+        hasEvents={hasEvents}
+        isEventsLoading={isEventsLoading}
+        onRoleToggle={handleRoleToggle}
         onSubmit={handleSubmit}
-      >
-        <div className="stack">
-          <div className="form-row" data-field>
-            <label htmlFor="username">Username:</label>
-            <input
-              id="username"
-              onChange={(nextEvent) => {
-                setUsername(nextEvent.target.value);
-              }}
-              placeholder="Enter username"
-              required
-              type="text"
-              value={username}
-            />
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="password">Password:</label>
-            <input
-              id="password"
-              onChange={(nextEvent) => {
-                setPassword(nextEvent.target.value);
-              }}
-              placeholder="Password"
-              required
-              type={showPassword ? "text" : "password"}
-              value={password}
-            />
-            <label className="form-checkbox" htmlFor="showPassword">
-              <input
-                checked={showPassword}
-                id="showPassword"
-                onChange={(nextEvent) => {
-                  setShowPassword(nextEvent.target.checked);
-                }}
-                type="checkbox"
-              />
-              Show Password
-            </label>
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="passwordConfirm">Re-enter Password:</label>
-            <input
-              id="passwordConfirm"
-              onChange={(nextEvent) => {
-                setPasswordConfirm(nextEvent.target.value);
-              }}
-              placeholder="Re-enter Password"
-              required
-              type={showPasswordConfirm ? "text" : "password"}
-              value={passwordConfirm}
-            />
-            <label className="form-checkbox" htmlFor="showPasswordConfirm">
-              <input
-                checked={showPasswordConfirm}
-                id="showPasswordConfirm"
-                onChange={(nextEvent) => {
-                  setShowPasswordConfirm(nextEvent.target.checked);
-                }}
-                type="checkbox"
-              />
-              Show Password
-            </label>
-          </div>
-
-          <div>
-            <p className="form-section-label">Roles:</p>
-            <p className="form-description">
-              You should independently verify that this user has completed all
-              of the required training for the selected roles.
-            </p>
-          </div>
-
-          <div className="table-wrap">
-            <table className="table-role-matrix">
-              <thead>
-                <tr>
-                  <th scope="col">Event</th>
-                  {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
-                    <th key={column.value} scope="col">
-                      {column.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isEventsLoading ? (
-                  <tr>
-                    <td colSpan={CREATE_ACCOUNT_ROLE_COLUMNS.length + 1}>
-                      <LoadingIndicator />
-                    </td>
-                  </tr>
-                ) : (
-                  eventRows.map((eventCode) => (
-                    <tr key={eventCode}>
-                      <td>
-                        {eventCode === ALL_EVENTS_CODE
-                          ? "All Events"
-                          : eventCode}
-                      </td>
-                      {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
-                        <td key={`${eventCode}-${column.value}`}>
-                          <label htmlFor={`${eventCode}-${column.value}`}>
-                            <input
-                              checked={selectedRoles.has(
-                                roleKey(eventCode, column.value)
-                              )}
-                              id={`${eventCode}-${column.value}`}
-                              onChange={() => {
-                                handleRoleToggle(eventCode, column.value);
-                              }}
-                              type="checkbox"
-                            />
-                            <span className="sr-only">
-                              {eventCode === ALL_EVENTS_CODE
-                                ? `All events ${column.label}`
-                                : `${eventCode} ${column.label}`}
-                            </span>
-                          </label>
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {isEventsLoading || hasEvents ? null : (
-            <p className="form-note">
-              No event-specific rows available yet. You can still assign roles
-              in "All Events".
-            </p>
-          )}
-
-          {errorMessage ? (
-            <p className="message-block" data-variant="danger" role="alert">
-              {errorMessage}
-            </p>
-          ) : null}
-
-          {successMessage ? (
-            <p className="message-block" data-variant="success" role="alert">
-              {successMessage}
-            </p>
-          ) : null}
-
-          <div>
-            <button disabled={isSubmitting || isEventsLoading} type="submit">
-              {isSubmitting ? "Creating Account..." : "Create Account"}
-            </button>
-          </div>
-        </div>
-      </form>
+        state={state}
+      />
     </main>
   );
 };

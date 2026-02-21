@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import {
   listUsers,
   type ManagedUserItem,
@@ -13,22 +13,56 @@ interface ManageUsersPageProps {
   token: string | null;
 }
 
+interface ManageUsersPageState {
+  errorMessage: string | null;
+  isLoading: boolean;
+  printErrorMessage: string | null;
+  users: ManagedUserItem[];
+}
+
+interface ManageUsersPageAction {
+  payload: Partial<ManageUsersPageState>;
+  type: "set";
+}
+
+const manageUsersPageInitialState: ManageUsersPageState = {
+  isLoading: true,
+  errorMessage: null,
+  printErrorMessage: null,
+  users: [],
+};
+
+const manageUsersPageReducer = (
+  state: ManageUsersPageState,
+  action: ManageUsersPageAction
+): ManageUsersPageState => {
+  switch (action.type) {
+    case "set":
+      return { ...state, ...action.payload };
+    default:
+      return state;
+  }
+};
+
 export const ManageUsersPage = ({
   token,
 }: ManageUsersPageProps): JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [printErrorMessage, setPrintErrorMessage] = useState<string | null>(
-    null
+  const [state, dispatch] = useReducer(
+    manageUsersPageReducer,
+    manageUsersPageInitialState
   );
-  const [users, setUsers] = useState<ManagedUserItem[]>([]);
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
-      setErrorMessage("You must be logged in as an admin user.");
-      setIsLoading(false);
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in as an admin user.",
+          isLoading: false,
+        },
+      });
       return;
     }
 
@@ -37,21 +71,35 @@ export const ManageUsersPage = ({
         if (isCancelled) {
           return;
         }
-        setUsers(result.users);
+        dispatch({
+          type: "set",
+          payload: {
+            users: result.users,
+          },
+        });
       })
       .catch((error) => {
         if (isCancelled) {
           return;
         }
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to load users."
-        );
+        dispatch({
+          type: "set",
+          payload: {
+            errorMessage:
+              error instanceof Error ? error.message : "Failed to load users.",
+          },
+        });
       })
       .finally(() => {
         if (isCancelled) {
           return;
         }
-        setIsLoading(false);
+        dispatch({
+          type: "set",
+          payload: {
+            isLoading: false,
+          },
+        });
       });
 
     return () => {
@@ -69,7 +117,12 @@ export const ManageUsersPage = ({
   };
 
   const handlePrintUsers = (destination: PrintDestination): void => {
-    setPrintErrorMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        printErrorMessage: null,
+      },
+    });
 
     try {
       printTable<ManagedUserItem>({
@@ -77,7 +130,7 @@ export const ManageUsersPage = ({
         generatedAt: new Date().toISOString(),
         title: "User Accounts",
         subtitle: "Managed users list",
-        rows: users,
+        rows: state.users,
         emptyMessage: "No users found.",
         columns: [
           { header: "Username", formatValue: (row) => row.username },
@@ -90,13 +143,19 @@ export const ManageUsersPage = ({
         ],
       });
     } catch (error) {
-      setPrintErrorMessage(
-        error instanceof Error ? error.message : "Failed to open print dialog."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          printErrorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to open print dialog.",
+        },
+      });
     }
   };
 
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -104,12 +163,12 @@ export const ManageUsersPage = ({
     );
   }
 
-  if (errorMessage) {
+  if (state.errorMessage) {
     return (
       <main className="page-shell page-shell--center">
         <div className="card surface-card surface-card--small stack stack--compact">
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
+            {state.errorMessage}
           </p>
         </div>
       </main>
@@ -121,13 +180,13 @@ export const ManageUsersPage = ({
       <section className="card surface-card surface-card--large stack stack--compact">
         <h2 className="app-heading app-heading--center">Accounts</h2>
 
-        {printErrorMessage ? (
+        {state.printErrorMessage ? (
           <p className="message-block" data-variant="danger" role="alert">
-            {printErrorMessage}
+            {state.printErrorMessage}
           </p>
         ) : null}
 
-        {users.length === 0 ? (
+        {state.users.length === 0 ? (
           <p className="form-note form-note--spaced">No users found.</p>
         ) : (
           <div className="table-wrap">
@@ -141,7 +200,7 @@ export const ManageUsersPage = ({
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {state.users.map((user) => (
                   <tr key={user.username}>
                     <td>{user.username}</td>
                     <td className="table-action-cell">

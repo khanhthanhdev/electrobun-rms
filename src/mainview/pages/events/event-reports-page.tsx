@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  type SyntheticEvent,
+  useCallback,
+  useEffect,
+  useReducer,
+} from "react";
 import {
   type EventPrintListsResponse,
   fetchEventPrintLists,
@@ -18,6 +24,57 @@ interface EventReportsPageProps {
   token: string | null;
 }
 
+interface EventReportsPageState {
+  errorMessage: string | null;
+  isAccountsMounted: boolean;
+  isLoading: boolean;
+  isMatchesMounted: boolean;
+  isScheduleMounted: boolean;
+  isTeamsMounted: boolean;
+  printErrorMessage: string | null;
+  reportData: EventPrintListsResponse | null;
+}
+
+interface EventReportsPageAction {
+  payload: Partial<EventReportsPageState>;
+  type: "set";
+}
+
+const eventReportsPageInitialState: EventReportsPageState = {
+  errorMessage: null,
+  isAccountsMounted: true,
+  isLoading: true,
+  isMatchesMounted: false,
+  isScheduleMounted: false,
+  isTeamsMounted: false,
+  printErrorMessage: null,
+  reportData: null,
+};
+
+const eventReportsPageReducer = (
+  state: EventReportsPageState,
+  action: EventReportsPageAction
+): EventReportsPageState => {
+  switch (action.type) {
+    case "set": {
+      const payloadEntries = Object.entries(action.payload) as [
+        keyof EventReportsPageState,
+        EventReportsPageState[keyof EventReportsPageState],
+      ][];
+      const hasStateChanges = payloadEntries.some(
+        ([key, value]) => state[key] !== value
+      );
+      if (!hasStateChanges) {
+        return state;
+      }
+
+      return { ...state, ...action.payload };
+    }
+    default:
+      return state;
+  }
+};
+
 const formatDateTimeValue = (value: string | null): string => {
   if (!value) {
     return "-";
@@ -34,50 +91,333 @@ const formatDateTimeValue = (value: string | null): string => {
 const buildPrintErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Failed to open print dialog.";
 
-export const EventReportsPage = ({
+interface ReportTableRow {
+  cells: readonly ReactNode[];
+  key: string | number;
+}
+
+interface ReportTableSectionProps {
+  count: number;
+  emptyMessage: string;
+  headers: readonly string[];
+  isMounted: boolean;
+  onPrintPaper: () => void;
+  onPrintPdf: () => void;
+  onToggle: (nextEvent: SyntheticEvent<HTMLDetailsElement>) => void;
+  open?: boolean;
+  paperActionLabel: string;
+  pdfActionLabel: string;
+  rows: readonly ReportTableRow[];
+  summaryLabel: string;
+}
+
+const ReportTableSection = ({
+  count,
+  emptyMessage,
+  headers,
+  isMounted,
+  onPrintPaper,
+  onPrintPdf,
+  onToggle,
+  open,
+  paperActionLabel,
+  pdfActionLabel,
+  rows,
+  summaryLabel,
+}: ReportTableSectionProps): JSX.Element => (
+  <details className="report-collapsible" onToggle={onToggle} open={open}>
+    <summary className="report-collapsible-summary">
+      {summaryLabel} ({count})
+    </summary>
+    {isMounted ? (
+      <div className="report-collapsible-body">
+        <div className="table-wrap">
+          <table className="table-users table-report">
+            <thead>
+              <tr>
+                {headers.map((header) => (
+                  <th key={header} scope="col">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={headers.length}>{emptyMessage}</td>
+                </tr>
+              ) : (
+                rows.map((row) => (
+                  <tr key={row.key}>
+                    {row.cells.map((cell, index) => (
+                      <td key={`${row.key}-${index + 1}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="form-actions">
+          <button data-variant="secondary" onClick={onPrintPaper} type="button">
+            {paperActionLabel}
+          </button>
+          <button onClick={onPrintPdf} type="button">
+            {pdfActionLabel}
+          </button>
+        </div>
+      </div>
+    ) : null}
+  </details>
+);
+
+const ACCOUNT_HEADERS = ["Username", "Role", "Password"] as const;
+const TEAM_HEADERS = ["Team Number", "Name", "Location"] as const;
+const MATCH_HEADERS = [
+  "Match ID",
+  "Play #",
+  "Field Type",
+  "Score (R-B)",
+  "Start Time",
+] as const;
+const SCHEDULE_HEADERS = [
+  "Stage",
+  "Match #",
+  "Description",
+  "Start Time",
+] as const;
+
+const buildAccountRows = (
+  accounts: readonly PrintableAccountItem[]
+): ReportTableRow[] =>
+  accounts.map((account) => ({
+    key: `${account.username}-${account.role}`,
+    cells: [account.username, account.role, account.password ?? "-"],
+  }));
+
+const buildTeamRows = (teams: readonly PrintableTeamItem[]): ReportTableRow[] =>
+  teams.map((team) => ({
+    key: team.teamNumber,
+    cells: [String(team.teamNumber), team.name, team.location || "-"],
+  }));
+
+const buildMatchRows = (
+  matches: readonly PrintableMatchItem[]
+): ReportTableRow[] =>
+  matches.map((match) => ({
+    key: match.matchId,
+    cells: [
+      match.matchId,
+      String(match.playNumber),
+      String(match.fieldType),
+      `${match.redScore}-${match.blueScore}`,
+      formatDateTimeValue(match.startTime),
+    ],
+  }));
+
+const buildScheduleRows = (
+  schedules: readonly PrintableScheduleItem[]
+): ReportTableRow[] =>
+  schedules.map((schedule, index) => ({
+    key: `${schedule.stage}-${schedule.matchNumber ?? "na"}-${index}`,
+    cells: [
+      schedule.stage,
+      schedule.matchNumber ?? "-",
+      schedule.description || "-",
+      formatDateTimeValue(schedule.startTime),
+    ],
+  }));
+
+interface AccountsReportSectionProps {
+  accounts: readonly PrintableAccountItem[];
+  isMounted: boolean;
+  onPrintPaper: () => void;
+  onPrintPdf: () => void;
+  onToggle: (nextEvent: SyntheticEvent<HTMLDetailsElement>) => void;
+}
+
+const AccountsReportSection = ({
+  accounts,
+  isMounted,
+  onPrintPaper,
+  onPrintPdf,
+  onToggle,
+}: AccountsReportSectionProps): JSX.Element => (
+  <ReportTableSection
+    count={accounts.length}
+    emptyMessage="No accounts found."
+    headers={ACCOUNT_HEADERS}
+    isMounted={isMounted}
+    onPrintPaper={onPrintPaper}
+    onPrintPdf={onPrintPdf}
+    onToggle={onToggle}
+    open
+    paperActionLabel="Print Accounts (Paper)"
+    pdfActionLabel="Export Accounts (PDF)"
+    rows={buildAccountRows(accounts)}
+    summaryLabel="Accounts"
+  />
+);
+
+interface TeamsReportSectionProps {
+  isMounted: boolean;
+  onPrintPaper: () => void;
+  onPrintPdf: () => void;
+  onToggle: (nextEvent: SyntheticEvent<HTMLDetailsElement>) => void;
+  teams: readonly PrintableTeamItem[];
+}
+
+const TeamsReportSection = ({
+  isMounted,
+  onPrintPaper,
+  onPrintPdf,
+  onToggle,
+  teams,
+}: TeamsReportSectionProps): JSX.Element => (
+  <ReportTableSection
+    count={teams.length}
+    emptyMessage="No teams found."
+    headers={TEAM_HEADERS}
+    isMounted={isMounted}
+    onPrintPaper={onPrintPaper}
+    onPrintPdf={onPrintPdf}
+    onToggle={onToggle}
+    paperActionLabel="Print Teams (Paper)"
+    pdfActionLabel="Export Teams (PDF)"
+    rows={buildTeamRows(teams)}
+    summaryLabel="Teams"
+  />
+);
+
+interface MatchesReportSectionProps {
+  isMounted: boolean;
+  matches: readonly PrintableMatchItem[];
+  onPrintPaper: () => void;
+  onPrintPdf: () => void;
+  onToggle: (nextEvent: SyntheticEvent<HTMLDetailsElement>) => void;
+}
+
+const MatchesReportSection = ({
+  isMounted,
+  matches,
+  onPrintPaper,
+  onPrintPdf,
+  onToggle,
+}: MatchesReportSectionProps): JSX.Element => (
+  <ReportTableSection
+    count={matches.length}
+    emptyMessage="No matches found."
+    headers={MATCH_HEADERS}
+    isMounted={isMounted}
+    onPrintPaper={onPrintPaper}
+    onPrintPdf={onPrintPdf}
+    onToggle={onToggle}
+    paperActionLabel="Print Matches (Paper)"
+    pdfActionLabel="Export Matches (PDF)"
+    rows={buildMatchRows(matches)}
+    summaryLabel="Matches"
+  />
+);
+
+interface ScheduleReportSectionProps {
+  isMounted: boolean;
+  onPrintPaper: () => void;
+  onPrintPdf: () => void;
+  onToggle: (nextEvent: SyntheticEvent<HTMLDetailsElement>) => void;
+  schedules: readonly PrintableScheduleItem[];
+}
+
+const ScheduleReportSection = ({
+  isMounted,
+  onPrintPaper,
+  onPrintPdf,
+  onToggle,
+  schedules,
+}: ScheduleReportSectionProps): JSX.Element => (
+  <ReportTableSection
+    count={schedules.length}
+    emptyMessage="No schedule entries found."
+    headers={SCHEDULE_HEADERS}
+    isMounted={isMounted}
+    onPrintPaper={onPrintPaper}
+    onPrintPdf={onPrintPdf}
+    onToggle={onToggle}
+    paperActionLabel="Print Schedule (Paper)"
+    pdfActionLabel="Export Schedule (PDF)"
+    rows={buildScheduleRows(schedules)}
+    summaryLabel="Schedule"
+  />
+);
+
+const useEventReportsPageController = ({
   eventCode,
   token,
-}: EventReportsPageProps): JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [printErrorMessage, setPrintErrorMessage] = useState<string | null>(
-    null
-  );
-  const [reportData, setReportData] = useState<EventPrintListsResponse | null>(
-    null
+}: EventReportsPageProps) => {
+  const [state, dispatch] = useReducer(
+    eventReportsPageReducer,
+    eventReportsPageInitialState
   );
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
-      setErrorMessage("You must be logged in to view event reports.");
-      setIsLoading(false);
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in to view event reports.",
+          isLoading: false,
+        },
+      });
       return;
     }
 
-    setIsLoading(true);
-    setErrorMessage(null);
-    setPrintErrorMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        isAccountsMounted: true,
+        isLoading: true,
+        isMatchesMounted: false,
+        isScheduleMounted: false,
+        isTeamsMounted: false,
+        errorMessage: null,
+        printErrorMessage: null,
+      },
+    });
 
     fetchEventPrintLists(eventCode, token)
       .then((result) => {
         if (!isCancelled) {
-          setReportData(result);
+          dispatch({
+            type: "set",
+            payload: {
+              reportData: result,
+            },
+          });
         }
       })
       .catch((error) => {
         if (!isCancelled) {
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Failed to load printable reports."
-          );
+          dispatch({
+            type: "set",
+            payload: {
+              errorMessage:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load printable reports.",
+            },
+          });
         }
       })
       .finally(() => {
         if (!isCancelled) {
-          setIsLoading(false);
+          dispatch({
+            type: "set",
+            payload: {
+              isLoading: false,
+            },
+          });
         }
       });
 
@@ -86,13 +426,20 @@ export const EventReportsPage = ({
     };
   }, [eventCode, token]);
 
+  const reportData = state.reportData;
+
   const printAccounts = useCallback(
     (destination: PrintDestination): void => {
       if (!reportData) {
         return;
       }
 
-      setPrintErrorMessage(null);
+      dispatch({
+        type: "set",
+        payload: {
+          printErrorMessage: null,
+        },
+      });
 
       try {
         printTable<PrintableAccountItem>({
@@ -112,7 +459,12 @@ export const EventReportsPage = ({
           ],
         });
       } catch (error) {
-        setPrintErrorMessage(buildPrintErrorMessage(error));
+        dispatch({
+          type: "set",
+          payload: {
+            printErrorMessage: buildPrintErrorMessage(error),
+          },
+        });
       }
     },
     [eventCode, reportData]
@@ -124,7 +476,12 @@ export const EventReportsPage = ({
         return;
       }
 
-      setPrintErrorMessage(null);
+      dispatch({
+        type: "set",
+        payload: {
+          printErrorMessage: null,
+        },
+      });
 
       try {
         printTable<PrintableTeamItem>({
@@ -144,7 +501,12 @@ export const EventReportsPage = ({
           ],
         });
       } catch (error) {
-        setPrintErrorMessage(buildPrintErrorMessage(error));
+        dispatch({
+          type: "set",
+          payload: {
+            printErrorMessage: buildPrintErrorMessage(error),
+          },
+        });
       }
     },
     [eventCode, reportData]
@@ -156,7 +518,12 @@ export const EventReportsPage = ({
         return;
       }
 
-      setPrintErrorMessage(null);
+      dispatch({
+        type: "set",
+        payload: {
+          printErrorMessage: null,
+        },
+      });
 
       try {
         printTable<PrintableMatchItem>({
@@ -184,7 +551,12 @@ export const EventReportsPage = ({
           ],
         });
       } catch (error) {
-        setPrintErrorMessage(buildPrintErrorMessage(error));
+        dispatch({
+          type: "set",
+          payload: {
+            printErrorMessage: buildPrintErrorMessage(error),
+          },
+        });
       }
     },
     [eventCode, reportData]
@@ -196,7 +568,12 @@ export const EventReportsPage = ({
         return;
       }
 
-      setPrintErrorMessage(null);
+      dispatch({
+        type: "set",
+        payload: {
+          printErrorMessage: null,
+        },
+      });
 
       try {
         printTable<PrintableScheduleItem>({
@@ -224,13 +601,211 @@ export const EventReportsPage = ({
           ],
         });
       } catch (error) {
-        setPrintErrorMessage(buildPrintErrorMessage(error));
+        dispatch({
+          type: "set",
+          payload: {
+            printErrorMessage: buildPrintErrorMessage(error),
+          },
+        });
       }
     },
     [eventCode, reportData]
   );
 
-  if (isLoading) {
+  const handleAccountsToggle = useCallback(
+    (nextEvent: SyntheticEvent<HTMLDetailsElement>): void => {
+      if (!nextEvent.currentTarget.open) {
+        return;
+      }
+
+      dispatch({
+        type: "set",
+        payload: {
+          isAccountsMounted: true,
+        },
+      });
+    },
+    []
+  );
+
+  const handleTeamsToggle = useCallback(
+    (nextEvent: SyntheticEvent<HTMLDetailsElement>): void => {
+      if (!nextEvent.currentTarget.open) {
+        return;
+      }
+
+      dispatch({
+        type: "set",
+        payload: {
+          isTeamsMounted: true,
+        },
+      });
+    },
+    []
+  );
+
+  const handleMatchesToggle = useCallback(
+    (nextEvent: SyntheticEvent<HTMLDetailsElement>): void => {
+      if (!nextEvent.currentTarget.open) {
+        return;
+      }
+
+      dispatch({
+        type: "set",
+        payload: {
+          isMatchesMounted: true,
+        },
+      });
+    },
+    []
+  );
+
+  const handleScheduleToggle = useCallback(
+    (nextEvent: SyntheticEvent<HTMLDetailsElement>): void => {
+      if (!nextEvent.currentTarget.open) {
+        return;
+      }
+
+      dispatch({
+        type: "set",
+        payload: {
+          isScheduleMounted: true,
+        },
+      });
+    },
+    []
+  );
+
+  const handlePrintAccountsPaper = useCallback((): void => {
+    printAccounts("paper");
+  }, [printAccounts]);
+
+  const handlePrintAccountsPdf = useCallback((): void => {
+    printAccounts("pdf");
+  }, [printAccounts]);
+
+  const handlePrintTeamsPaper = useCallback((): void => {
+    printTeams("paper");
+  }, [printTeams]);
+
+  const handlePrintTeamsPdf = useCallback((): void => {
+    printTeams("pdf");
+  }, [printTeams]);
+
+  const handlePrintMatchesPaper = useCallback((): void => {
+    printMatches("paper");
+  }, [printMatches]);
+
+  const handlePrintMatchesPdf = useCallback((): void => {
+    printMatches("pdf");
+  }, [printMatches]);
+
+  const handlePrintSchedulePaper = useCallback((): void => {
+    printSchedule("paper");
+  }, [printSchedule]);
+
+  const handlePrintSchedulePdf = useCallback((): void => {
+    printSchedule("pdf");
+  }, [printSchedule]);
+
+  return {
+    handleAccountsToggle,
+    handleMatchesToggle,
+    handlePrintAccountsPaper,
+    handlePrintAccountsPdf,
+    handlePrintMatchesPaper,
+    handlePrintMatchesPdf,
+    handlePrintSchedulePaper,
+    handlePrintSchedulePdf,
+    handlePrintTeamsPaper,
+    handlePrintTeamsPdf,
+    handleScheduleToggle,
+    handleTeamsToggle,
+    state,
+  };
+};
+
+interface EventReportsContentProps {
+  eventCode: string;
+  handlers: ReturnType<typeof useEventReportsPageController>;
+  reportData: EventPrintListsResponse;
+}
+
+const EventReportsContent = ({
+  eventCode,
+  handlers,
+  reportData,
+}: EventReportsContentProps): JSX.Element => (
+  <main className="page-shell page-shell--top">
+    <section className="card surface-card surface-card--xlarge stack stack--compact">
+      <header className="stack stack--tight">
+        <h2 className="app-heading">Event Reports - {eventCode}</h2>
+        <p className="app-subheading">
+          Print to paper or export to PDF for account, team, match, and schedule
+          lists.
+        </p>
+        <p className="form-note">
+          Generated: {formatDateTimeValue(reportData.generatedAt)}
+        </p>
+      </header>
+
+      {handlers.state.printErrorMessage ? (
+        <p className="message-block" data-variant="danger" role="alert">
+          {handlers.state.printErrorMessage}
+        </p>
+      ) : null}
+
+      <AccountsReportSection
+        accounts={reportData.accounts}
+        isMounted={handlers.state.isAccountsMounted}
+        onPrintPaper={handlers.handlePrintAccountsPaper}
+        onPrintPdf={handlers.handlePrintAccountsPdf}
+        onToggle={handlers.handleAccountsToggle}
+      />
+
+      <TeamsReportSection
+        isMounted={handlers.state.isTeamsMounted}
+        onPrintPaper={handlers.handlePrintTeamsPaper}
+        onPrintPdf={handlers.handlePrintTeamsPdf}
+        onToggle={handlers.handleTeamsToggle}
+        teams={reportData.teams}
+      />
+
+      <MatchesReportSection
+        isMounted={handlers.state.isMatchesMounted}
+        matches={reportData.matches}
+        onPrintPaper={handlers.handlePrintMatchesPaper}
+        onPrintPdf={handlers.handlePrintMatchesPdf}
+        onToggle={handlers.handleMatchesToggle}
+      />
+
+      <ScheduleReportSection
+        isMounted={handlers.state.isScheduleMounted}
+        onPrintPaper={handlers.handlePrintSchedulePaper}
+        onPrintPdf={handlers.handlePrintSchedulePdf}
+        onToggle={handlers.handleScheduleToggle}
+        schedules={reportData.schedules}
+      />
+
+      <div className="form-actions">
+        <a className="button" href={`/event/${eventCode}/dashboard`}>
+          Back to Dashboard
+        </a>
+      </div>
+    </section>
+  </main>
+);
+
+export const EventReportsPage = ({
+  eventCode,
+  token,
+}: EventReportsPageProps): JSX.Element => {
+  const handlers = useEventReportsPageController({
+    eventCode,
+    token,
+  });
+
+  if (handlers.state.isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -238,12 +813,12 @@ export const EventReportsPage = ({
     );
   }
 
-  if (errorMessage || !reportData) {
+  if (handlers.state.errorMessage || !handlers.state.reportData) {
     return (
       <main className="page-shell page-shell--center">
         <div className="card surface-card surface-card--small stack stack--compact">
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage ?? "Failed to load report data."}
+            {handlers.state.errorMessage ?? "Failed to load report data."}
           </p>
           <a className="app-link-inline" href={`/event/${eventCode}/dashboard`}>
             Back to Dashboard
@@ -254,253 +829,10 @@ export const EventReportsPage = ({
   }
 
   return (
-    <main className="page-shell page-shell--top">
-      <section className="card surface-card surface-card--xlarge stack stack--compact">
-        <header className="stack stack--tight">
-          <h2 className="app-heading">Event Reports - {eventCode}</h2>
-          <p className="app-subheading">
-            Print to paper or export to PDF for account, team, match, and
-            schedule lists.
-          </p>
-          <p className="form-note">
-            Generated: {formatDateTimeValue(reportData.generatedAt)}
-          </p>
-        </header>
-
-        {printErrorMessage ? (
-          <p className="message-block" data-variant="danger" role="alert">
-            {printErrorMessage}
-          </p>
-        ) : null}
-
-        <details className="report-collapsible" open>
-          <summary className="report-collapsible-summary">
-            Accounts ({reportData.accounts.length})
-          </summary>
-          <div className="report-collapsible-body">
-            <div className="table-wrap">
-              <table className="table-users table-report">
-                <thead>
-                  <tr>
-                    <th scope="col">Username</th>
-                    <th scope="col">Role</th>
-                    <th scope="col">Password</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.accounts.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>No accounts found.</td>
-                    </tr>
-                  ) : (
-                    reportData.accounts.map((account) => (
-                      <tr key={`${account.username}-${account.role}`}>
-                        <td>{account.username}</td>
-                        <td>{account.role}</td>
-                        <td>{account.password ?? "-"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="form-actions">
-              <button
-                data-variant="secondary"
-                onClick={() => {
-                  printAccounts("paper");
-                }}
-                type="button"
-              >
-                Print Accounts (Paper)
-              </button>
-              <button
-                onClick={() => {
-                  printAccounts("pdf");
-                }}
-                type="button"
-              >
-                Export Accounts (PDF)
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <details className="report-collapsible">
-          <summary className="report-collapsible-summary">
-            Teams ({reportData.teams.length})
-          </summary>
-          <div className="report-collapsible-body">
-            <div className="table-wrap">
-              <table className="table-users table-report">
-                <thead>
-                  <tr>
-                    <th scope="col">Team Number</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.teams.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>No teams found.</td>
-                    </tr>
-                  ) : (
-                    reportData.teams.map((team) => (
-                      <tr key={team.teamNumber}>
-                        <td>{team.teamNumber}</td>
-                        <td>{team.name}</td>
-                        <td>{team.location || "-"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="form-actions">
-              <button
-                data-variant="secondary"
-                onClick={() => {
-                  printTeams("paper");
-                }}
-                type="button"
-              >
-                Print Teams (Paper)
-              </button>
-              <button
-                onClick={() => {
-                  printTeams("pdf");
-                }}
-                type="button"
-              >
-                Export Teams (PDF)
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <details className="report-collapsible">
-          <summary className="report-collapsible-summary">
-            Matches ({reportData.matches.length})
-          </summary>
-          <div className="report-collapsible-body">
-            <div className="table-wrap">
-              <table className="table-users table-report">
-                <thead>
-                  <tr>
-                    <th scope="col">Match ID</th>
-                    <th scope="col">Play #</th>
-                    <th scope="col">Field Type</th>
-                    <th scope="col">Score (R-B)</th>
-                    <th scope="col">Start Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.matches.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>No matches found.</td>
-                    </tr>
-                  ) : (
-                    reportData.matches.map((match) => (
-                      <tr key={match.matchId}>
-                        <td>{match.matchId}</td>
-                        <td>{match.playNumber}</td>
-                        <td>{match.fieldType}</td>
-                        <td>
-                          {match.redScore}-{match.blueScore}
-                        </td>
-                        <td>{formatDateTimeValue(match.startTime)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="form-actions">
-              <button
-                data-variant="secondary"
-                onClick={() => {
-                  printMatches("paper");
-                }}
-                type="button"
-              >
-                Print Matches (Paper)
-              </button>
-              <button
-                onClick={() => {
-                  printMatches("pdf");
-                }}
-                type="button"
-              >
-                Export Matches (PDF)
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <details className="report-collapsible">
-          <summary className="report-collapsible-summary">
-            Schedule ({reportData.schedules.length})
-          </summary>
-          <div className="report-collapsible-body">
-            <div className="table-wrap">
-              <table className="table-users table-report">
-                <thead>
-                  <tr>
-                    <th scope="col">Stage</th>
-                    <th scope="col">Match #</th>
-                    <th scope="col">Description</th>
-                    <th scope="col">Start Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.schedules.length === 0 ? (
-                    <tr>
-                      <td colSpan={4}>No schedule entries found.</td>
-                    </tr>
-                  ) : (
-                    reportData.schedules.map((schedule, index) => (
-                      <tr
-                        key={`${schedule.stage}-${schedule.matchNumber ?? "na"}-${index}`}
-                      >
-                        <td>{schedule.stage}</td>
-                        <td>{schedule.matchNumber ?? "-"}</td>
-                        <td>{schedule.description || "-"}</td>
-                        <td>{formatDateTimeValue(schedule.startTime)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="form-actions">
-              <button
-                data-variant="secondary"
-                onClick={() => {
-                  printSchedule("paper");
-                }}
-                type="button"
-              >
-                Print Schedule (Paper)
-              </button>
-              <button
-                onClick={() => {
-                  printSchedule("pdf");
-                }}
-                type="button"
-              >
-                Export Schedule (PDF)
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <div className="form-actions">
-          <a className="button" href={`/event/${eventCode}/dashboard`}>
-            Back to Dashboard
-          </a>
-        </div>
-      </section>
-    </main>
+    <EventReportsContent
+      eventCode={eventCode}
+      handlers={handlers}
+      reportData={handlers.state.reportData}
+    />
   );
 };

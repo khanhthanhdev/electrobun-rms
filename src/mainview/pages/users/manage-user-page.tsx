@@ -1,15 +1,26 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  type Dispatch,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useReducer,
+} from "react";
 import {
   deleteUser,
   getUser,
   updateUser,
 } from "../../features/users/services/users-service";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
-import {
-  CREATE_ACCOUNT_ROLE_COLUMNS,
-  type RoleValue,
-} from "../../shared/constants/roles";
+import type { RoleValue } from "../../shared/constants/roles";
 import type { EventItem } from "../../shared/types/event";
+import {
+  buildEventRows,
+  PasswordField,
+  parseRoleKey,
+  RoleMatrix,
+  roleKey,
+  StatusMessages,
+} from "./account-form-sections";
 
 interface ManageUserPageProps {
   events: EventItem[];
@@ -18,86 +29,164 @@ interface ManageUserPageProps {
   username: string;
 }
 
-const ALL_EVENTS_CODE = "*" as const;
-
-function roleKey(eventCode: string, role: RoleValue): string {
-  return `${eventCode}:${role}`;
+interface ManageUserPageState {
+  accountUsername: string;
+  errorMessage: string | null;
+  isDeleteConfirming: boolean;
+  isDeleting: boolean;
+  isLoading: boolean;
+  isSubmitting: boolean;
+  password: string;
+  passwordConfirm: string;
+  selectedRoles: Set<string>;
+  showPassword: boolean;
+  showPasswordConfirm: boolean;
+  successMessage: string | null;
 }
 
-function parseRoleKey(value: string): { event: string; role: RoleValue } {
-  const [event, role] = value.split(":", 2);
-  return {
-    event,
-    role: role as RoleValue,
-  };
-}
+type ManageUserPageAction =
+  | {
+      type: "set";
+      payload: Partial<ManageUserPageState>;
+    }
+  | {
+      type: "toggleRole";
+      key: string;
+    };
 
-export const ManageUserPage = ({
+const createManageUserPageInitialState = (
+  username: string
+): ManageUserPageState => ({
+  isLoading: true,
+  isSubmitting: false,
+  isDeleting: false,
+  isDeleteConfirming: false,
+  errorMessage: null,
+  successMessage: null,
+  accountUsername: username,
+  password: "",
+  passwordConfirm: "",
+  showPassword: false,
+  showPasswordConfirm: false,
+  selectedRoles: new Set(),
+});
+
+const manageUserPageReducer = (
+  state: ManageUserPageState,
+  action: ManageUserPageAction
+): ManageUserPageState => {
+  switch (action.type) {
+    case "set":
+      return { ...state, ...action.payload };
+    case "toggleRole": {
+      const nextRoles = new Set(state.selectedRoles);
+      if (nextRoles.has(action.key)) {
+        nextRoles.delete(action.key);
+      } else {
+        nextRoles.add(action.key);
+      }
+      return { ...state, selectedRoles: nextRoles };
+    }
+    default:
+      return state;
+  }
+};
+
+const getDeleteButtonLabel = ({
+  isDeleteConfirming,
+  isDeleting,
+}: {
+  isDeleteConfirming: boolean;
+  isDeleting: boolean;
+}): string => {
+  if (isDeleting) {
+    return "Deleting Account...";
+  }
+
+  if (isDeleteConfirming) {
+    return "Delete Account (Confirm)";
+  }
+
+  return "Delete Account";
+};
+
+const useManageUserPageController = ({
   events,
-  isEventsLoading,
   token,
   username,
-}: ManageUserPageProps): JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [accountUsername, setAccountUsername] = useState(username);
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
+}: Pick<ManageUserPageProps, "events" | "token" | "username">) => {
+  const [state, dispatch] = useReducer(
+    manageUserPageReducer,
+    username,
+    createManageUserPageInitialState
+  );
 
-  const eventRows = useMemo(() => {
-    const dedupedCodes = Array.from(new Set(events.map((event) => event.code)));
-    return [ALL_EVENTS_CODE, ...dedupedCodes];
-  }, [events]);
+  const eventRows = useMemo(() => buildEventRows(events), [events]);
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
-      setErrorMessage("You must be logged in as an admin user.");
-      setIsLoading(false);
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in as an admin user.",
+          isLoading: false,
+        },
+      });
       return;
     }
 
-    setIsLoading(true);
-    setErrorMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        isLoading: true,
+        errorMessage: null,
+      },
+    });
 
     getUser(username, token)
       .then((result) => {
         if (isCancelled) {
           return;
         }
-        setAccountUsername(result.user.username);
-        setSelectedRoles(
-          new Set(
-            result.user.roles.map((assignment) =>
-              roleKey(assignment.event, assignment.role)
-            )
-          )
-        );
-        setIsDeleteConfirming(false);
+        dispatch({
+          type: "set",
+          payload: {
+            accountUsername: result.user.username,
+            selectedRoles: new Set(
+              result.user.roles.map((assignment) =>
+                roleKey(assignment.event, assignment.role)
+              )
+            ),
+            isDeleteConfirming: false,
+          },
+        });
       })
       .catch((error) => {
         if (isCancelled) {
           return;
         }
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to load user details."
-        );
+        dispatch({
+          type: "set",
+          payload: {
+            errorMessage:
+              error instanceof Error
+                ? error.message
+                : "Failed to load user details.",
+          },
+        });
       })
       .finally(() => {
         if (isCancelled) {
           return;
         }
-        setIsLoading(false);
+        dispatch({
+          type: "set",
+          payload: {
+            isLoading: false,
+          },
+        });
       });
 
     return () => {
@@ -106,15 +195,9 @@ export const ManageUserPage = ({
   }, [token, username]);
 
   const handleRoleToggle = (eventCode: string, role: RoleValue): void => {
-    const key = roleKey(eventCode, role);
-    setSelectedRoles((currentRoles) => {
-      const nextRoles = new Set(currentRoles);
-      if (nextRoles.has(key)) {
-        nextRoles.delete(key);
-      } else {
-        nextRoles.add(key);
-      }
-      return nextRoles;
+    dispatch({
+      type: "toggleRole",
+      key: roleKey(eventCode, role),
     });
   };
 
@@ -122,82 +205,299 @@ export const ManageUserPage = ({
     event: FormEvent<HTMLFormElement>
   ): Promise<void> => {
     event.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsDeleteConfirming(false);
+    dispatch({
+      type: "set",
+      payload: {
+        errorMessage: null,
+        successMessage: null,
+        isDeleteConfirming: false,
+      },
+    });
 
-    if (selectedRoles.size === 0) {
-      setErrorMessage("Select at least one role assignment.");
+    if (state.selectedRoles.size === 0) {
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Select at least one role assignment.",
+        },
+      });
       return;
     }
 
-    const hasPasswordInput = password.length > 0 || passwordConfirm.length > 0;
-    if (hasPasswordInput && password !== passwordConfirm) {
-      setErrorMessage("Password and re-enter password must match.");
+    const hasPasswordInput =
+      state.password.length > 0 || state.passwordConfirm.length > 0;
+    if (hasPasswordInput && state.password !== state.passwordConfirm) {
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "Password and re-enter password must match.",
+        },
+      });
       return;
     }
 
     if (!token) {
-      setErrorMessage("You must be logged in as an admin user.");
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in as an admin user.",
+        },
+      });
       return;
     }
 
-    setIsSubmitting(true);
+    dispatch({
+      type: "set",
+      payload: {
+        isSubmitting: true,
+      },
+    });
+
     try {
-      const roles = Array.from(selectedRoles).map(parseRoleKey);
+      const roles = Array.from(state.selectedRoles).map(parseRoleKey);
       await updateUser(
-        accountUsername,
+        state.accountUsername,
         {
-          password,
-          passwordConfirm,
+          password: state.password,
+          passwordConfirm: state.passwordConfirm,
           roles,
         },
         token
       );
-      setPassword("");
-      setPasswordConfirm("");
-      setSuccessMessage(`Account "${accountUsername}" was updated.`);
+      dispatch({
+        type: "set",
+        payload: {
+          password: "",
+          passwordConfirm: "",
+          successMessage: `Account "${state.accountUsername}" was updated.`,
+        },
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to update account."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to update account.",
+        },
+      });
     } finally {
-      setIsSubmitting(false);
+      dispatch({
+        type: "set",
+        payload: {
+          isSubmitting: false,
+        },
+      });
     }
   };
 
   const handleDelete = async (): Promise<void> => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        errorMessage: null,
+        successMessage: null,
+      },
+    });
 
     if (!token) {
-      setErrorMessage("You must be logged in as an admin user.");
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in as an admin user.",
+        },
+      });
       return;
     }
 
-    if (!isDeleteConfirming) {
-      setIsDeleteConfirming(true);
-      setErrorMessage(
-        `Click "Delete Account" again to delete "${accountUsername}".`
-      );
+    if (!state.isDeleteConfirming) {
+      dispatch({
+        type: "set",
+        payload: {
+          isDeleteConfirming: true,
+          errorMessage: `Click "Delete Account" again to delete "${state.accountUsername}".`,
+        },
+      });
       return;
     }
 
-    setIsDeleting(true);
+    dispatch({
+      type: "set",
+      payload: {
+        isDeleting: true,
+      },
+    });
+
     try {
-      await deleteUser(accountUsername, token);
+      await deleteUser(state.accountUsername, token);
       window.history.pushState({}, "", "/user/manage");
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to delete account."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to delete account.",
+        },
+      });
     } finally {
-      setIsDeleting(false);
+      dispatch({
+        type: "set",
+        payload: {
+          isDeleting: false,
+        },
+      });
     }
   };
 
-  if (isLoading) {
+  return {
+    dispatch,
+    eventRows,
+    handleDelete,
+    handleRoleToggle,
+    handleUpdate,
+    state,
+  };
+};
+
+interface ManageUserFormProps {
+  deleteButtonLabel: string;
+  dispatch: Dispatch<ManageUserPageAction>;
+  eventRows: readonly string[];
+  isEventsLoading: boolean;
+  onDelete: () => Promise<void>;
+  onRoleToggle: (eventCode: string, role: RoleValue) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  state: ManageUserPageState;
+}
+
+const ManageUserForm = ({
+  deleteButtonLabel,
+  dispatch,
+  eventRows,
+  isEventsLoading,
+  onDelete,
+  onRoleToggle,
+  onSubmit,
+  state,
+}: ManageUserFormProps): JSX.Element => (
+  <form
+    className="card surface-card surface-card--xlarge stack"
+    onSubmit={onSubmit}
+  >
+    <div className="stack">
+      <div className="form-row" data-field>
+        <label htmlFor="username">Username:</label>
+        <input
+          disabled
+          id="username"
+          type="text"
+          value={state.accountUsername}
+        />
+      </div>
+
+      <PasswordField
+        id="password"
+        isVisible={state.showPassword}
+        label="Password:"
+        onValueChange={(value) => {
+          dispatch({
+            type: "set",
+            payload: {
+              password: value,
+            },
+          });
+        }}
+        onVisibilityChange={(checked) => {
+          dispatch({
+            type: "set",
+            payload: {
+              showPassword: checked,
+            },
+          });
+        }}
+        placeholder="Password"
+        value={state.password}
+        visibilityToggleId="showPassword"
+      />
+
+      <PasswordField
+        id="passwordConfirm"
+        isVisible={state.showPasswordConfirm}
+        label="Re-enter Password:"
+        onValueChange={(value) => {
+          dispatch({
+            type: "set",
+            payload: {
+              passwordConfirm: value,
+            },
+          });
+        }}
+        onVisibilityChange={(checked) => {
+          dispatch({
+            type: "set",
+            payload: {
+              showPasswordConfirm: checked,
+            },
+          });
+        }}
+        placeholder="Re-enter Password"
+        value={state.passwordConfirm}
+        visibilityToggleId="showPasswordConfirm"
+      />
+
+      <RoleMatrix
+        eventRows={eventRows}
+        isEventsLoading={isEventsLoading}
+        onRoleToggle={onRoleToggle}
+        selectedRoles={state.selectedRoles}
+      />
+
+      <StatusMessages
+        errorMessage={state.errorMessage}
+        successMessage={state.successMessage}
+      />
+
+      <div className="form-actions form-actions--between">
+        <button disabled={state.isDeleting || state.isSubmitting} type="submit">
+          {state.isSubmitting ? "Updating Account..." : "Update Account"}
+        </button>
+        <button
+          data-variant="danger"
+          disabled={state.isDeleting || state.isSubmitting}
+          onClick={onDelete}
+          type="button"
+        >
+          {deleteButtonLabel}
+        </button>
+      </div>
+    </div>
+  </form>
+);
+
+export const ManageUserPage = ({
+  events,
+  isEventsLoading,
+  token,
+  username,
+}: ManageUserPageProps): JSX.Element => {
+  const {
+    dispatch,
+    eventRows,
+    handleDelete,
+    handleRoleToggle,
+    handleUpdate,
+    state,
+  } = useManageUserPageController({
+    events,
+    token,
+    username,
+  });
+
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -205,178 +505,35 @@ export const ManageUserPage = ({
     );
   }
 
-  if (errorMessage && selectedRoles.size === 0) {
+  if (state.errorMessage && state.selectedRoles.size === 0) {
     return (
       <main className="page-shell page-shell--center">
         <div className="card surface-card surface-card--small stack stack--compact">
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
+            {state.errorMessage}
           </p>
         </div>
       </main>
     );
   }
 
-  let deleteButtonLabel = "Delete Account";
-  if (isDeleteConfirming) {
-    deleteButtonLabel = "Delete Account (Confirm)";
-  }
-  if (isDeleting) {
-    deleteButtonLabel = "Deleting Account...";
-  }
+  const deleteButtonLabel = getDeleteButtonLabel({
+    isDeleteConfirming: state.isDeleteConfirming,
+    isDeleting: state.isDeleting,
+  });
 
   return (
     <main className="page-shell page-shell--top">
-      <form
-        className="card surface-card surface-card--xlarge stack"
+      <ManageUserForm
+        deleteButtonLabel={deleteButtonLabel}
+        dispatch={dispatch}
+        eventRows={eventRows}
+        isEventsLoading={isEventsLoading}
+        onDelete={handleDelete}
+        onRoleToggle={handleRoleToggle}
         onSubmit={handleUpdate}
-      >
-        <div className="stack">
-          <div className="form-row" data-field>
-            <label htmlFor="username">Username:</label>
-            <input disabled id="username" type="text" value={accountUsername} />
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="password">Password:</label>
-            <input
-              id="password"
-              onChange={(nextEvent) => {
-                setPassword(nextEvent.target.value);
-              }}
-              placeholder="Password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-            />
-            <label className="form-checkbox" htmlFor="showPassword">
-              <input
-                checked={showPassword}
-                id="showPassword"
-                onChange={(nextEvent) => {
-                  setShowPassword(nextEvent.target.checked);
-                }}
-                type="checkbox"
-              />
-              Show Password
-            </label>
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="passwordConfirm">Re-enter Password:</label>
-            <input
-              id="passwordConfirm"
-              onChange={(nextEvent) => {
-                setPasswordConfirm(nextEvent.target.value);
-              }}
-              placeholder="Re-enter Password"
-              type={showPasswordConfirm ? "text" : "password"}
-              value={passwordConfirm}
-            />
-            <label className="form-checkbox" htmlFor="showPasswordConfirm">
-              <input
-                checked={showPasswordConfirm}
-                id="showPasswordConfirm"
-                onChange={(nextEvent) => {
-                  setShowPasswordConfirm(nextEvent.target.checked);
-                }}
-                type="checkbox"
-              />
-              Show Password
-            </label>
-          </div>
-
-          <div>
-            <p className="form-section-label">Roles:</p>
-            <p className="form-description">
-              You should independently verify that this user has completed all
-              of the required training for the selected roles.
-            </p>
-          </div>
-
-          <div className="table-wrap">
-            <table className="table-role-matrix">
-              <thead>
-                <tr>
-                  <th scope="col">Event</th>
-                  {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
-                    <th key={column.value} scope="col">
-                      {column.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isEventsLoading ? (
-                  <tr>
-                    <td colSpan={CREATE_ACCOUNT_ROLE_COLUMNS.length + 1}>
-                      <LoadingIndicator />
-                    </td>
-                  </tr>
-                ) : (
-                  eventRows.map((eventCode) => (
-                    <tr key={eventCode}>
-                      <td>
-                        {eventCode === ALL_EVENTS_CODE
-                          ? "All Events"
-                          : eventCode}
-                      </td>
-                      {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
-                        <td key={`${eventCode}-${column.value}`}>
-                          <label htmlFor={`${eventCode}-${column.value}`}>
-                            <input
-                              checked={selectedRoles.has(
-                                roleKey(eventCode, column.value)
-                              )}
-                              id={`${eventCode}-${column.value}`}
-                              onChange={() => {
-                                handleRoleToggle(eventCode, column.value);
-                              }}
-                              type="checkbox"
-                            />
-                            <span className="sr-only">
-                              {eventCode === ALL_EVENTS_CODE
-                                ? `All events ${column.label}`
-                                : `${eventCode} ${column.label}`}
-                            </span>
-                          </label>
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {errorMessage ? (
-            <p className="message-block" data-variant="danger" role="alert">
-              {errorMessage}
-            </p>
-          ) : null}
-
-          {successMessage ? (
-            <p className="message-block" data-variant="success" role="alert">
-              {successMessage}
-            </p>
-          ) : null}
-
-          <div className="form-actions form-actions--between">
-            <button disabled={isDeleting || isSubmitting} type="submit">
-              {isSubmitting ? "Updating Account..." : "Update Account"}
-            </button>
-            <button
-              data-variant="danger"
-              disabled={isDeleting || isSubmitting}
-              onClick={async () => {
-                await handleDelete();
-              }}
-              type="button"
-            >
-              {deleteButtonLabel}
-            </button>
-          </div>
-        </div>
-      </form>
+        state={state}
+      />
     </main>
   );
 };

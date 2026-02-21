@@ -2,7 +2,7 @@ import type { ElectrobunConfig } from "electrobun";
 
 export default {
   app: {
-    name: "electrobun-app",
+    name: "S4V - Robotics Competition Management",
     identifier: "com.electrobun.app",
     version: "1.0.0",
   },

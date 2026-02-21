@@ -114,6 +114,22 @@ export const EventDashboardPage = ({
   }
 
   const event = events.find((e) => e.code === eventCode);
+
+  if (!event) {
+    return (
+      <main className="page-shell page-shell--center">
+        <div className="card surface-card surface-card--small stack stack--compact">
+          <p className="message-block" data-variant="danger" role="alert">
+            Event not found.
+          </p>
+          <a className="app-link-inline" href="/">
+            Back to Home
+          </a>
+        </div>
+      </main>
+    );
+  }
+
   const sections = buildDashboardSections(eventCode);
 
   return (

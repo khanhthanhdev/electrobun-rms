@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import type { DefaultAccountInfo } from "../../features/events/services/manual-event-service";
 import {
   fetchDefaultAccounts,
@@ -11,49 +11,105 @@ interface DefaultAccountsPageProps {
   token: string | null;
 }
 
+interface DefaultAccountsState {
+  accounts: DefaultAccountInfo[];
+  actionErrorMessage: string | null;
+  isLoading: boolean;
+  isRegenerateConfirming: boolean;
+  isRegenerating: boolean;
+  loadErrorMessage: string | null;
+  successMessage: string | null;
+}
+
+interface DefaultAccountsAction {
+  payload: Partial<DefaultAccountsState>;
+  type: "set";
+}
+
+const defaultAccountsInitialState: DefaultAccountsState = {
+  accounts: [],
+  isLoading: true,
+  isRegenerateConfirming: false,
+  isRegenerating: false,
+  loadErrorMessage: null,
+  actionErrorMessage: null,
+  successMessage: null,
+};
+
+const defaultAccountsReducer = (
+  state: DefaultAccountsState,
+  action: DefaultAccountsAction
+): DefaultAccountsState => {
+  switch (action.type) {
+    case "set":
+      return { ...state, ...action.payload };
+    default:
+      return state;
+  }
+};
+
 export const DefaultAccountsPage = ({
   eventCode,
   token,
 }: DefaultAccountsPageProps): JSX.Element => {
-  const [accounts, setAccounts] = useState<DefaultAccountInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRegenerateConfirming, setIsRegenerateConfirming] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
-  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(
-    null
+  const [state, dispatch] = useReducer(
+    defaultAccountsReducer,
+    defaultAccountsInitialState
   );
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
-      setLoadErrorMessage("You must be logged in to view this page.");
-      setIsLoading(false);
+      dispatch({
+        type: "set",
+        payload: {
+          loadErrorMessage: "You must be logged in to view this page.",
+          isLoading: false,
+        },
+      });
       return;
     }
 
-    setLoadErrorMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        loadErrorMessage: null,
+      },
+    });
 
     fetchDefaultAccounts(eventCode, token)
       .then((result) => {
         if (!isCancelled) {
-          setAccounts(result.accounts);
+          dispatch({
+            type: "set",
+            payload: {
+              accounts: result.accounts,
+            },
+          });
         }
       })
       .catch((error) => {
         if (!isCancelled) {
-          setLoadErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Failed to load default accounts."
-          );
+          dispatch({
+            type: "set",
+            payload: {
+              loadErrorMessage:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load default accounts.",
+            },
+          });
         }
       })
       .finally(() => {
         if (!isCancelled) {
-          setIsLoading(false);
+          dispatch({
+            type: "set",
+            payload: {
+              isLoading: false,
+            },
+          });
         }
       });
 
@@ -64,53 +120,85 @@ export const DefaultAccountsPage = ({
 
   const handleRegenerate = async (): Promise<void> => {
     if (!token) {
-      setActionErrorMessage("You must be logged in to regenerate accounts.");
+      dispatch({
+        type: "set",
+        payload: {
+          actionErrorMessage: "You must be logged in to regenerate accounts.",
+        },
+      });
       return;
     }
 
-    if (!isRegenerateConfirming) {
-      setIsRegenerateConfirming(true);
-      setActionErrorMessage(null);
-      setSuccessMessage(null);
+    if (!state.isRegenerateConfirming) {
+      dispatch({
+        type: "set",
+        payload: {
+          isRegenerateConfirming: true,
+          actionErrorMessage: null,
+          successMessage: null,
+        },
+      });
       return;
     }
 
-    setIsRegenerating(true);
-    setIsRegenerateConfirming(false);
-    setActionErrorMessage(null);
-    setSuccessMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        isRegenerating: true,
+        isRegenerateConfirming: false,
+        actionErrorMessage: null,
+        successMessage: null,
+      },
+    });
 
     try {
       const result = await regenerateDefaultAccounts(eventCode, token);
-      setAccounts(result.accounts);
-      setSuccessMessage(
-        `Regenerated ${result.accounts.length} default accounts for "${eventCode}".`
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          accounts: result.accounts,
+          successMessage: `Regenerated ${result.accounts.length} default accounts for "${eventCode}".`,
+        },
+      });
     } catch (error) {
-      setActionErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to regenerate default accounts."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          actionErrorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to regenerate default accounts.",
+        },
+      });
     } finally {
-      setIsRegenerating(false);
+      dispatch({
+        type: "set",
+        payload: {
+          isRegenerating: false,
+        },
+      });
     }
   };
 
   const handleCancelRegenerate = (): void => {
-    setIsRegenerateConfirming(false);
-    setActionErrorMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        isRegenerateConfirming: false,
+        actionErrorMessage: null,
+      },
+    });
   };
 
   let regenerateButtonLabel = "Regenerate Default Accounts";
-  if (isRegenerateConfirming) {
+  if (state.isRegenerateConfirming) {
     regenerateButtonLabel = "Regenerate Accounts (Confirm)";
   }
-  if (isRegenerating) {
+  if (state.isRegenerating) {
     regenerateButtonLabel = "Regenerating Accounts...";
   }
 
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -118,12 +206,12 @@ export const DefaultAccountsPage = ({
     );
   }
 
-  if (loadErrorMessage) {
+  if (state.loadErrorMessage) {
     return (
       <main className="page-shell page-shell--center">
         <div className="card surface-card surface-card--small stack stack--compact">
           <p className="message-block" data-variant="danger" role="alert">
-            {loadErrorMessage}
+            {state.loadErrorMessage}
           </p>
           <a className="app-link-inline" href="/">
             Back to Home
@@ -143,15 +231,15 @@ export const DefaultAccountsPage = ({
           </p>
         </header>
 
-        {actionErrorMessage ? (
+        {state.actionErrorMessage ? (
           <p className="message-block" data-variant="danger" role="alert">
-            {actionErrorMessage}
+            {state.actionErrorMessage}
           </p>
         ) : null}
 
-        {successMessage ? (
+        {state.successMessage ? (
           <output className="message-block" data-variant="success">
-            {successMessage}
+            {state.successMessage}
           </output>
         ) : null}
 
@@ -160,14 +248,14 @@ export const DefaultAccountsPage = ({
           creates a fresh default set with new passwords.
         </p>
 
-        {isRegenerateConfirming ? (
+        {state.isRegenerateConfirming ? (
           <p className="form-note" data-variant="danger">
             Click <strong>Regenerate Accounts (Confirm)</strong> to continue, or
             cancel.
           </p>
         ) : null}
 
-        {accounts.length === 0 ? (
+        {state.accounts.length === 0 ? (
           <p className="form-note">No default accounts found for this event.</p>
         ) : (
           <div className="table-wrap">
@@ -180,7 +268,7 @@ export const DefaultAccountsPage = ({
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((account) => (
+                {state.accounts.map((account) => (
                   <tr key={account.username}>
                     <td>{account.username}</td>
                     <td>{account.role}</td>
@@ -195,13 +283,13 @@ export const DefaultAccountsPage = ({
         <div className="form-actions">
           <button
             data-variant="danger"
-            disabled={isRegenerating}
+            disabled={state.isRegenerating}
             onClick={handleRegenerate}
             type="button"
           >
             {regenerateButtonLabel}
           </button>
-          {isRegenerateConfirming && !isRegenerating ? (
+          {state.isRegenerateConfirming && !state.isRegenerating ? (
             <button
               data-variant="secondary"
               onClick={handleCancelRegenerate}

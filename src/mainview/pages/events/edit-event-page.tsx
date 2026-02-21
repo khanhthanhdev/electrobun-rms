@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useReducer } from "react";
 import type { UpdateEventPayload } from "../../features/events/services/manual-event-service";
 import {
   fetchEvent,
@@ -10,6 +10,55 @@ interface EditEventPageProps {
   eventCode: string;
   token: string | null;
 }
+
+interface EditEventPageState {
+  errorMessage: string | null;
+  form: UpdateEventPayload | null;
+  isLoading: boolean;
+  isSubmitting: boolean;
+  successMessage: string | null;
+}
+
+type EditEventPageAction =
+  | {
+      type: "set";
+      payload: Partial<EditEventPageState>;
+    }
+  | {
+      type: "updateField";
+      key: keyof UpdateEventPayload;
+      value: UpdateEventPayload[keyof UpdateEventPayload];
+    };
+
+const editEventPageInitialState: EditEventPageState = {
+  form: null,
+  isLoading: true,
+  isSubmitting: false,
+  errorMessage: null,
+  successMessage: null,
+};
+
+const editEventPageReducer = (
+  state: EditEventPageState,
+  action: EditEventPageAction
+): EditEventPageState => {
+  switch (action.type) {
+    case "set":
+      return { ...state, ...action.payload };
+    case "updateField":
+      return {
+        ...state,
+        form: state.form
+          ? {
+              ...state.form,
+              [action.key]: action.value,
+            }
+          : state.form,
+      };
+    default:
+      return state;
+  }
+};
 
 const timestampToDateString = (ts: number): string => {
   const date = new Date(ts);
@@ -23,18 +72,22 @@ export const EditEventPage = ({
   eventCode,
   token,
 }: EditEventPageProps): JSX.Element => {
-  const [form, setForm] = useState<UpdateEventPayload | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    editEventPageReducer,
+    editEventPageInitialState
+  );
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
-      setErrorMessage("You must be logged in to edit this event.");
-      setIsLoading(false);
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in to edit this event.",
+          isLoading: false,
+        },
+      });
       return;
     }
 
@@ -42,30 +95,44 @@ export const EditEventPage = ({
       .then((result) => {
         if (!isCancelled) {
           const event = result.event;
-          setForm({
-            eventName: event.name,
-            region: event.region,
-            eventType: event.type,
-            startDate: timestampToDateString(event.start),
-            endDate: timestampToDateString(event.end),
-            divisions: event.divisions,
-            finals: event.finals,
-            status: event.status,
+          dispatch({
+            type: "set",
+            payload: {
+              form: {
+                eventName: event.name,
+                region: event.region,
+                eventType: event.type,
+                startDate: timestampToDateString(event.start),
+                endDate: timestampToDateString(event.end),
+                divisions: event.divisions,
+                finals: event.finals,
+                status: event.status,
+              },
+            },
           });
         }
       })
       .catch((error) => {
         if (!isCancelled) {
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Failed to load event details."
-          );
+          dispatch({
+            type: "set",
+            payload: {
+              errorMessage:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load event details.",
+            },
+          });
         }
       })
       .finally(() => {
         if (!isCancelled) {
-          setIsLoading(false);
+          dispatch({
+            type: "set",
+            payload: {
+              isLoading: false,
+            },
+          });
         }
       });
 
@@ -78,36 +145,64 @@ export const EditEventPage = ({
     key: K,
     value: UpdateEventPayload[K]
   ): void => {
-    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+    dispatch({
+      type: "updateField",
+      key,
+      value,
+    });
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!token) {
-      setErrorMessage("You must be logged in.");
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage: "You must be logged in.",
+        },
+      });
       return;
     }
-    if (!form) {
+    if (!state.form) {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    dispatch({
+      type: "set",
+      payload: {
+        isSubmitting: true,
+        errorMessage: null,
+        successMessage: null,
+      },
+    });
 
     try {
-      await updateEvent(eventCode, form, token);
-      setSuccessMessage("Event updated successfully.");
+      await updateEvent(eventCode, state.form, token);
+      dispatch({
+        type: "set",
+        payload: {
+          successMessage: "Event updated successfully.",
+        },
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to update event."
-      );
+      dispatch({
+        type: "set",
+        payload: {
+          errorMessage:
+            error instanceof Error ? error.message : "Failed to update event.",
+        },
+      });
     } finally {
-      setIsSubmitting(false);
+      dispatch({
+        type: "set",
+        payload: {
+          isSubmitting: false,
+        },
+      });
     }
   };
 
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -115,12 +210,12 @@ export const EditEventPage = ({
     );
   }
 
-  if (!form) {
+  if (!state.form) {
     return (
       <main className="page-shell page-shell--center">
         <div className="card surface-card surface-card--small stack stack--compact">
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage ?? "Failed to load event."}
+            {state.errorMessage ?? "Failed to load event."}
           </p>
           <a className="app-link-inline" href="/">
             Back to Home
@@ -143,15 +238,15 @@ export const EditEventPage = ({
           </p>
         </header>
 
-        {errorMessage ? (
+        {state.errorMessage ? (
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
+            {state.errorMessage}
           </p>
         ) : null}
 
-        {successMessage ? (
+        {state.successMessage ? (
           <output className="message-block" data-variant="success">
-            {successMessage}
+            {state.successMessage}
           </output>
         ) : null}
 
@@ -170,7 +265,7 @@ export const EditEventPage = ({
               }}
               required
               type="text"
-              value={form.eventName}
+              value={state.form.eventName}
             />
           </div>
 
@@ -183,7 +278,7 @@ export const EditEventPage = ({
               }}
               required
               type="text"
-              value={form.region}
+              value={state.form.region}
             />
           </div>
 
@@ -197,7 +292,7 @@ export const EditEventPage = ({
                 }}
                 required
                 type="date"
-                value={form.startDate}
+                value={state.form.startDate}
               />
             </div>
             <div>
@@ -209,7 +304,7 @@ export const EditEventPage = ({
                 }}
                 required
                 type="date"
-                value={form.endDate}
+                value={state.form.endDate}
               />
             </div>
           </div>
@@ -225,7 +320,7 @@ export const EditEventPage = ({
                 }}
                 required
                 type="number"
-                value={form.eventType}
+                value={state.form.eventType}
               />
             </div>
             <div>
@@ -238,14 +333,18 @@ export const EditEventPage = ({
                 }}
                 required
                 type="number"
-                value={form.divisions}
+                value={state.form.divisions}
               />
             </div>
           </div>
         </div>
 
-        <button className="form-submit" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Saving..." : "Save Event"}
+        <button
+          className="form-submit"
+          disabled={state.isSubmitting}
+          type="submit"
+        >
+          {state.isSubmitting ? "Saving..." : "Save Event"}
         </button>
 
         <div className="form-actions">
