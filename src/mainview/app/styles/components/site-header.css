@@ -120,10 +120,130 @@
   color: var(--app-header-fg);
 }
 
-@media (max-width: 820px) {
+.site-header__menu-toggle {
+  display: none;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  color: var(--app-header-fg);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: var(--radius-small);
+  transition: background-color 0.2s;
+}
+
+.site-header__menu-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.site-header__collapsible {
+  display: flex;
+  flex: 1;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+  .site-header__brand-name {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .site-header__meta {
+    display: none;
+  }
+
   .site-header__nav {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .site-header__brand-group {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    width: 100%;
+    padding-bottom: var(--space-2);
+  }
+
+  .site-header__brand-name {
+    display: inline;
+  }
+
+  .site-header__menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .site-header__collapsible {
+    display: none;
     flex-direction: column;
-    align-items: flex-start;
+    gap: var(--space-4);
+    align-items: stretch;
+    width: 100%;
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--app-header-border);
+  }
+
+  .site-header__collapsible.is-open {
+    display: flex;
+  }
+
+  .site-header__actions {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .site-header__admin-menu {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .site-header__admin-menu summary {
+    color: var(--app-header-fg);
+  }
+
+  .site-header__admin-dropdown {
+    position: static;
+    padding: var(--space-3);
+    margin: var(--space-1) 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+  }
+
+  .site-header__admin-dropdown a {
+    color: var(--app-header-fg);
+  }
+
+  .site-header__utility-link {
+    padding: var(--space-2) 0;
+    color: var(--app-header-fg);
+    border-bottom: 1px solid var(--app-header-border);
+  }
+
+  .site-header__session {
+    justify-content: space-between;
+    padding: var(--space-3);
+    color: var(--app-header-fg);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-medium);
+  }
+
+  .site-header__session button,
+  .site-header__actions button {
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    font-weight: var(--font-semibold);
+    color: var(--app-header-bg);
+    cursor: pointer;
+    background: var(--app-header-fg);
+    border: none;
+    border-radius: var(--radius-small);
   }
 }
 

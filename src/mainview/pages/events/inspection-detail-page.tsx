@@ -153,6 +153,7 @@ export const InspectionDetailPage = ({
 
   const [commentDraft, setCommentDraft] = useState("");
   const [commentInitialized, setCommentInitialized] = useState(false);
+  const [highlightMissing, setHighlightMissing] = useState(false);
 
   if (data && !commentInitialized) {
     setCommentDraft(data.inspection.comment ?? "");
@@ -207,40 +208,111 @@ export const InspectionDetailPage = ({
   return (
     <main className="page-shell page-shell--top">
       <section className="card surface-card surface-card--xlarge stack">
-        <a
-          className="app-link-inline"
-          href={`/event/${eventCode}/inspection`}
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate(`/event/${eventCode}/inspection`);
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0rem",
+            marginBottom: "0rem",
           }}
         >
-          ← Back to Team Select
-        </a>
-
-        <div className="inspection-detail-header">
-          <h1 className="app-heading">Inspection Checklist</h1>
-          <p>
-            Team #{teamNumber} — {data.team.teamName ?? "Unknown"}
-          </p>
-          <span
-            className={`inspection-pill inspection-pill--${data.inspection.status}`}
-          >
-            {data.inspection.statusLabel}
-          </span>
-          <button
-            className="small outline"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate(`/event/${eventCode}/inspection/override`);
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
-            type="button"
           >
-            Lead Inspector Override
-          </button>
+            <a
+              className="app-link-inline"
+              href={`/event/${eventCode}/inspection`}
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate(`/event/${eventCode}/inspection`);
+              }}
+            >
+              &lt;&lt; Back to Team Select
+            </a>
+            <span
+              className={`inspection-pill inspection-pill--${data.inspection.status}`}
+            >
+              {data.inspection.statusLabel}
+            </span>
+          </div>
+
+          <h1
+            className="app-heading"
+            style={{ fontSize: "1.25rem", margin: 0 }}
+          >
+            Inspection Checklist
+          </h1>
+
+          <div className="inspection-detail-header" style={{ marginBottom: 0 }}>
+            {/* Desktop */}
+            <div className="inspection-desktop-header">
+              <h2
+                className="app-heading"
+                style={{ fontSize: "1rem", margin: 0 }}
+              >
+                {data.team.teamName ?? "Unknown"} — #{teamNumber}
+              </h2>
+              <div className="inspection-desktop-header-actions">
+                <button
+                  className="inspection-btn-teal"
+                  disabled={isSaving}
+                  onClick={() => updateStatus("IN_PROGRESS")}
+                  type="button"
+                >
+                  Mark In Progress
+                </button>
+                <button
+                  className="inspection-btn-teal"
+                  onClick={() => setHighlightMissing((prev) => !prev)}
+                  type="button"
+                >
+                  {highlightMissing ? "Hide Missing" : "Highlight Missing"}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile */}
+            <div className="inspection-mobile-header">
+              <div className="inspection-detail-row">
+                <h2
+                  className="app-heading"
+                  style={{ fontSize: "1rem", margin: 0 }}
+                >
+                  {data.team.teamName ?? "Unknown"}
+                </h2>
+                <button
+                  className="inspection-btn-teal"
+                  disabled={isSaving}
+                  onClick={() => updateStatus("IN_PROGRESS")}
+                  type="button"
+                >
+                  Mark In Progress
+                </button>
+              </div>
+              <div className="inspection-detail-row">
+                <h2
+                  className="app-heading"
+                  style={{ fontSize: "1rem", margin: 0 }}
+                >
+                  #{teamNumber}
+                </h2>
+                <button
+                  className="inspection-btn-teal"
+                  onClick={() => setHighlightMissing((prev) => !prev)}
+                  type="button"
+                >
+                  {highlightMissing ? "Hide Missing" : "Highlight Missing"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <p className="app-note">
+        <p className="app-note" style={{ margin: "0rem 0 0rem 0" }}>
           Progress: {data.progress.completedRequired}/
           {data.progress.totalRequired} required items
         </p>
@@ -257,34 +329,61 @@ export const InspectionDetailPage = ({
           </p>
         ) : null}
 
-        {sectionGroups.map((group) => (
-          <section className="inspection-section" key={group.section.id}>
-            <h2 className="inspection-section-title">{group.section.label}</h2>
-            <div className="inspection-items">
-              {group.items.map((item) => (
-                <div className="inspection-item" key={item.key}>
-                  <div className="inspection-item-check">
-                    <ChecklistInput
-                      currentValue={data.responses[item.key] ?? null}
-                      disabled={isSaving}
-                      inputType={item.inputType}
-                      itemKey={item.key}
-                      onUpdate={updateItem}
-                      options={item.options}
-                    />
+        <div className="inspection-table">
+          {sectionGroups.map((group) => {
+            const isGroupComplete = group.items.every(
+              (item) => !item.required || data.responses[item.key] === "true"
+            );
+
+            return (
+              <section className="inspection-section" key={group.section.id}>
+                <div className="inspection-section-title">
+                  <div className="inspection-section-title-check">
+                    {isGroupComplete ? "✓" : ""}
                   </div>
-                  <div className="inspection-item-label">
-                    {item.label}
-                    {item.required ? (
-                      <span className="inspection-required">*</span>
-                    ) : null}
+                  <div className="inspection-section-title-text">
+                    {group.section.label}
                   </div>
-                  <div className="inspection-item-rule">{item.ruleCode}</div>
+                  <div className="inspection-section-title-rule">Rule #</div>
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+                <div className="inspection-items">
+                  {group.items.map((item) => {
+                    const isMissing =
+                      highlightMissing &&
+                      item.required &&
+                      data.responses[item.key] !== "true";
+                    return (
+                      <div
+                        className={`inspection-item ${isMissing ? "inspection-item--missing" : ""}`}
+                        key={item.key}
+                      >
+                        <div className="inspection-item-check">
+                          <ChecklistInput
+                            currentValue={data.responses[item.key] ?? null}
+                            disabled={isSaving}
+                            inputType={item.inputType}
+                            itemKey={item.key}
+                            onUpdate={updateItem}
+                            options={item.options}
+                          />
+                        </div>
+                        <div className="inspection-item-label">
+                          {item.label}
+                          {item.required ? (
+                            <span className="inspection-required">*</span>
+                          ) : null}
+                        </div>
+                        <div className="inspection-item-rule">
+                          {item.ruleCode}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
 
         <section className="inspection-comments stack stack--compact">
           <h2 className="app-heading">General Comments</h2>

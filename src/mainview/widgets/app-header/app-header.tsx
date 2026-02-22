@@ -1,3 +1,4 @@
+import { useState } from "react";
 import nrcLogo from "../../assets/steam.webp";
 import type { AuthUser } from "../../shared/types/auth";
 
@@ -26,10 +27,16 @@ export const AppHeader = ({
   showAdminMenu,
   user,
 }: AppHeaderProps): JSX.Element => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const handleLogoutClick = (): void => {
     onLogoutClick().catch(() => {
       // Logout errors are handled by the auth hook.
     });
+  };
+
+  const toggleMenu = (): void => {
+    setIsMenuOpen(!isMenuOpen);
   };
 
   const handleNavigation =
@@ -40,6 +47,7 @@ export const AppHeader = ({
       if (menuRoot) {
         menuRoot.removeAttribute("open");
       }
+      setIsMenuOpen(false);
       onNavigate(path);
     };
 
@@ -70,6 +78,37 @@ export const AppHeader = ({
               </span>
             </a>
 
+            <button
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle navigation menu"
+              className="site-header__menu-toggle"
+              onClick={toggleMenu}
+              type="button"
+            >
+              <svg
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <title>{isMenuOpen ? "Close menu" : "Open menu"}</title>
+                {isMenuOpen ? (
+                  <path d="M18 6L6 18M6 6l12 12" />
+                ) : (
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          <div
+            className={`site-header__collapsible ${isMenuOpen ? "is-open" : ""}`}
+          >
             {showAdminMenu ? (
               <details className="site-header__admin-menu">
                 <summary>ADMIN</summary>
@@ -101,40 +140,40 @@ export const AppHeader = ({
                 </div>
               </details>
             ) : null}
-          </div>
 
-          <div className="site-header__actions">
-            <a
-              className="site-header__utility-link"
-              href="https://www.steamforvietnam.org/"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Resources
-            </a>
-            <a
-              className="site-header__utility-link"
-              href="https://www.steamforvietnam.org/"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Help/Feedback
-            </a>
+            <div className="site-header__actions">
+              <a
+                className="site-header__utility-link"
+                href="https://www.steamforvietnam.org/"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Resources
+              </a>
+              <a
+                className="site-header__utility-link"
+                href="https://www.steamforvietnam.org/"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Help/Feedback
+              </a>
 
-            {!isAuthLoading && user ? (
-              <div className="site-header__session">
-                <span className="site-header__user">{user.username}</span>
-                <button onClick={handleLogoutClick} type="button">
-                  Log out
+              {!isAuthLoading && user ? (
+                <div className="site-header__session">
+                  <span className="site-header__user">{user.username}</span>
+                  <button onClick={handleLogoutClick} type="button">
+                    Log out
+                  </button>
+                </div>
+              ) : null}
+
+              {isAuthLoading || user ? null : (
+                <button onClick={onLoginClick} type="button">
+                  Login
                 </button>
-              </div>
-            ) : null}
-
-            {isAuthLoading || user ? null : (
-              <button onClick={onLoginClick} type="button">
-                Login
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
