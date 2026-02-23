@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "../../app/styles/components/inspection.css";
+import { useInspectionRealtime } from "../../features/inspection/hooks/use-inspection-realtime";
 import { useInspectionTeams } from "../../features/inspection/hooks/use-inspection-teams";
 import {
   patchInspectionStatus,
@@ -130,6 +131,8 @@ export const InspectionEventOverridePage = ({
   onNavigate,
   token,
 }: InspectionEventOverridePageProps): JSX.Element => {
+  useInspectionRealtime(eventCode, token);
+
   const {
     error,
     isLoading,
@@ -141,6 +144,22 @@ export const InspectionEventOverridePage = ({
   const [localStatuses, setLocalStatuses] = useState<
     Record<number, InspectionStatus>
   >({});
+
+  useEffect(() => {
+    setLocalStatuses((previous) => {
+      if (Object.keys(previous).length === 0) {
+        return previous;
+      }
+
+      for (const team of initialTeams) {
+        if (previous[team.teamNumber] !== undefined) {
+          return {};
+        }
+      }
+
+      return previous;
+    });
+  }, [initialTeams]);
 
   const handleStatusChange = useCallback(
     (teamNumber: number, newStatus: InspectionStatus) => {

@@ -18,11 +18,13 @@
   },
   "dependencies": {
     "@knadh/oat": "^0.3.0",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "drizzle-orm": "^0.45.1",
     "electrobun": "latest",
     "hono": "^4.12.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tinybase": "^7.3.5",
     "valibot": "latest"
   },
   "devDependencies": {

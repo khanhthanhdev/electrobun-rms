@@ -5,6 +5,7 @@ import type {
   InspectionTeamsResponse,
 } from "../../../shared/types/inspection";
 import { fetchInspectionTeams } from "../services/inspection-service";
+import { useRealtimeRefresh } from "./use-realtime-refresh";
 
 interface UseInspectionTeamsResult {
   error: string | null;
@@ -37,6 +38,8 @@ export const useInspectionTeams = (
   const refreshTeams = useCallback((): void => {
     setRefreshTick((t) => t + 1);
   }, []);
+
+  useRealtimeRefresh(eventCode, token, refreshTeams);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshTick is an intentional re-fetch trigger
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import "../../app/styles/components/inspection.css";
+import { useInspectionRealtime } from "../../features/inspection/hooks/use-inspection-realtime";
 import { useInspectionTeams } from "../../features/inspection/hooks/use-inspection-teams";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 import type { InspectionStatus } from "../../shared/types/inspection";
@@ -29,6 +30,8 @@ export const InspectionTeamsPage = ({
   onNavigate,
   token,
 }: InspectionTeamsPageProps): JSX.Element => {
+  useInspectionRealtime(eventCode, token);
+
   const {
     error,
     isLoading,

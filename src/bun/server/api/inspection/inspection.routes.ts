@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
 import { ServiceError } from "../../services/manual-event-service";
 import { requireAuth } from "../auth/auth.middleware";
@@ -23,6 +24,12 @@ import {
   updateInspectionItems,
   updateInspectionStatus,
 } from "./inspection.service";
+import {
+  createInspectionSnapshotHintEvent,
+  INSPECTION_SYNC_EVENT_NAME,
+  type InspectionSyncEvent,
+  inspectionSyncHub,
+} from "./inspection-sync";
 
 export const inspectionRoutes = new Hono<AppEnv>();
 
@@ -36,6 +43,21 @@ const parseTeamNumberParam = (
   return { teamNumber: parsed };
 };
 
+const SSE_RETRY_MS = 2000;
+const SSE_HEARTBEAT_MS = 20_000;
+
+const writeInspectionSyncEvent = async (
+  stream: SSEStreamingApi,
+  event: InspectionSyncEvent
+): Promise<void> => {
+  await stream.writeSSE({
+    data: JSON.stringify(event),
+    event: INSPECTION_SYNC_EVENT_NAME,
+    id: `${event.eventCode}:${event.version}`,
+    retry: SSE_RETRY_MS,
+  });
+};
+
 inspectionRoutes.get("/:eventCode/inspection/checklist", requireAuth, (c) => {
   const eventCode = c.req.param("eventCode");
   const forbiddenResponse = requireInspector(c, eventCode);
@@ -44,6 +66,74 @@ inspectionRoutes.get("/:eventCode/inspection/checklist", requireAuth, (c) => {
   }
 
   return c.json(getChecklist());
+});
+
+inspectionRoutes.get("/:eventCode/inspection/stream", requireAuth, (c) => {
+  const eventCode = c.req.param("eventCode");
+  const forbiddenResponse = requireInspector(c, eventCode);
+  if (forbiddenResponse) {
+    return forbiddenResponse;
+  }
+
+  return streamSSE(c, async (stream) => {
+    let queuedWrite = Promise.resolve();
+
+    const enqueueWrite = (
+      writeOperation: (streamApi: SSEStreamingApi) => Promise<void>
+    ): void => {
+      queuedWrite = queuedWrite
+        .then(async () => {
+          if (stream.aborted || stream.closed) {
+            return;
+          }
+          await writeOperation(stream);
+        })
+        .catch(() => {
+          // Ignore write failures after disconnect.
+        });
+    };
+
+    const snapshotEvent = createInspectionSnapshotHintEvent(
+      eventCode,
+      inspectionSyncHub.getCurrentVersion(eventCode)
+    );
+    enqueueWrite((streamApi) =>
+      writeInspectionSyncEvent(streamApi, snapshotEvent)
+    );
+
+    const unsubscribe = inspectionSyncHub.subscribe(eventCode, (event) => {
+      enqueueWrite((streamApi) => writeInspectionSyncEvent(streamApi, event));
+    });
+
+    const heartbeatIntervalId = setInterval(() => {
+      enqueueWrite(async (streamApi) => {
+        await streamApi.write(": heartbeat\n\n");
+      });
+    }, SSE_HEARTBEAT_MS);
+
+    let isCleanedUp = false;
+    const cleanup = (): void => {
+      if (isCleanedUp) {
+        return;
+      }
+      isCleanedUp = true;
+      clearInterval(heartbeatIntervalId);
+      unsubscribe();
+    };
+
+    stream.onAbort(() => {
+      cleanup();
+    });
+
+    try {
+      while (!stream.aborted) {
+        await stream.sleep(1000);
+      }
+    } finally {
+      cleanup();
+      await queuedWrite;
+    }
+  });
 });
 
 inspectionRoutes.get("/:eventCode/inspection/teams", requireAuth, (c) => {
@@ -148,6 +238,11 @@ inspectionRoutes.patch(
         teamNumberResult.teamNumber,
         bodyResult.output.items
       );
+      inspectionSyncHub.publish({
+        eventCode,
+        kind: "ITEMS_UPDATED",
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json(detail);
     } catch (error) {
       if (error instanceof ServiceError) {
@@ -206,6 +301,11 @@ inspectionRoutes.patch(
         bodyResult.output.status,
         auth.sub
       );
+      inspectionSyncHub.publish({
+        eventCode,
+        kind: "STATUS_UPDATED",
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json(detail);
     } catch (error) {
       if (error instanceof ServiceError) {
@@ -262,6 +362,11 @@ inspectionRoutes.post(
         teamNumberResult.teamNumber,
         bodyResult.output.comment
       );
+      inspectionSyncHub.publish({
+        eventCode,
+        kind: "COMMENT_UPDATED",
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json({ success: true });
     } catch (error) {
       if (error instanceof ServiceError) {
@@ -359,6 +464,11 @@ inspectionRoutes.post(
         bodyResult.output.comment,
         auth.sub
       );
+      inspectionSyncHub.publish({
+        eventCode,
+        kind: "OVERRIDE_APPLIED",
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json(detail);
     } catch (error) {
       if (error instanceof ServiceError) {

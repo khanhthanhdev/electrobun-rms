@@ -2,6 +2,9 @@
 
 ## Overview
 
+For realtime sync architecture and extension guidelines, see:
+- [Realtime Sync Architecture (Inspection Foundation)](./realtime-sync-architecture.md)
+
 The **Robot Inspection** feature is a comprehensive system for managing event robot inspections. It allows inspectors to systematically verify robot compliance using a structured checklist, track progress, manage inspection statuses, and maintain audit trails. The system supports multiple checklist versions, role-based access control, and provides both internal inspector views and public audience displays.
 
 ---

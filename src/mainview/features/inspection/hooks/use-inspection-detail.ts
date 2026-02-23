@@ -10,6 +10,7 @@ import {
   patchInspectionStatus,
   postInspectionComment,
 } from "../services/inspection-service";
+import { useRealtimeRefresh } from "./use-realtime-refresh";
 
 interface UseInspectionDetailResult {
   data: InspectionDetailResponse | null;
@@ -42,6 +43,8 @@ export const useInspectionDetail = (
   const refreshDetail = useCallback((): void => {
     setRefreshTick((t) => t + 1);
   }, []);
+
+  useRealtimeRefresh(eventCode, token, refreshDetail);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshTick is an intentional re-fetch trigger
   useEffect(() => {

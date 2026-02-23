@@ -107,3 +107,18 @@ export interface InspectionHistoryResponse {
   history: InspectionHistoryEntry[];
   teamNumber: number;
 }
+
+export type InspectionRealtimeChangeKind =
+  | "ITEMS_UPDATED"
+  | "STATUS_UPDATED"
+  | "COMMENT_UPDATED"
+  | "OVERRIDE_APPLIED"
+  | "SNAPSHOT_HINT";
+
+export interface InspectionRealtimeChangeEvent {
+  changedAt: string;
+  eventCode: string;
+  kind: InspectionRealtimeChangeKind;
+  teamNumber: number | null;
+  version: number;
+}

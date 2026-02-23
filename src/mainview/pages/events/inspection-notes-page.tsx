@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "../../app/styles/components/inspection.css";
+import { useInspectionRealtime } from "../../features/inspection/hooks/use-inspection-realtime";
 import { useInspectionTeams } from "../../features/inspection/hooks/use-inspection-teams";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 
@@ -14,6 +15,8 @@ export const InspectionNotesPage = ({
   onNavigate,
   token,
 }: InspectionNotesPageProps): JSX.Element => {
+  useInspectionRealtime(eventCode, token);
+
   const { error, isLoading, teams } = useInspectionTeams(eventCode, token);
   const [isCondensed, setIsCondensed] = useState(false);
 
