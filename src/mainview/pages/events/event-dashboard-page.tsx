@@ -48,11 +48,11 @@ const buildDashboardSections = (eventCode: string): DashboardSection[] => [
       },
       {
         label: "Practice Match Schedule",
-        path: `/event/${eventCode}/dashboard/practice-schedule`,
+        path: `/event/${eventCode}/dashboard/schedule/practice`,
       },
       {
         label: "Qualification Match Schedule",
-        path: `/event/${eventCode}/dashboard/qualification-schedule`,
+        path: `/event/${eventCode}/dashboard/schedule/quals`,
       },
     ],
   },

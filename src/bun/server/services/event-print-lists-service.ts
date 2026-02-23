@@ -67,11 +67,9 @@ interface MatchRow {
 }
 
 interface MatchFallbackRow {
-  blue1: number;
-  blue2: number;
+  blue: number;
   matchNumber: number;
-  red1: number;
-  red2: number;
+  red: number;
 }
 
 interface ScheduleRow {
@@ -252,7 +250,7 @@ const listMatches = (eventDb: Database): PrintableMatchItem[] => {
   if (tableExists(eventDb, "quals")) {
     const rows = eventDb
       .query(
-        "SELECT match AS matchNumber, red1 AS red1, red2 AS red2, blue1 AS blue1, blue2 AS blue2 FROM quals ORDER BY match ASC"
+        "SELECT match AS matchNumber, red AS red, blue AS blue FROM quals ORDER BY match ASC"
       )
       .all() as MatchFallbackRow[];
 
@@ -262,7 +260,7 @@ const listMatches = (eventDb: Database): PrintableMatchItem[] => {
       fieldType: 0,
       redScore: 0,
       blueScore: 0,
-      startTime: `Red: ${row.red1}/${row.red2} Blue: ${row.blue1}/${row.blue2}`,
+      startTime: `Red: ${row.red} Blue: ${row.blue}`,
     }));
   }
 

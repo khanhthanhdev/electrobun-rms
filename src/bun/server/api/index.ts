@@ -3,6 +3,7 @@ import { authRoutes } from "./auth/auth.routes";
 import type { AppEnv } from "./common/app-env";
 import { eventsRoutes } from "./events/events.routes";
 import { inspectionRoutes } from "./inspection/inspection.routes";
+import { scheduleRoutes } from "./schedule/schedule.routes";
 import { teamsRoutes } from "./teams/teams.routes";
 import { usersRoutes } from "./users/users.routes";
 
@@ -11,6 +12,7 @@ const api = new Hono<AppEnv>();
 api.route("/auth", authRoutes);
 api.route("/events", eventsRoutes);
 api.route("/events", inspectionRoutes);
+api.route("/events", scheduleRoutes);
 api.route("/events", teamsRoutes);
 api.route("/users", usersRoutes);
 

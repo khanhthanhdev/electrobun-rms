@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "../../app/styles/components/inspection.css";
-import { useInspectionRealtime } from "../../features/inspection/hooks/use-inspection-realtime";
-import { useInspectionTeams } from "../../features/inspection/hooks/use-inspection-teams";
+import { useInspectionRealtime } from "../../../features/inspection/hooks/use-inspection-realtime";
+import { useInspectionTeams } from "../../../features/inspection/hooks/use-inspection-teams";
 import {
   patchInspectionStatus,
   postInspectionOverride,
-} from "../../features/inspection/services/inspection-service";
-import { LoadingIndicator } from "../../shared/components/loading-indicator";
-import type { InspectionStatus } from "../../shared/types/inspection";
+} from "../../../features/inspection/services/inspection-service";
+import { LoadingIndicator } from "../../../shared/components/loading-indicator";
+import type { InspectionStatus } from "../../../shared/types/inspection";
 
 interface InspectionEventOverridePageProps {
   eventCode: string;

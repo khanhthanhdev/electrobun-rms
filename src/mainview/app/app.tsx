@@ -18,6 +18,10 @@ const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
 const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
 const EVENT_REPORTS_PATTERN = /^\/event\/([^/]+)\/dashboard\/reports\/?$/;
 const EVENT_TEAMS_PATTERN = /^\/event\/([^/]+)\/dashboard\/teams\/?$/;
+const PRACTICE_SCHEDULE_PATTERN =
+  /^\/event\/([^/]+)\/dashboard\/schedule\/practice\/?$/;
+const QUALIFICATION_SCHEDULE_PATTERN =
+  /^\/event\/([^/]+)\/dashboard\/schedule\/quals\/?$/;
 const DEFAULT_ACCOUNTS_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
 const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
@@ -79,6 +83,18 @@ const TeamsPage = lazy(() =>
     default: module.TeamsPage,
   }))
 );
+const PracticeSchedulePage = lazy(() =>
+  import("../pages/events/schedule/practice-schedule-page").then((module) => ({
+    default: module.PracticeSchedulePage,
+  }))
+);
+const QualificationSchedulePage = lazy(() =>
+  import("../pages/events/schedule/qualification-schedule-page").then(
+    (module) => ({
+      default: module.QualificationSchedulePage,
+    })
+  )
+);
 const HomePage = lazy(() =>
   import("../pages/home/home-page").then((module) => ({
     default: module.HomePage,
@@ -95,22 +111,26 @@ const ManageUserPage = lazy(() =>
   }))
 );
 const InspectionDetailPage = lazy(() =>
-  import("../pages/events/inspection-detail-page").then((module) => ({
-    default: module.InspectionDetailPage,
-  }))
+  import("../pages/events/inspection/inspection-detail-page").then(
+    (module) => ({
+      default: module.InspectionDetailPage,
+    })
+  )
 );
 const InspectionEventOverridePage = lazy(() =>
-  import("../pages/events/inspection-event-override-page").then((module) => ({
-    default: module.InspectionEventOverridePage,
-  }))
+  import("../pages/events/inspection/inspection-event-override-page").then(
+    (module) => ({
+      default: module.InspectionEventOverridePage,
+    })
+  )
 );
 const InspectionNotesPage = lazy(() =>
-  import("../pages/events/inspection-notes-page").then((module) => ({
+  import("../pages/events/inspection/inspection-notes-page").then((module) => ({
     default: module.InspectionNotesPage,
   }))
 );
 const InspectionTeamsPage = lazy(() =>
-  import("../pages/events/inspection-teams-page").then((module) => ({
+  import("../pages/events/inspection/inspection-teams-page").then((module) => ({
     default: module.InspectionTeamsPage,
   }))
 );
@@ -343,6 +363,30 @@ const resolveEventScopedAdminRoute = ({
   };
 };
 
+const resolveEventScopedAdminMatch = (
+  match: RegExpExecArray | null,
+  isAuthLoading: boolean,
+  user: AuthUser | null
+): EventScopedAdminRouteResolution | null => {
+  if (!match) {
+    return null;
+  }
+
+  return resolveEventScopedAdminRoute({
+    encodedEventCode: match[1],
+    isAuthLoading,
+    user,
+  });
+};
+
+const renderEventScopedAdminRoute = (
+  routeResolution: EventScopedAdminRouteResolution,
+  renderAllowedPage: (eventCode: string) => JSX.Element
+): JSX.Element =>
+  routeResolution.kind === "blocked"
+    ? routeResolution.page
+    : renderAllowedPage(routeResolution.eventCode);
+
 interface EventScopedAdminRoutesPageProps {
   defaultAccountsMatch: RegExpExecArray | null;
   editEventMatch: RegExpExecArray | null;
@@ -352,6 +396,8 @@ interface EventScopedAdminRoutesPageProps {
   eventTeamsMatch: RegExpExecArray | null;
   isAuthLoading: boolean;
   isEventsLoading: boolean;
+  practiceScheduleMatch: RegExpExecArray | null;
+  qualificationScheduleMatch: RegExpExecArray | null;
   token: string | null;
   user: AuthUser | null;
 }
@@ -362,90 +408,107 @@ const EventScopedAdminRoutesPage = ({
   eventDashboardMatch,
   eventReportsMatch,
   eventTeamsMatch,
+  practiceScheduleMatch,
+  qualificationScheduleMatch,
   events,
   isAuthLoading,
   isEventsLoading,
   token,
   user,
 }: EventScopedAdminRoutesPageProps): JSX.Element | null => {
-  if (editEventMatch) {
-    const routeResolution = resolveEventScopedAdminRoute({
-      encodedEventCode: editEventMatch[1],
-      isAuthLoading,
-      user,
-    });
-    if (routeResolution.kind === "blocked") {
-      return routeResolution.page;
-    }
-
-    return (
-      <EditEventPage eventCode={routeResolution.eventCode} token={token} />
+  const editRouteResolution = resolveEventScopedAdminMatch(
+    editEventMatch,
+    isAuthLoading,
+    user
+  );
+  if (editRouteResolution) {
+    return renderEventScopedAdminRoute(
+      editRouteResolution,
+      (resolvedEventCode) => (
+        <EditEventPage eventCode={resolvedEventCode} token={token} />
+      )
     );
   }
 
-  if (eventDashboardMatch) {
-    const routeResolution = resolveEventScopedAdminRoute({
-      encodedEventCode: eventDashboardMatch[1],
-      isAuthLoading,
-      user,
-    });
-    if (routeResolution.kind === "blocked") {
-      return routeResolution.page;
-    }
-
-    return (
-      <EventDashboardPage
-        eventCode={routeResolution.eventCode}
-        events={events}
-        isEventsLoading={isEventsLoading}
-        user={user}
-      />
+  const dashboardRouteResolution = resolveEventScopedAdminMatch(
+    eventDashboardMatch,
+    isAuthLoading,
+    user
+  );
+  if (dashboardRouteResolution) {
+    return renderEventScopedAdminRoute(
+      dashboardRouteResolution,
+      (resolvedEventCode) => (
+        <EventDashboardPage
+          eventCode={resolvedEventCode}
+          events={events}
+          isEventsLoading={isEventsLoading}
+          user={user}
+        />
+      )
     );
   }
 
-  if (eventReportsMatch) {
-    const routeResolution = resolveEventScopedAdminRoute({
-      encodedEventCode: eventReportsMatch[1],
-      isAuthLoading,
-      user,
-    });
-    if (routeResolution.kind === "blocked") {
-      return routeResolution.page;
-    }
-
-    return (
-      <EventReportsPage eventCode={routeResolution.eventCode} token={token} />
+  const reportsRouteResolution = resolveEventScopedAdminMatch(
+    eventReportsMatch,
+    isAuthLoading,
+    user
+  );
+  if (reportsRouteResolution) {
+    return renderEventScopedAdminRoute(
+      reportsRouteResolution,
+      (resolvedEventCode) => (
+        <EventReportsPage eventCode={resolvedEventCode} token={token} />
+      )
     );
   }
 
-  if (eventTeamsMatch) {
-    const routeResolution = resolveEventScopedAdminRoute({
-      encodedEventCode: eventTeamsMatch[1],
-      isAuthLoading,
-      user,
-    });
-    if (routeResolution.kind === "blocked") {
-      return routeResolution.page;
-    }
-
-    return <TeamsPage eventCode={routeResolution.eventCode} token={token} />;
+  const teamsRouteResolution = resolveEventScopedAdminMatch(
+    eventTeamsMatch,
+    isAuthLoading,
+    user
+  );
+  if (teamsRouteResolution) {
+    return renderEventScopedAdminRoute(
+      teamsRouteResolution,
+      (resolvedEventCode) => (
+        <TeamsPage eventCode={resolvedEventCode} token={token} />
+      )
+    );
   }
 
-  if (defaultAccountsMatch) {
-    const routeResolution = resolveEventScopedAdminRoute({
-      encodedEventCode: defaultAccountsMatch[1],
-      isAuthLoading,
-      user,
-    });
-    if (routeResolution.kind === "blocked") {
-      return routeResolution.page;
-    }
+  const scheduleMatch = practiceScheduleMatch ?? qualificationScheduleMatch;
+  const scheduleRouteResolution = resolveEventScopedAdminMatch(
+    scheduleMatch,
+    isAuthLoading,
+    user
+  );
+  if (scheduleRouteResolution) {
+    return renderEventScopedAdminRoute(
+      scheduleRouteResolution,
+      (resolvedEventCode) =>
+        practiceScheduleMatch ? (
+          <PracticeSchedulePage eventCode={resolvedEventCode} token={token} />
+        ) : (
+          <QualificationSchedulePage
+            eventCode={resolvedEventCode}
+            token={token}
+          />
+        )
+    );
+  }
 
-    return (
-      <DefaultAccountsPage
-        eventCode={routeResolution.eventCode}
-        token={token}
-      />
+  const defaultAccountsRouteResolution = resolveEventScopedAdminMatch(
+    defaultAccountsMatch,
+    isAuthLoading,
+    user
+  );
+  if (defaultAccountsRouteResolution) {
+    return renderEventScopedAdminRoute(
+      defaultAccountsRouteResolution,
+      (resolvedEventCode) => (
+        <DefaultAccountsPage eventCode={resolvedEventCode} token={token} />
+      )
     );
   }
 
@@ -467,6 +530,8 @@ interface AdminRoutesPageProps {
   isManageServerPage: boolean;
   isManageUsersPage: boolean;
   manageUserDetailMatch: RegExpExecArray | null;
+  practiceScheduleMatch: RegExpExecArray | null;
+  qualificationScheduleMatch: RegExpExecArray | null;
   token: string | null;
   user: AuthUser | null;
 }
@@ -477,6 +542,8 @@ const AdminRoutesPage = ({
   eventDashboardMatch,
   eventReportsMatch,
   eventTeamsMatch,
+  practiceScheduleMatch,
+  qualificationScheduleMatch,
   events,
   isAdminUser,
   isAuthLoading,
@@ -551,6 +618,8 @@ const AdminRoutesPage = ({
       eventTeamsMatch={eventTeamsMatch}
       isAuthLoading={isAuthLoading}
       isEventsLoading={isEventsLoading}
+      practiceScheduleMatch={practiceScheduleMatch}
+      qualificationScheduleMatch={qualificationScheduleMatch}
       token={token}
       user={user}
     />
@@ -604,6 +673,9 @@ const AppRouteContent = ({
   const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
   const eventReportsMatch = EVENT_REPORTS_PATTERN.exec(currentPath);
   const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
+  const practiceScheduleMatch = PRACTICE_SCHEDULE_PATTERN.exec(currentPath);
+  const qualificationScheduleMatch =
+    QUALIFICATION_SCHEDULE_PATTERN.exec(currentPath);
   const eventDetailMatch = EVENT_DETAIL_PATTERN.exec(currentPath);
   const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
   const inspectionTeamsMatch = INSPECTION_TEAMS_PATTERN.exec(currentPath);
@@ -622,6 +694,8 @@ const AppRouteContent = ({
     Boolean(eventDashboardMatch) ||
     Boolean(eventReportsMatch) ||
     Boolean(eventTeamsMatch) ||
+    Boolean(practiceScheduleMatch) ||
+    Boolean(qualificationScheduleMatch) ||
     Boolean(defaultAccountsMatch);
 
   if (hasAdminRoute) {
@@ -641,6 +715,8 @@ const AppRouteContent = ({
         isManageServerPage={isManageServerPage}
         isManageUsersPage={isManageUsersPage}
         manageUserDetailMatch={manageUserDetailMatch}
+        practiceScheduleMatch={practiceScheduleMatch}
+        qualificationScheduleMatch={qualificationScheduleMatch}
         token={token}
         user={user}
       />
