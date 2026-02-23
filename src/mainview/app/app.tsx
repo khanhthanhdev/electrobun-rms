@@ -22,6 +22,10 @@ const PRACTICE_SCHEDULE_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/schedule\/practice\/?$/;
 const QUALIFICATION_SCHEDULE_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/schedule\/quals\/?$/;
+const PUBLIC_PRACTICE_SCHEDULE_PATTERN = /^\/event\/([^/]+)\/practice\/?$/;
+const PUBLIC_QUALIFICATION_SCHEDULE_PATTERN = /^\/event\/([^/]+)\/qual\/?$/;
+const PUBLIC_QUALIFICATION_RANKINGS_PATTERN =
+  /^\/event\/([^/]+)\/qualification\/rankings\/?$/;
 const DEFAULT_ACCOUNTS_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
 const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
@@ -92,6 +96,27 @@ const QualificationSchedulePage = lazy(() =>
   import("../pages/events/schedule/qualification-schedule-page").then(
     (module) => ({
       default: module.QualificationSchedulePage,
+    })
+  )
+);
+const PracticeScheduleViewPage = lazy(() =>
+  import("../pages/events/schedule/practice-schedule-view-page").then(
+    (module) => ({
+      default: module.PracticeScheduleViewPage,
+    })
+  )
+);
+const QualificationScheduleViewPage = lazy(() =>
+  import("../pages/events/schedule/qualification-schedule-view-page").then(
+    (module) => ({
+      default: module.QualificationScheduleViewPage,
+    })
+  )
+);
+const QualificationRankingsViewPage = lazy(() =>
+  import("../pages/events/ranking/qualification-rankings-view-page").then(
+    (module) => ({
+      default: module.QualificationRankingsViewPage,
     })
   )
 );
@@ -640,89 +665,73 @@ interface AppRouteContentProps {
   user: AuthUser | null;
 }
 
-const AppRouteContent = ({
-  currentPath,
-  errorMessage,
-  events,
-  handleLoginSubmit,
-  isAdminUser,
-  isAuthLoading,
-  isEventsLoading,
-  isLoginSubmitting,
+interface PublicScheduleRoutePageArgs {
+  publicPracticeScheduleMatch: RegExpExecArray | null;
+  publicQualificationScheduleMatch: RegExpExecArray | null;
+  token: string | null;
+}
+
+const renderPublicScheduleRoutePage = ({
+  publicPracticeScheduleMatch,
+  publicQualificationScheduleMatch,
+  token,
+}: PublicScheduleRoutePageArgs): JSX.Element | null => {
+  const publicScheduleMatch =
+    publicPracticeScheduleMatch ?? publicQualificationScheduleMatch;
+  if (!publicScheduleMatch) {
+    return null;
+  }
+
+  const eventCode = decodePathSegment(publicScheduleMatch[1]);
+  if (eventCode === null) {
+    return <RouteErrorPage message="Invalid event code in URL." />;
+  }
+
+  return publicPracticeScheduleMatch ? (
+    <PracticeScheduleViewPage eventCode={eventCode} token={token} />
+  ) : (
+    <QualificationScheduleViewPage eventCode={eventCode} token={token} />
+  );
+};
+
+interface PublicQualificationRankingsRoutePageArgs {
+  publicQualificationRankingsMatch: RegExpExecArray | null;
+  token: string | null;
+}
+
+const renderPublicQualificationRankingsRoutePage = ({
+  publicQualificationRankingsMatch,
+  token,
+}: PublicQualificationRankingsRoutePageArgs): JSX.Element | null => {
+  if (!publicQualificationRankingsMatch) {
+    return null;
+  }
+
+  const eventCode = decodePathSegment(publicQualificationRankingsMatch[1]);
+  if (eventCode === null) {
+    return <RouteErrorPage message="Invalid event code in URL." />;
+  }
+
+  return <QualificationRankingsViewPage eventCode={eventCode} token={token} />;
+};
+
+interface InspectionRoutePageArgs {
+  inspectionDetailMatch: RegExpExecArray | null;
+  inspectionEventOverrideMatch: RegExpExecArray | null;
+  inspectionNotesMatch: RegExpExecArray | null;
+  inspectionTeamsMatch: RegExpExecArray | null;
+  onNavigate: (path: string) => void;
+  token: string | null;
+}
+
+const renderInspectionRoutePage = ({
+  inspectionDetailMatch,
+  inspectionEventOverrideMatch,
+  inspectionNotesMatch,
+  inspectionTeamsMatch,
   onNavigate,
   token,
-  user,
-}: AppRouteContentProps): JSX.Element => {
-  if (currentPath === "/login") {
-    return (
-      <LoginForm
-        errorMessage={errorMessage}
-        isSubmitting={isLoginSubmitting}
-        onSubmit={handleLoginSubmit}
-      />
-    );
-  }
-
-  const isCreateEventPage = CREATE_EVENT_PATTERN.test(currentPath);
-  const isCreateAccountPage = CREATE_ACCOUNT_PATTERN.test(currentPath);
-  const isManageUsersPage = MANAGE_USERS_PATTERN.test(currentPath);
-  const isManageServerPage = MANAGE_SERVER_PATTERN.test(currentPath);
-
-  const manageUserDetailMatch = MANAGE_USER_DETAIL_PATTERN.exec(currentPath);
-  const editEventMatch = EDIT_EVENT_PATTERN.exec(currentPath);
-  const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
-  const eventReportsMatch = EVENT_REPORTS_PATTERN.exec(currentPath);
-  const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
-  const practiceScheduleMatch = PRACTICE_SCHEDULE_PATTERN.exec(currentPath);
-  const qualificationScheduleMatch =
-    QUALIFICATION_SCHEDULE_PATTERN.exec(currentPath);
-  const eventDetailMatch = EVENT_DETAIL_PATTERN.exec(currentPath);
-  const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
-  const inspectionTeamsMatch = INSPECTION_TEAMS_PATTERN.exec(currentPath);
-  const inspectionNotesMatch = INSPECTION_NOTES_PATTERN.exec(currentPath);
-  const inspectionDetailMatch = INSPECTION_DETAIL_PATTERN.exec(currentPath);
-  const inspectionEventOverrideMatch =
-    INSPECTION_EVENT_OVERRIDE_PATTERN.exec(currentPath);
-
-  const hasAdminRoute =
-    isCreateEventPage ||
-    isCreateAccountPage ||
-    isManageUsersPage ||
-    Boolean(manageUserDetailMatch) ||
-    isManageServerPage ||
-    Boolean(editEventMatch) ||
-    Boolean(eventDashboardMatch) ||
-    Boolean(eventReportsMatch) ||
-    Boolean(eventTeamsMatch) ||
-    Boolean(practiceScheduleMatch) ||
-    Boolean(qualificationScheduleMatch) ||
-    Boolean(defaultAccountsMatch);
-
-  if (hasAdminRoute) {
-    return (
-      <AdminRoutesPage
-        defaultAccountsMatch={defaultAccountsMatch}
-        editEventMatch={editEventMatch}
-        eventDashboardMatch={eventDashboardMatch}
-        eventReportsMatch={eventReportsMatch}
-        events={events}
-        eventTeamsMatch={eventTeamsMatch}
-        isAdminUser={isAdminUser}
-        isAuthLoading={isAuthLoading}
-        isCreateAccountPage={isCreateAccountPage}
-        isCreateEventPage={isCreateEventPage}
-        isEventsLoading={isEventsLoading}
-        isManageServerPage={isManageServerPage}
-        isManageUsersPage={isManageUsersPage}
-        manageUserDetailMatch={manageUserDetailMatch}
-        practiceScheduleMatch={practiceScheduleMatch}
-        qualificationScheduleMatch={qualificationScheduleMatch}
-        token={token}
-        user={user}
-      />
-    );
-  }
-
+}: InspectionRoutePageArgs): JSX.Element | null => {
   if (inspectionEventOverrideMatch) {
     const eventCode = decodePathSegment(inspectionEventOverrideMatch[1]);
     if (eventCode === null) {
@@ -779,6 +788,128 @@ const AppRouteContent = ({
         token={token}
       />
     );
+  }
+
+  return null;
+};
+
+const AppRouteContent = ({
+  currentPath,
+  errorMessage,
+  events,
+  handleLoginSubmit,
+  isAdminUser,
+  isAuthLoading,
+  isEventsLoading,
+  isLoginSubmitting,
+  onNavigate,
+  token,
+  user,
+}: AppRouteContentProps): JSX.Element => {
+  if (currentPath === "/login") {
+    return (
+      <LoginForm
+        errorMessage={errorMessage}
+        isSubmitting={isLoginSubmitting}
+        onSubmit={handleLoginSubmit}
+      />
+    );
+  }
+
+  const isCreateEventPage = CREATE_EVENT_PATTERN.test(currentPath);
+  const isCreateAccountPage = CREATE_ACCOUNT_PATTERN.test(currentPath);
+  const isManageUsersPage = MANAGE_USERS_PATTERN.test(currentPath);
+  const isManageServerPage = MANAGE_SERVER_PATTERN.test(currentPath);
+
+  const manageUserDetailMatch = MANAGE_USER_DETAIL_PATTERN.exec(currentPath);
+  const editEventMatch = EDIT_EVENT_PATTERN.exec(currentPath);
+  const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
+  const eventReportsMatch = EVENT_REPORTS_PATTERN.exec(currentPath);
+  const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
+  const practiceScheduleMatch = PRACTICE_SCHEDULE_PATTERN.exec(currentPath);
+  const qualificationScheduleMatch =
+    QUALIFICATION_SCHEDULE_PATTERN.exec(currentPath);
+  const publicPracticeScheduleMatch =
+    PUBLIC_PRACTICE_SCHEDULE_PATTERN.exec(currentPath);
+  const publicQualificationScheduleMatch =
+    PUBLIC_QUALIFICATION_SCHEDULE_PATTERN.exec(currentPath);
+  const publicQualificationRankingsMatch =
+    PUBLIC_QUALIFICATION_RANKINGS_PATTERN.exec(currentPath);
+  const eventDetailMatch = EVENT_DETAIL_PATTERN.exec(currentPath);
+  const defaultAccountsMatch = DEFAULT_ACCOUNTS_PATTERN.exec(currentPath);
+  const inspectionTeamsMatch = INSPECTION_TEAMS_PATTERN.exec(currentPath);
+  const inspectionNotesMatch = INSPECTION_NOTES_PATTERN.exec(currentPath);
+  const inspectionDetailMatch = INSPECTION_DETAIL_PATTERN.exec(currentPath);
+  const inspectionEventOverrideMatch =
+    INSPECTION_EVENT_OVERRIDE_PATTERN.exec(currentPath);
+
+  const hasAdminRoute =
+    isCreateEventPage ||
+    isCreateAccountPage ||
+    isManageUsersPage ||
+    Boolean(manageUserDetailMatch) ||
+    isManageServerPage ||
+    Boolean(editEventMatch) ||
+    Boolean(eventDashboardMatch) ||
+    Boolean(eventReportsMatch) ||
+    Boolean(eventTeamsMatch) ||
+    Boolean(practiceScheduleMatch) ||
+    Boolean(qualificationScheduleMatch) ||
+    Boolean(defaultAccountsMatch);
+
+  if (hasAdminRoute) {
+    return (
+      <AdminRoutesPage
+        defaultAccountsMatch={defaultAccountsMatch}
+        editEventMatch={editEventMatch}
+        eventDashboardMatch={eventDashboardMatch}
+        eventReportsMatch={eventReportsMatch}
+        events={events}
+        eventTeamsMatch={eventTeamsMatch}
+        isAdminUser={isAdminUser}
+        isAuthLoading={isAuthLoading}
+        isCreateAccountPage={isCreateAccountPage}
+        isCreateEventPage={isCreateEventPage}
+        isEventsLoading={isEventsLoading}
+        isManageServerPage={isManageServerPage}
+        isManageUsersPage={isManageUsersPage}
+        manageUserDetailMatch={manageUserDetailMatch}
+        practiceScheduleMatch={practiceScheduleMatch}
+        qualificationScheduleMatch={qualificationScheduleMatch}
+        token={token}
+        user={user}
+      />
+    );
+  }
+
+  const publicScheduleRoutePage = renderPublicScheduleRoutePage({
+    publicPracticeScheduleMatch,
+    publicQualificationScheduleMatch,
+    token,
+  });
+  if (publicScheduleRoutePage) {
+    return publicScheduleRoutePage;
+  }
+
+  const publicQualificationRankingsRoutePage =
+    renderPublicQualificationRankingsRoutePage({
+      publicQualificationRankingsMatch,
+      token,
+    });
+  if (publicQualificationRankingsRoutePage) {
+    return publicQualificationRankingsRoutePage;
+  }
+
+  const inspectionRoutePage = renderInspectionRoutePage({
+    inspectionDetailMatch,
+    inspectionEventOverrideMatch,
+    inspectionNotesMatch,
+    inspectionTeamsMatch,
+    onNavigate,
+    token,
+  });
+  if (inspectionRoutePage) {
+    return inspectionRoutePage;
   }
 
   if (eventDetailMatch) {

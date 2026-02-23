@@ -1,26 +1,14 @@
-import {
-  type RefObject,
-  useCallback,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
-import {
-  type EventTeamItem,
-  fetchEventTeams,
-} from "../../../features/events/services/event-teams-service";
+import { type RefObject, useCallback, useReducer, useRef } from "react";
 import {
   clearQualificationSchedule,
   fetchQualificationSchedule,
   type GenerateQualificationSchedulePayload,
   generateQualificationSchedule,
-  printQualificationScheduleResults,
   type QualificationScheduleResponse,
   type SaveQualificationSchedulePayload,
   saveQualificationSchedule,
   setQualificationScheduleActivation,
 } from "../../../features/events/services/schedule/qualification-schedule-service";
-import type { PrintDestination } from "../../../shared/services/print-service";
 import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
 import {
   buildMatchesCsvFileContent,
@@ -52,22 +40,7 @@ interface QualificationSchedulePageProps {
 const DEFAULT_CYCLE_MINUTES = 4;
 const DEFAULT_FIELD_START_OFFSET_SECONDS = 15;
 
-type TeamNamesByNumber = Record<number, string>;
 type SetMessage = (message: string | null) => void;
-
-const buildTeamNamesByNumber = (teams: EventTeamItem[]): TeamNamesByNumber => {
-  const namesByNumber: TeamNamesByNumber = {};
-  for (const team of teams) {
-    const trimmedName = team.teamName.trim();
-    if (!trimmedName) {
-      continue;
-    }
-
-    namesByNumber[team.teamNumber] = trimmedName;
-  }
-
-  return namesByNumber;
-};
 
 interface QualificationState {
   fieldStartOffsetSeconds: number;
@@ -124,8 +97,7 @@ const mapCsvMatchesToQualificationMatches = (
   }));
 
 const mapQualsToMatchRows = (
-  schedule: QualificationScheduleResponse,
-  teamNamesByNumber: TeamNamesByNumber
+  schedule: QualificationScheduleResponse
 ): ScheduleMatchRow[] =>
   schedule.matches.map((match) => ({
     matchNumber: match.matchNumber,
@@ -134,10 +106,8 @@ const mapQualsToMatchRows = (
     fieldNumber:
       ((match.matchNumber - 1) % (schedule.config.fieldCount || 1)) + 1,
     redTeam: match.redTeam,
-    redTeamName: match.redTeamName ?? teamNamesByNumber[match.redTeam],
     redSurrogate: match.redSurrogate,
     blueTeam: match.blueTeam,
-    blueTeamName: match.blueTeamName ?? teamNamesByNumber[match.blueTeam],
     blueSurrogate: match.blueSurrogate,
   }));
 
@@ -213,12 +183,12 @@ const QualificationFieldStartOffsetControl = ({
 interface CreateQualificationScheduleActionHandlersArgs {
   dispatch: (action: QualificationAction) => void;
   eventCode: string;
-  exportRows: ScheduleMatchRow[];
   fieldStartOffsetSeconds: number;
   fileInputRef: RefObject<HTMLInputElement>;
   hasMatches: boolean;
   isActive: boolean;
   matchBlocks: MatchBlockState[];
+  schedule: QualificationScheduleResponse | null;
   scheduleDate: string;
   setErrorMessage: SetMessage;
   setSuccessMessage: SetMessage;
@@ -236,12 +206,12 @@ interface QualificationScheduleActionHandlers {
 const createQualificationScheduleActionHandlers = ({
   dispatch,
   eventCode,
-  exportRows,
   fieldStartOffsetSeconds,
   fileInputRef,
   hasMatches,
   isActive,
   matchBlocks,
+  schedule,
   scheduleDate,
   setErrorMessage,
   setSuccessMessage,
@@ -313,7 +283,9 @@ const createQualificationScheduleActionHandlers = ({
   };
 
   const handleExportCsv = (): void => {
-    const csvContent = buildMatchesCsvFileContent(exportRows);
+    const csvContent = buildMatchesCsvFileContent(
+      schedule ? mapQualsToMatchRows(schedule) : []
+    );
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const objectUrl = URL.createObjectURL(blob);
     const linkElement = document.createElement("a");
@@ -417,18 +389,11 @@ const createQualificationScheduleActionHandlers = ({
   };
 };
 
-interface QualificationLoadContext {
-  teamNamesByNumber: TeamNamesByNumber;
-}
-
 export const QualificationSchedulePage = ({
   eventCode,
   token,
 }: QualificationSchedulePageProps): JSX.Element => {
   const [state, dispatch] = useReducer(qualificationReducer, initialState);
-  const [teamNamesByNumber, setTeamNamesByNumber] = useState<TeamNamesByNumber>(
-    {}
-  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -436,24 +401,13 @@ export const QualificationSchedulePage = ({
     async (
       currentEventCode: string,
       currentToken: string
-    ): Promise<
-      OneVsOneLoadResult<
-        QualificationScheduleResponse,
-        QualificationLoadContext
-      >
-    > => {
-      const [response, teamsResponse] = await Promise.all([
-        fetchQualificationSchedule(currentEventCode, currentToken),
-        fetchEventTeams(currentEventCode, currentToken, "").catch(() => ({
-          teams: [] as EventTeamItem[],
-        })),
-      ]);
-
+    ): Promise<OneVsOneLoadResult<QualificationScheduleResponse>> => {
+      const response = await fetchQualificationSchedule(
+        currentEventCode,
+        currentToken
+      );
       return {
         config: response.config,
-        context: {
-          teamNamesByNumber: buildTeamNamesByNumber(teamsResponse.teams),
-        },
         matchCount: response.matches.length,
         schedule: response,
         teamCount: computeQualificationTeamCount(response),
@@ -509,12 +463,7 @@ export const QualificationSchedulePage = ({
   );
 
   const handleLoadedSchedule = useCallback(
-    (
-      result: OneVsOneLoadResult<
-        QualificationScheduleResponse,
-        QualificationLoadContext
-      >
-    ): void => {
+    (result: OneVsOneLoadResult<QualificationScheduleResponse>): void => {
       dispatch({
         type: "SET_FIELD_START_OFFSET",
         payload:
@@ -522,7 +471,6 @@ export const QualificationSchedulePage = ({
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_SCHEDULE", payload: result.schedule });
-      setTeamNamesByNumber(result.context?.teamNamesByNumber ?? {});
     },
     []
   );
@@ -556,8 +504,7 @@ export const QualificationSchedulePage = ({
     teamCount,
   } = useOneVsOneScheduleController<
     QualificationScheduleResponse,
-    GenerateQualificationSchedulePayload,
-    QualificationLoadContext
+    GenerateQualificationSchedulePayload
   >({
     buildGeneratePayload,
     defaultCycleMinutes: DEFAULT_CYCLE_MINUTES,
@@ -597,19 +544,15 @@ export const QualificationSchedulePage = ({
     state.schedule?.metrics ?? EMPTY_ONE_VS_ONE_SCHEDULE_METRICS
   );
 
-  const tableRows = state.schedule
-    ? mapQualsToMatchRows(state.schedule, teamNamesByNumber)
-    : [];
-
   const actionHandlers = createQualificationScheduleActionHandlers({
     dispatch,
     eventCode,
-    exportRows: tableRows,
     fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
     fileInputRef,
     hasMatches,
     isActive,
     matchBlocks,
+    schedule: state.schedule,
     scheduleDate,
     setErrorMessage,
     setSuccessMessage,
@@ -617,32 +560,11 @@ export const QualificationSchedulePage = ({
     token,
   });
 
-  const handlePrintGeneratedMatches = useCallback(
-    (destination: PrintDestination): void => {
-      setErrorMessage(null);
-
-      try {
-        printQualificationScheduleResults({
-          destination,
-          eventCode,
-          rows: tableRows,
-        });
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to open print dialog."
-        );
-      }
-    },
-    [eventCode, setErrorMessage, tableRows]
-  );
-
   return (
     <OneVsOneScheduleView
       beforeGeneratedSection={
         <ScheduleCsvSection
-          description="Import or export schedule CSV using the table columns: Start Time, Match, Field, Red, Blue."
+          description="The qualification schedule can be imported from CSV using the same one-vs-one format as practice."
           fileInputRef={fileInputRef}
           hasMatches={hasMatches}
           importDisabled={state.isImporting}
@@ -671,13 +593,13 @@ export const QualificationSchedulePage = ({
       errorMessage={errorMessage}
       eventCode={eventCode}
       generatedEmptyMessage="No qualification matches available."
-      generatedMatches={tableRows}
+      generatedMatches={
+        state.schedule ? mapQualsToMatchRows(state.schedule) : []
+      }
       hasMatches={hasMatches}
-      isGeneratedPrintDisabled={!hasMatches}
       isLoading={isLoading}
       matchBlocks={matchBlocks}
       onMatchBlocksChange={setMatchBlocks}
-      onPrintGeneratedMatches={handlePrintGeneratedMatches}
       onScheduleDateChange={setScheduleDate}
       scheduleDate={scheduleDate}
       successMessage={successMessage}

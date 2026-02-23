@@ -4,6 +4,11 @@ import {
   type EventPrintListsResponse,
   getEventPrintLists,
 } from "../../services/event-print-lists-service";
+import {
+  type EventQualificationRankingsResponse,
+  getEventQualificationRankings,
+  recomputeEventQualificationRankings,
+} from "../../services/event-rankings-service";
 import type { ManualEventPayload } from "../../services/manual-event-service";
 import {
   createManualEvent,
@@ -32,6 +37,18 @@ export function listEventPrintLists(
   eventCode: string
 ): EventPrintListsResponse {
   return getEventPrintLists(eventCode);
+}
+
+export function listEventQualificationRankings(
+  eventCode: string
+): EventQualificationRankingsResponse {
+  return getEventQualificationRankings(eventCode);
+}
+
+export function rebuildEventQualificationRankings(
+  eventCode: string
+): EventQualificationRankingsResponse {
+  return recomputeEventQualificationRankings(eventCode);
 }
 
 export function getEvent(eventCode: string) {

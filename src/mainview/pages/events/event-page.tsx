@@ -45,19 +45,13 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
         {
           type: "category",
           label: "Practice",
-          items: [
-            { type: "item", label: "Schedule", path: "/practice/schedule" },
-          ],
+          items: [{ type: "item", label: "Schedule", path: "/practice" }],
         },
         {
           type: "category",
           label: "Qualification",
           items: [
-            {
-              type: "item",
-              label: "Schedule",
-              path: "/qualification/schedule",
-            },
+            { type: "item", label: "Schedule", path: "/qual" },
             {
               type: "item",
               label: "Rankings",
@@ -107,19 +101,13 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
         {
           type: "category",
           label: "Practice",
-          items: [
-            { type: "item", label: "Schedule", path: "/practice/schedule" },
-          ],
+          items: [{ type: "item", label: "Schedule", path: "/practice" }],
         },
         {
           type: "category",
           label: "Qualification",
           items: [
-            {
-              type: "item",
-              label: "Schedule",
-              path: "/qualification/schedule",
-            },
+            { type: "item", label: "Schedule", path: "/qual" },
             {
               type: "item",
               label: "Rankings",

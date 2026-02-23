@@ -44,9 +44,7 @@ function findDuplicateRoleAssignments(
   return null;
 }
 
-async function findMissingEvents(
-  roles: NormalizedUserRole[]
-): Promise<string[]> {
+function findMissingEvents(roles: NormalizedUserRole[]): string[] {
   const scopedEvents = Array.from(
     new Set(
       roles
@@ -59,7 +57,7 @@ async function findMissingEvents(
     return [];
   }
 
-  const existingEvents = await db
+  const existingEvents = db
     .select({ code: schema.events.code })
     .from(schema.events)
     .where(inArray(schema.events.code, scopedEvents))
@@ -110,7 +108,7 @@ export function listUsers() {
 }
 
 export async function getUserWithRoles(username: string) {
-  const [user] = await db
+  const [user] = db
     .select({
       generic: schema.users.generic,
       type: schema.users.type,
@@ -200,7 +198,7 @@ export async function updateUserAccount(input: {
 }) {
   const normalizedRoles = await validateRoleAssignments(input.roles);
 
-  const [existingUser] = await db
+  const [existingUser] = db
     .select({ username: schema.users.username })
     .from(schema.users)
     .where(eq(schema.users.username, input.username))
@@ -269,7 +267,7 @@ export async function deleteUserAccount(input: {
     );
   }
 
-  const [existingUser] = await db
+  const [existingUser] = db
     .select({ username: schema.users.username })
     .from(schema.users)
     .where(eq(schema.users.username, input.username))
@@ -281,13 +279,13 @@ export async function deleteUserAccount(input: {
   }
 
   await db.transaction(async (tx) => {
-    const [{ globalAdminCount }] = await tx
+    const [{ globalAdminCount }] = tx
       .select({ globalAdminCount: count() })
       .from(schema.roles)
       .where(and(eq(schema.roles.role, "ADMIN"), eq(schema.roles.event, "*")))
       .all();
 
-    const [targetAdminRole] = await tx
+    const [targetAdminRole] = tx
       .select({ username: schema.roles.username })
       .from(schema.roles)
       .where(
