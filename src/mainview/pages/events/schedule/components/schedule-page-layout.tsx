@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { LoadingIndicator } from "../../../../shared/components/loading-indicator";
-import "../../../app/styles/components/schedule.css";
+import "../../../../app/styles/components/schedule.css";
 import { MatchBlockEditor } from "./match-block-editor";
 import type { MatchBlockState } from "./schedule-utils";
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import "../../app/styles/components/inspection.css";
+import "../../../app/styles/components/inspection.css";
 import { useInspectionDetail } from "../../../features/inspection/hooks/use-inspection-detail";
 import { useInspectionRealtime } from "../../../features/inspection/hooks/use-inspection-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";

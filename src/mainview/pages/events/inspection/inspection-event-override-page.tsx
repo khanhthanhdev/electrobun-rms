@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import "../../app/styles/components/inspection.css";
+import "../../../app/styles/components/inspection.css";
 import { useInspectionRealtime } from "../../../features/inspection/hooks/use-inspection-realtime";
 import { useInspectionTeams } from "../../../features/inspection/hooks/use-inspection-teams";
 import {

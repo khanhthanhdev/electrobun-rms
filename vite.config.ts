@@ -3,6 +3,18 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    transformer: "lightningcss",
+    lightningcss: {
+      // Electrobun embeds a modern Chromium-based renderer.
+      // Encode version as major << 16 | minor << 8 | patch (Chrome 100)
+      targets: { chrome: 100 },
+      // Enable draft CSS features (e.g. custom media queries)
+      drafts: {
+        customMedia: true,
+      },
+    },
+  },
   root: "src/mainview",
   build: {
     outDir: "../../dist",
