@@ -1,8 +1,21 @@
+import type { ReactNode } from "react";
 import type { ScheduleConfigCardItem } from "./schedule-config-cards";
 import type { OneVsOneScheduleMetrics } from "./schedule-metrics";
 
-interface BuildSummaryItemsInput {
+interface EditableFieldConfig {
+  max?: number;
+  min?: number;
+  onChange: (value: number) => void;
+}
+
+export interface BuildSummaryItemsInput {
   cycleTimeSeconds: number;
+  editable?: {
+    cycleTimeSeconds?: EditableFieldConfig;
+    fieldCount?: EditableFieldConfig;
+    fieldStartOffsetSeconds?: EditableFieldConfig;
+    matchesPerTeam?: EditableFieldConfig;
+  };
   fieldCount: number;
   fieldStartOffsetSeconds: number;
   generatedMatchCount: number;
@@ -12,8 +25,30 @@ interface BuildSummaryItemsInput {
   totalMatchesRequired: number;
 }
 
+const renderValue = (
+  value: number,
+  config?: EditableFieldConfig
+): ReactNode => {
+  if (!config) {
+    return value;
+  }
+  return (
+    <input
+      className="schedule-metric-input"
+      max={config.max}
+      min={config.min ?? 0}
+      onChange={(e) =>
+        config.onChange(Number.parseInt(e.target.value, 10) || 0)
+      }
+      type="number"
+      value={value}
+    />
+  );
+};
+
 export const buildOneVsOneSummaryItems = ({
   cycleTimeSeconds,
+  editable,
   fieldCount,
   fieldStartOffsetSeconds,
   generatedMatchCount,
@@ -28,7 +63,7 @@ export const buildOneVsOneSummaryItems = ({
   },
   {
     label: "Matches Per Team",
-    value: matchesPerTeam,
+    value: renderValue(matchesPerTeam, editable?.matchesPerTeam),
   },
   {
     label: "Generated Matches",
@@ -40,15 +75,18 @@ export const buildOneVsOneSummaryItems = ({
   },
   {
     label: "Field Count",
-    value: fieldCount,
+    value: renderValue(fieldCount, editable?.fieldCount),
   },
   {
     label: "Cycle Time (sec)",
-    value: cycleTimeSeconds,
+    value: renderValue(cycleTimeSeconds, editable?.cycleTimeSeconds),
   },
   {
     label: "Field Offset (sec)",
-    value: fieldStartOffsetSeconds,
+    value: renderValue(
+      fieldStartOffsetSeconds,
+      editable?.fieldStartOffsetSeconds
+    ),
   },
   {
     label: "Schedule Active",
