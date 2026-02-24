@@ -12,6 +12,7 @@ const INITIAL_FORM: CreateManualEventPayload = {
   eventCode: "",
   eventName: "",
   eventType: 1,
+  fields: 1,
   region: "",
   startDate: "",
 };
@@ -186,6 +187,21 @@ export const CreateEventPage = ({
                 value={form.divisions}
               />
             </div>
+          </div>
+
+          <div className="form-row" data-field>
+            <label htmlFor="fields">Number of Fields</label>
+            <input
+              id="fields"
+              max={100}
+              min={1}
+              onChange={(e) => {
+                updateField("fields", Number(e.target.value));
+              }}
+              required
+              type="number"
+              value={form.fields}
+            />
           </div>
         </div>
 

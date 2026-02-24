@@ -50,6 +50,7 @@ export interface PracticeScheduleResponse {
   config: {
     cycleTimeSeconds: number;
     fieldCount: number;
+    fieldStartOffsetSeconds: number;
     matchTimeSeconds: number;
     startTime: number | null;
   };
@@ -79,6 +80,7 @@ export interface MatchBlockInput {
 }
 
 export interface GeneratePracticeScheduleInput {
+  fieldStartOffsetSeconds?: number;
   matchBlocks: MatchBlockInput[];
   matchesPerTeam: number;
 }
@@ -109,12 +111,15 @@ export interface QualificationScheduleResponse {
 
 export interface GenerateQualificationScheduleInput {
   cycleTimeSeconds?: number;
+  fieldCount?: number;
   fieldStartOffsetSeconds?: number;
+  matchesPerTeam?: number;
   startTime?: number;
 }
 
 export interface SaveQualificationScheduleInput {
   cycleTimeSeconds?: number;
+  fieldCount?: number;
   fieldStartOffsetSeconds?: number;
   matches: SaveOneVsOneScheduleMatchInput[];
   startTime: number;
@@ -144,6 +149,9 @@ const QUALS_BLOCK_TYPE = "qualification";
 const PRACTICE_LABEL = "Practice Schedule";
 const QUALS_LABEL = "Qualification Schedule";
 const ACTIVE_SCHEDULE_TYPE_CONFIG_KEY = "active_schedule_type";
+const QUALS_FIELD_COUNT_CONFIG_KEY = "quals_field_count";
+const QUALS_FIELD_START_OFFSET_CONFIG_KEY = "quals_field_start_offset_seconds";
+const QUALS_MATCHES_PER_TEAM_CONFIG_KEY = "quals_matches_per_team";
 const LEGACY_LINEUP_COLUMNS = ["red1", "red2", "blue1", "blue2"] as const;
 const ONE_VS_ONE_REQUIRED_COLUMNS = [
   "match",
@@ -191,6 +199,17 @@ const assertEventExists = (eventCode: string): void => {
   if (!eventRow) {
     throw new ServiceError(`Event "${eventCode}" was not found.`, 404);
   }
+};
+
+const getEventFieldCount = (eventCode: string): number => {
+  const [row] = db
+    .select({ fields: schema.events.fields })
+    .from(schema.events)
+    .where(eq(schema.events.code, eventCode))
+    .limit(1)
+    .all();
+
+  return row?.fields ?? DEFAULT_FIELD_COUNT;
 };
 
 const withEventDb = <T>(
@@ -339,6 +358,108 @@ const setActiveScheduleType = (
       "INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
     )
     .run(ACTIVE_SCHEDULE_TYPE_CONFIG_KEY, value);
+};
+
+const getEventConfigValue = (eventDb: Database, key: string): string | null => {
+  ensureEventConfigTable(eventDb);
+  const row = eventDb
+    .query("SELECT value AS value FROM config WHERE key = ? LIMIT 1")
+    .get(key) as { value: string | null } | null;
+  return row?.value ?? null;
+};
+
+const setEventConfigValue = (
+  eventDb: Database,
+  key: string,
+  value: string
+): void => {
+  ensureEventConfigTable(eventDb);
+  eventDb
+    .query(
+      "INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    )
+    .run(key, value);
+};
+
+const parsePositiveIntegerOrNull = (value: string | null): number | null => {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const parseNonNegativeIntegerOrNull = (value: string | null): number | null => {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const getStoredQualsFieldCount = (
+  eventDb: Database,
+  fallback: number
+): number => {
+  const parsedValue = parsePositiveIntegerOrNull(
+    getEventConfigValue(eventDb, QUALS_FIELD_COUNT_CONFIG_KEY)
+  );
+  return parsedValue ?? fallback;
+};
+
+const getStoredQualsMatchesPerTeam = (
+  eventDb: Database,
+  fallback: number
+): number => {
+  const parsedValue = parsePositiveIntegerOrNull(
+    getEventConfigValue(eventDb, QUALS_MATCHES_PER_TEAM_CONFIG_KEY)
+  );
+  return parsedValue ?? fallback;
+};
+
+const getStoredQualsFieldStartOffsetSeconds = (
+  eventDb: Database,
+  fallback: number
+): number => {
+  const parsedValue = parseNonNegativeIntegerOrNull(
+    getEventConfigValue(eventDb, QUALS_FIELD_START_OFFSET_CONFIG_KEY)
+  );
+  return parsedValue ?? fallback;
+};
+
+const persistQualificationConfig = (
+  eventDb: Database,
+  config: {
+    fieldCount: number;
+    fieldStartOffsetSeconds: number;
+    matchesPerTeam: number;
+  }
+): void => {
+  setEventConfigValue(
+    eventDb,
+    QUALS_FIELD_COUNT_CONFIG_KEY,
+    String(config.fieldCount)
+  );
+  setEventConfigValue(
+    eventDb,
+    QUALS_FIELD_START_OFFSET_CONFIG_KEY,
+    String(config.fieldStartOffsetSeconds)
+  );
+  setEventConfigValue(
+    eventDb,
+    QUALS_MATCHES_PER_TEAM_CONFIG_KEY,
+    String(config.matchesPerTeam)
+  );
 };
 
 const updateScheduleActivation = (
@@ -830,14 +951,16 @@ const buildQualificationLineups = (
   teamNumbers: number[],
   startTime: number,
   cycleTimeSeconds: number,
-  fieldStartOffsetSeconds: number
+  fieldStartOffsetSeconds: number,
+  fieldCount: number,
+  matchesPerTeam: number
 ): {
   matches: OneVsOneScheduleMatch[];
   metrics: QualificationMetrics;
 } => {
   const entries: PairingEntry[] = [];
   for (const teamNumber of teamNumbers) {
-    for (let index = 0; index < DEFAULT_QUALS_MATCHES_PER_TEAM; index += 1) {
+    for (let index = 0; index < matchesPerTeam; index += 1) {
       entries.push({ teamNumber, isSurrogate: false });
     }
   }
@@ -878,7 +1001,7 @@ const buildQualificationLineups = (
       startTime,
       cycleTimeSeconds,
       {
-        fieldCount: DEFAULT_FIELD_COUNT,
+        fieldCount,
         fieldStartOffsetSeconds,
       }
     );
@@ -1039,10 +1162,45 @@ const buildScheduleWindowFromMatches = (
   };
 };
 
+const inferPracticeFieldStartOffsetSeconds = (
+  matches: OneVsOneScheduleMatch[],
+  cycleTimeSeconds: number,
+  fieldCount: number
+): number => {
+  if (matches.length < 2) {
+    return 0;
+  }
+
+  for (let index = 1; index < matches.length; index += 1) {
+    const previousMatch = matches[index - 1];
+    const currentMatch = matches[index];
+    const currentRound = Math.floor(
+      (currentMatch.matchNumber - 1) / fieldCount
+    );
+    const previousRound = Math.floor(
+      (previousMatch.matchNumber - 1) / fieldCount
+    );
+
+    if (currentRound !== previousRound) {
+      continue;
+    }
+
+    const offsetSeconds = Math.round(
+      (currentMatch.startTime - previousMatch.startTime) / 1000
+    );
+    if (offsetSeconds >= 0 && offsetSeconds < cycleTimeSeconds) {
+      return offsetSeconds;
+    }
+  }
+
+  return 0;
+};
+
 export function getPracticeSchedule(
   eventCode: string
 ): PracticeScheduleResponse {
   assertEventExists(eventCode);
+  const fieldCount = getEventFieldCount(eventCode);
 
   return withEventDb(eventCode, (eventDb) => {
     ensurePracticeTables(eventDb);
@@ -1059,6 +1217,11 @@ export function getPracticeSchedule(
       defaultStartTime: matches[0]?.startTime ?? null,
       defaultLabel: PRACTICE_LABEL,
     });
+    const fieldStartOffsetSeconds = inferPracticeFieldStartOffsetSeconds(
+      matches,
+      window.cycleTimeSeconds,
+      fieldCount
+    );
 
     return {
       eventCode,
@@ -1068,7 +1231,8 @@ export function getPracticeSchedule(
         startTime: window.startTime,
         cycleTimeSeconds: window.cycleTimeSeconds,
         matchTimeSeconds: DEFAULT_MATCH_TIME_SECONDS,
-        fieldCount: DEFAULT_FIELD_COUNT,
+        fieldStartOffsetSeconds,
+        fieldCount,
       },
     };
   });
@@ -1087,6 +1251,7 @@ export function savePracticeSchedule(
   );
   const startTime = normalizeTimestamp(input.startTime);
   const normalizedMatches = normalizeLineupInput(input.matches);
+  const fieldCount = getEventFieldCount(eventCode);
 
   withEventDb(eventCode, (eventDb) => {
     ensurePracticeTables(eventDb);
@@ -1094,7 +1259,9 @@ export function savePracticeSchedule(
     const scheduledMatches: OneVsOneScheduleMatch[] = [];
     for (let index = 0; index < normalizedMatches.length; index += 1) {
       const matchInput = normalizedMatches[index];
-      const matchTimes = computeMatchTimes(index, startTime, cycleTimeSeconds);
+      const matchTimes = computeMatchTimes(index, startTime, cycleTimeSeconds, {
+        fieldCount,
+      });
 
       scheduledMatches.push({
         matchNumber: matchInput.matchNumber,
@@ -1174,12 +1341,47 @@ export function saveQualificationSchedule(
   }
   const startTime = normalizeTimestamp(input.startTime);
   const normalizedMatches = normalizeLineupInput(input.matches);
+  const maxFieldCount = getEventFieldCount(eventCode);
+  const fieldCount = normalizePositiveInteger(
+    input.fieldCount,
+    maxFieldCount,
+    "fieldCount"
+  );
+  if (fieldCount > maxFieldCount) {
+    throw new ServiceError(
+      `fieldCount cannot exceed configured event fields (${maxFieldCount}).`,
+      400
+    );
+  }
+
+  // Derive matchesPerTeam from the matches array so it is always consistent
+  // with the actual data. Count non-surrogate appearances per team and take
+  // the maximum as the authoritative value.
+  const teamMatchCounts = new Map<number, number>();
+  for (const match of normalizedMatches) {
+    if (!match.redSurrogate) {
+      teamMatchCounts.set(
+        match.redTeam,
+        (teamMatchCounts.get(match.redTeam) ?? 0) + 1
+      );
+    }
+    if (!match.blueSurrogate) {
+      teamMatchCounts.set(
+        match.blueTeam,
+        (teamMatchCounts.get(match.blueTeam) ?? 0) + 1
+      );
+    }
+  }
+  const matchesPerTeam =
+    teamMatchCounts.size > 0
+      ? Math.max(...teamMatchCounts.values())
+      : DEFAULT_QUALS_MATCHES_PER_TEAM;
 
   const scheduledMatches: OneVsOneScheduleMatch[] = [];
   for (let index = 0; index < normalizedMatches.length; index += 1) {
     const matchInput = normalizedMatches[index];
     const matchTimes = computeMatchTimes(index, startTime, cycleTimeSeconds, {
-      fieldCount: DEFAULT_FIELD_COUNT,
+      fieldCount,
       fieldStartOffsetSeconds,
     });
 
@@ -1205,6 +1407,11 @@ export function saveQualificationSchedule(
         cycleTimeSeconds,
         startTime
       );
+      persistQualificationConfig(eventDb, {
+        fieldCount,
+        fieldStartOffsetSeconds,
+        matchesPerTeam,
+      });
       eventDb.exec("COMMIT");
     } catch (error) {
       eventDb.exec("ROLLBACK");
@@ -1233,7 +1440,8 @@ const resolveQualsStartTime = (
 
 const inferQualificationFieldStartOffsetSeconds = (
   matches: OneVsOneScheduleMatch[],
-  cycleTimeSeconds: number
+  cycleTimeSeconds: number,
+  fieldCount: number
 ): number => {
   if (matches.length < 2) {
     return DEFAULT_QUALS_FIELD_START_OFFSET_SECONDS;
@@ -1243,10 +1451,10 @@ const inferQualificationFieldStartOffsetSeconds = (
     const previousMatch = matches[index - 1];
     const currentMatch = matches[index];
     const currentRound = Math.floor(
-      (currentMatch.matchNumber - 1) / DEFAULT_FIELD_COUNT
+      (currentMatch.matchNumber - 1) / fieldCount
     );
     const previousRound = Math.floor(
-      (previousMatch.matchNumber - 1) / DEFAULT_FIELD_COUNT
+      (previousMatch.matchNumber - 1) / fieldCount
     );
 
     if (currentRound !== previousRound) {
@@ -1303,10 +1511,23 @@ export function getQualificationSchedule(
   eventCode: string
 ): QualificationScheduleResponse {
   assertEventExists(eventCode);
+  const maxFieldCount = getEventFieldCount(eventCode);
 
   return withEventDb(eventCode, (eventDb) => {
     ensureQualsTables(eventDb);
     const activeScheduleType = getActiveScheduleType(eventDb);
+    const configuredFieldCount = getStoredQualsFieldCount(
+      eventDb,
+      maxFieldCount
+    );
+    const fieldCount = Math.min(
+      Math.max(1, configuredFieldCount),
+      maxFieldCount
+    );
+    const matchesPerTeam = getStoredQualsMatchesPerTeam(
+      eventDb,
+      DEFAULT_QUALS_MATCHES_PER_TEAM
+    );
 
     const matches = loadMatches(eventDb, {
       lineupTable: "quals",
@@ -1319,41 +1540,40 @@ export function getQualificationSchedule(
       defaultStartTime: matches[0]?.startTime ?? null,
       defaultLabel: QUALS_LABEL,
     });
-    const fieldStartOffsetSeconds = inferQualificationFieldStartOffsetSeconds(
-      matches,
-      window.cycleTimeSeconds
+    const storedFieldStartOffsetSeconds = getStoredQualsFieldStartOffsetSeconds(
+      eventDb,
+      DEFAULT_QUALS_FIELD_START_OFFSET_SECONDS
     );
-
-    if (matches.length > 0) {
-      const computedMetrics = computeQualificationMetrics(matches);
-      return {
-        eventCode,
-        isActive: activeScheduleType === "quals",
-        matches,
-        metrics: computedMetrics,
-        config: {
-          startTime: window.startTime,
-          cycleTimeSeconds: window.cycleTimeSeconds,
-          fieldStartOffsetSeconds,
-          matchTimeSeconds: DEFAULT_MATCH_TIME_SECONDS,
-          fieldCount: DEFAULT_FIELD_COUNT,
-          matchesPerTeam: DEFAULT_QUALS_MATCHES_PER_TEAM,
-        },
-      };
-    }
+    let fieldStartOffsetSeconds =
+      matches.length > 1
+        ? inferQualificationFieldStartOffsetSeconds(
+            matches,
+            window.cycleTimeSeconds,
+            fieldCount
+          )
+        : storedFieldStartOffsetSeconds;
+    const maxFieldStartOffsetSeconds = Math.max(0, window.cycleTimeSeconds - 1);
+    fieldStartOffsetSeconds = Math.min(
+      Math.max(0, fieldStartOffsetSeconds),
+      maxFieldStartOffsetSeconds
+    );
+    const metrics =
+      matches.length > 0
+        ? computeQualificationMetrics(matches)
+        : EMPTY_QUALIFICATION_METRICS;
 
     return {
       eventCode,
       isActive: activeScheduleType === "quals",
       matches,
-      metrics: EMPTY_QUALIFICATION_METRICS,
+      metrics,
       config: {
         startTime: window.startTime,
         cycleTimeSeconds: window.cycleTimeSeconds,
         fieldStartOffsetSeconds,
         matchTimeSeconds: DEFAULT_MATCH_TIME_SECONDS,
-        fieldCount: DEFAULT_FIELD_COUNT,
-        matchesPerTeam: DEFAULT_QUALS_MATCHES_PER_TEAM,
+        fieldCount,
+        matchesPerTeam,
       },
     };
   });
@@ -1448,6 +1668,23 @@ export function generateQualificationSchedule(
     );
   }
   const startTime = resolveQualsStartTime(eventCode, input.startTime);
+  const maxFieldCount = getEventFieldCount(eventCode);
+  const fieldCount = normalizePositiveInteger(
+    input.fieldCount,
+    maxFieldCount,
+    "fieldCount"
+  );
+  if (fieldCount > maxFieldCount) {
+    throw new ServiceError(
+      `fieldCount cannot exceed configured event fields (${maxFieldCount}).`,
+      400
+    );
+  }
+  const matchesPerTeam = normalizePositiveInteger(
+    input.matchesPerTeam,
+    DEFAULT_QUALS_MATCHES_PER_TEAM,
+    "matchesPerTeam"
+  );
 
   const teams = listEventTeams(eventCode, undefined).teams;
   const teamNumbers = teams.map((team) => team.teamNumber);
@@ -1462,7 +1699,9 @@ export function generateQualificationSchedule(
     teamNumbers,
     startTime,
     cycleTimeSeconds,
-    fieldStartOffsetSeconds
+    fieldStartOffsetSeconds,
+    fieldCount,
+    matchesPerTeam
   );
 
   withEventDb(eventCode, (eventDb) => {
@@ -1476,6 +1715,11 @@ export function generateQualificationSchedule(
         cycleTimeSeconds,
         startTime
       );
+      persistQualificationConfig(eventDb, {
+        fieldCount,
+        fieldStartOffsetSeconds,
+        matchesPerTeam,
+      });
       eventDb.exec("COMMIT");
     } catch (error) {
       eventDb.exec("ROLLBACK");
@@ -1590,12 +1834,58 @@ export function setQualificationScheduleActive(
 
 /* ── Practice schedule auto-generation (MatchMaker-style) ──────────── */
 
-const computeBlockCapacity = (block: MatchBlockInput): number => {
+interface PracticeBlockSchedulingOptions {
+  fieldCount: number;
+  fieldStartOffsetSeconds: number;
+}
+
+const buildPracticeBlockMatchStartTimes = (
+  block: MatchBlockInput,
+  options: PracticeBlockSchedulingOptions
+): number[] => {
   const durationMs = block.endTime - block.startTime;
   if (durationMs <= 0 || block.cycleTimeSeconds <= 0) {
-    return 0;
+    return [];
   }
-  return Math.floor(durationMs / (block.cycleTimeSeconds * 1000));
+
+  const cycleTimeMs = block.cycleTimeSeconds * 1000;
+  const fieldStartOffsetMs =
+    Math.max(0, options.fieldStartOffsetSeconds) * 1000;
+  const fieldCount = Math.max(1, options.fieldCount);
+  const startTimes: number[] = [];
+
+  for (
+    let roundStartOffsetMs = 0;
+    roundStartOffsetMs < durationMs;
+    roundStartOffsetMs += cycleTimeMs
+  ) {
+    let hasStartInRound = false;
+
+    for (let fieldIndex = 0; fieldIndex < fieldCount; fieldIndex += 1) {
+      const matchStartOffsetMs =
+        roundStartOffsetMs + fieldIndex * fieldStartOffsetMs;
+      if (matchStartOffsetMs >= durationMs) {
+        continue;
+      }
+
+      startTimes.push(block.startTime + matchStartOffsetMs);
+      hasStartInRound = true;
+    }
+
+    if (!hasStartInRound) {
+      break;
+    }
+  }
+
+  return startTimes;
+};
+
+const computeBlockCapacity = (
+  block: MatchBlockInput,
+  options: PracticeBlockSchedulingOptions
+): number => {
+  const startTimes = buildPracticeBlockMatchStartTimes(block, options);
+  return startTimes.length;
 };
 
 const shuffleArray = <T>(array: T[], random: () => number): void => {
@@ -1885,7 +2175,8 @@ const assignMatchesToBlocks = (
     isRedSurrogate: boolean;
     redTeam: number;
   }>,
-  blocks: MatchBlockInput[]
+  blocks: MatchBlockInput[],
+  options: PracticeBlockSchedulingOptions
 ): OneVsOneScheduleMatch[] => {
   const matches: OneVsOneScheduleMatch[] = [];
   let matchNumber = 1;
@@ -1896,12 +2187,13 @@ const assignMatchesToBlocks = (
       break;
     }
 
-    const capacity = computeBlockCapacity(block);
-    const cycleTimeMs = block.cycleTimeSeconds * 1000;
+    const startTimes = buildPracticeBlockMatchStartTimes(block, options);
+    for (const startTime of startTimes) {
+      if (lineupIdx >= lineups.length) {
+        break;
+      }
 
-    for (let i = 0; i < capacity && lineupIdx < lineups.length; i += 1) {
       const lineup = lineups[lineupIdx];
-      const startTime = block.startTime + i * cycleTimeMs;
       const endTime = startTime + DEFAULT_MATCH_TIME_SECONDS * 1000;
 
       matches.push({
@@ -1927,6 +2219,16 @@ export function generatePracticeSchedule(
   input: GeneratePracticeScheduleInput
 ): PracticeScheduleResponse {
   assertEventExists(eventCode);
+  const fieldCount = getEventFieldCount(eventCode);
+  const fieldStartOffsetSeconds = normalizeNonNegativeInteger(
+    input.fieldStartOffsetSeconds,
+    0,
+    "fieldStartOffsetSeconds"
+  );
+  const schedulingOptions: PracticeBlockSchedulingOptions = {
+    fieldCount,
+    fieldStartOffsetSeconds,
+  };
 
   const matchesPerTeam = normalizePositiveInteger(
     input.matchesPerTeam,
@@ -1961,6 +2263,12 @@ export function generatePracticeSchedule(
         DEFAULT_PRACTICE_CYCLE_TIME_SECONDS,
         `Match block ${idx + 1} cycleTimeSeconds`
       );
+      if (fieldStartOffsetSeconds >= cycleTimeSeconds) {
+        throw new ServiceError(
+          `Match block ${idx + 1}: fieldStartOffsetSeconds must be smaller than cycleTimeSeconds.`,
+          400
+        );
+      }
       return {
         startTime: Math.trunc(block.startTime),
         endTime: Math.trunc(block.endTime),
@@ -1975,7 +2283,7 @@ export function generatePracticeSchedule(
   // Calculate total capacity across all blocks
   let totalCapacity = 0;
   for (const block of normalizedBlocks) {
-    totalCapacity += computeBlockCapacity(block);
+    totalCapacity += computeBlockCapacity(block, schedulingOptions);
   }
 
   // Load teams
@@ -2002,7 +2310,11 @@ export function generatePracticeSchedule(
   const lineups = buildPracticeLineups(teamNumbers, matchesPerTeam);
 
   // Assign to time blocks
-  const scheduledMatches = assignMatchesToBlocks(lineups, normalizedBlocks);
+  const scheduledMatches = assignMatchesToBlocks(
+    lineups,
+    normalizedBlocks,
+    schedulingOptions
+  );
 
   // Persist
   withEventDb(eventCode, (eventDb) => {

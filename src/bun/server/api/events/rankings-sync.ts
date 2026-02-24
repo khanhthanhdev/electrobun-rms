@@ -65,8 +65,6 @@ class InMemoryQualificationRankingsSyncHub
     setInterval(() => {
       this.pollAllEvents();
     }, RANKING_SOURCE_POLL_INTERVAL_MS);
-
-    this.pollAllEvents();
   }
 
   getCurrentVersion(eventCode: string): number {

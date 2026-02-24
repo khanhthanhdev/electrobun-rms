@@ -12,6 +12,8 @@ interface OneVsOneScheduleViewProps {
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
   eventCode: string;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   generatedEmptyMessage: string;
   generatedMatches: ScheduleMatchRow[];
   generatedTitle?: string;
@@ -36,6 +38,8 @@ export const OneVsOneScheduleView = ({
   defaultCycleTimeMinutes,
   errorMessage,
   eventCode,
+  fieldCount,
+  fieldStartOffsetSeconds,
   generatedEmptyMessage,
   generatedMatches,
   generatedTitle,
@@ -58,6 +62,8 @@ export const OneVsOneScheduleView = ({
     defaultCycleTimeMinutes={defaultCycleTimeMinutes}
     errorMessage={errorMessage}
     eventCode={eventCode}
+    fieldCount={fieldCount}
+    fieldStartOffsetSeconds={fieldStartOffsetSeconds}
     hasMatches={hasMatches}
     isLoading={isLoading}
     matchBlocks={matchBlocks}

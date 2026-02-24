@@ -1,5 +1,6 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import {
+  type AddEventTeamPayload,
   addEventTeam,
   deleteEventTeam,
   downloadTeamsCsv,
@@ -76,6 +77,90 @@ interface TeamTableRowProps {
   savingTeamNumber: number | null;
   team: EventTeamItem;
 }
+
+const MAX_SEED_TEAM_COUNT = 200;
+const DEFAULT_SEED_TEAM_COUNT = "8";
+
+const parseSeedTeamCount = (rawValue: string): number | null => {
+  const parsedValue = Number.parseInt(rawValue.trim(), 10);
+  const isValidCount =
+    Number.isInteger(parsedValue) &&
+    parsedValue >= 1 &&
+    parsedValue <= MAX_SEED_TEAM_COUNT;
+  return isValidCount ? parsedValue : null;
+};
+
+const buildSeedTeamPayloads = (
+  existingTeams: EventTeamItem[],
+  seedCount: number
+): AddEventTeamPayload[] => {
+  const existingTeamNumbers = new Set<number>(
+    existingTeams.map((team) => team.teamNumber)
+  );
+
+  let candidateTeamNumber =
+    existingTeams.reduce(
+      (maxTeamNumber, team) => Math.max(maxTeamNumber, team.teamNumber),
+      0
+    ) + 1;
+
+  const payloads: AddEventTeamPayload[] = [];
+  for (let index = 0; index < seedCount; index += 1) {
+    while (existingTeamNumbers.has(candidateTeamNumber)) {
+      candidateTeamNumber += 1;
+    }
+
+    const teamNumber = candidateTeamNumber;
+    existingTeamNumbers.add(teamNumber);
+    payloads.push({
+      teamNumber,
+      teamName: `Test Team ${teamNumber}`,
+      organizationSchool: "Seeded Team",
+      city: "Test City",
+      country: "Test Country",
+    });
+    candidateTeamNumber += 1;
+  }
+
+  return payloads;
+};
+
+interface SeedResultsSummary {
+  failedCount: number;
+  firstErrorMessage: string | null;
+  seededCount: number;
+}
+
+const seedTeams = async (
+  eventCode: string,
+  seedPayloads: AddEventTeamPayload[],
+  token: string
+): Promise<SeedResultsSummary> => {
+  let seededCount = 0;
+  let failedCount = 0;
+  let firstErrorMessage: string | null = null;
+
+  for (const payload of seedPayloads) {
+    try {
+      await addEventTeam(eventCode, payload, token);
+      seededCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      if (firstErrorMessage === null) {
+        firstErrorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to create seeded team.";
+      }
+    }
+  }
+
+  return {
+    seededCount,
+    failedCount,
+    firstErrorMessage,
+  };
+};
 
 const TeamTableRow = ({
   confirmDeleteTeamNumber,
@@ -226,6 +311,9 @@ export const TeamsPage = ({
   const [teams, setTeams] = useState<EventTeamItem[]>([]);
   const [search, setSearch] = useState("");
   const [teamNumberInput, setTeamNumberInput] = useState("");
+  const [seedTeamCountInput, setSeedTeamCountInput] = useState(
+    DEFAULT_SEED_TEAM_COUNT
+  );
   const [teamName, setTeamName] = useState("");
   const [organizationSchool, setOrganizationSchool] = useState("");
   const [city, setCity] = useState("");
@@ -233,6 +321,7 @@ export const TeamsPage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImportingCsv, setIsImportingCsv] = useState(false);
+  const [isSeedingTeams, setIsSeedingTeams] = useState(false);
   const [editingTeamNumber, setEditingTeamNumber] = useState<number | null>(
     null
   );
@@ -312,7 +401,9 @@ export const TeamsPage = ({
     }
 
     setIsSubmitting(true);
-    setSubmitErrorMessage(null);
+    setIsSeedingTeams(true);
+    setActionErrorMessage(null);
+    setSuccessMessage(null);
     setActionErrorMessage(null);
     setSuccessMessage(null);
 
@@ -550,6 +641,59 @@ export const TeamsPage = ({
     }
   };
 
+  const handleSeedTeams = async (): Promise<void> => {
+    if (!token) {
+      setActionErrorMessage("You must be logged in to seed test teams.");
+      return;
+    }
+
+    const parsedSeedCount = parseSeedTeamCount(seedTeamCountInput);
+    if (parsedSeedCount === null) {
+      setActionErrorMessage(
+        `Seed team count must be between 1 and ${MAX_SEED_TEAM_COUNT}.`
+      );
+      return;
+    }
+
+    setIsSeedingTeams(true);
+    setSubmitErrorMessage(null);
+    setActionErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const allTeamsResponse = await fetchEventTeams(eventCode, token, "");
+      const seedPayloads = buildSeedTeamPayloads(
+        allTeamsResponse.teams,
+        parsedSeedCount
+      );
+
+      const { failedCount, firstErrorMessage, seededCount } = await seedTeams(
+        eventCode,
+        seedPayloads,
+        token
+      );
+
+      const refreshedTeams = await fetchEventTeams(eventCode, token, search);
+      setTeams(refreshedTeams.teams);
+
+      if (seededCount > 0) {
+        setSuccessMessage(`Seeded ${seededCount} test team(s).`);
+      }
+
+      if (failedCount > 0) {
+        setActionErrorMessage(
+          `Failed to seed ${failedCount} team(s). ${firstErrorMessage ?? ""}`.trim()
+        );
+      }
+    } catch (error) {
+      setActionErrorMessage(
+        error instanceof Error ? error.message : "Failed to seed test teams."
+      );
+    } finally {
+      setIsSeedingTeams(false);
+    }
+  };
+
   const handlePrintTeams = (destination: PrintDestination): void => {
     setActionErrorMessage(null);
 
@@ -635,6 +779,35 @@ export const TeamsPage = ({
               value={search}
             />
           </div>
+          <div className="teams-seed-control">
+            <label htmlFor="seed-team-count">
+              Temporary test data: teams to seed
+            </label>
+            <div className="teams-seed-input-row">
+              <input
+                id="seed-team-count"
+                inputMode="numeric"
+                max={MAX_SEED_TEAM_COUNT}
+                min={1}
+                onChange={(event) => {
+                  setSeedTeamCountInput(event.currentTarget.value);
+                }}
+                step={1}
+                type="number"
+                value={seedTeamCountInput}
+              />
+              <button
+                data-variant="secondary"
+                disabled={isSeedingTeams}
+                onClick={() => {
+                  handleSeedTeams();
+                }}
+                type="button"
+              >
+                {isSeedingTeams ? "Seeding..." : "Seed Test Teams"}
+              </button>
+            </div>
+          </div>
           <div className="teams-actions-tools">
             <input
               accept=".csv,text/csv"
@@ -645,7 +818,7 @@ export const TeamsPage = ({
             />
             <button
               data-variant="secondary"
-              disabled={isImportingCsv}
+              disabled={isImportingCsv || isSeedingTeams}
               onClick={() => {
                 csvInputRef.current?.click();
               }}
@@ -655,7 +828,7 @@ export const TeamsPage = ({
             </button>
             <button
               data-variant="secondary"
-              disabled={isImportingCsv}
+              disabled={isImportingCsv || isSeedingTeams}
               onClick={() => {
                 handleExportCsv();
               }}
@@ -773,7 +946,7 @@ export const TeamsPage = ({
 
         <div className="form-actions">
           <button
-            disabled={isSubmitting}
+            disabled={isSubmitting || isSeedingTeams}
             onClick={() => {
               handleAddTeam();
             }}

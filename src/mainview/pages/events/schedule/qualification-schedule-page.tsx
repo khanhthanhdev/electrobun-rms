@@ -1,5 +1,9 @@
 import { type RefObject, useCallback, useReducer, useRef } from "react";
 import {
+  type EventTeamItem,
+  fetchEventTeams,
+} from "../../../features/events/services/event-teams-service";
+import {
   clearQualificationSchedule,
   fetchQualificationSchedule,
   type GenerateQualificationSchedulePayload,
@@ -19,11 +23,7 @@ import { ScheduleCsvSection } from "./components/schedule-csv-section";
 import { ScheduleManagementToolbar } from "./components/schedule-management-toolbar";
 import type { ScheduleMatchRow } from "./components/schedule-match-table";
 import { EMPTY_ONE_VS_ONE_SCHEDULE_METRICS } from "./components/schedule-metrics";
-import {
-  buildOneVsOneMetricItems,
-  buildOneVsOneSummaryItems,
-} from "./components/schedule-overview";
-import { ScheduleOverviewSection } from "./components/schedule-overview-section";
+import { OneVsOneScheduleOverview } from "./components/schedule-overview-section";
 import type { MatchBlockState } from "./components/schedule-utils";
 import {
   getFirstBlockStartTime,
@@ -38,30 +38,53 @@ interface QualificationSchedulePageProps {
 }
 
 const DEFAULT_CYCLE_MINUTES = 4;
+const DEFAULT_FIELD_COUNT = 1;
 const DEFAULT_FIELD_START_OFFSET_SECONDS = 15;
+const DEFAULT_MATCHES_PER_TEAM = 6;
 
+type TeamNamesByNumber = Record<number, string>;
 type SetMessage = (message: string | null) => void;
 
+const buildTeamNamesByNumber = (teams: EventTeamItem[]): TeamNamesByNumber => {
+  const namesByNumber: TeamNamesByNumber = {};
+  for (const team of teams) {
+    const trimmedName = team.teamName.trim();
+    if (!trimmedName) {
+      continue;
+    }
+
+    namesByNumber[team.teamNumber] = trimmedName;
+  }
+
+  return namesByNumber;
+};
+
 interface QualificationState {
+  fieldCount: number;
   fieldStartOffsetSeconds: number;
   isClearing: boolean;
   isImporting: boolean;
   isUpdatingActivation: boolean;
+  matchesPerTeam: number;
   schedule: QualificationScheduleResponse | null;
 }
 
 type QualificationAction =
+  | { type: "SET_FIELD_COUNT"; payload: number }
   | { type: "SET_FIELD_START_OFFSET"; payload: number }
+  | { type: "SET_MATCHES_PER_TEAM"; payload: number }
   | { type: "SET_CLEARING"; payload: boolean }
   | { type: "SET_IMPORTING"; payload: boolean }
   | { type: "SET_UPDATING_ACTIVATION"; payload: boolean }
   | { type: "SET_SCHEDULE"; payload: QualificationScheduleResponse | null };
 
 const initialState: QualificationState = {
+  fieldCount: DEFAULT_FIELD_COUNT,
   fieldStartOffsetSeconds: DEFAULT_FIELD_START_OFFSET_SECONDS,
   isClearing: false,
   isImporting: false,
   isUpdatingActivation: false,
+  matchesPerTeam: DEFAULT_MATCHES_PER_TEAM,
   schedule: null,
 };
 
@@ -70,8 +93,12 @@ const qualificationReducer = (
   action: QualificationAction
 ): QualificationState => {
   switch (action.type) {
+    case "SET_FIELD_COUNT":
+      return { ...state, fieldCount: Math.max(1, action.payload) };
     case "SET_FIELD_START_OFFSET":
-      return { ...state, fieldStartOffsetSeconds: action.payload };
+      return { ...state, fieldStartOffsetSeconds: Math.max(0, action.payload) };
+    case "SET_MATCHES_PER_TEAM":
+      return { ...state, matchesPerTeam: Math.max(1, action.payload) };
     case "SET_CLEARING":
       return { ...state, isClearing: action.payload };
     case "SET_IMPORTING":
@@ -97,19 +124,37 @@ const mapCsvMatchesToQualificationMatches = (
   }));
 
 const mapQualsToMatchRows = (
-  schedule: QualificationScheduleResponse
-): ScheduleMatchRow[] =>
-  schedule.matches.map((match) => ({
-    matchNumber: match.matchNumber,
-    startTime: match.startTime,
-    matchLabel: `Quals ${match.matchNumber}`,
-    fieldNumber:
-      ((match.matchNumber - 1) % (schedule.config.fieldCount || 1)) + 1,
-    redTeam: match.redTeam,
-    redSurrogate: match.redSurrogate,
-    blueTeam: match.blueTeam,
-    blueSurrogate: match.blueSurrogate,
-  }));
+  schedule: QualificationScheduleResponse,
+  fieldStartOffsetSeconds: number,
+  fieldCount: number,
+  teamNamesByNumber: TeamNamesByNumber
+): ScheduleMatchRow[] => {
+  const safeFieldCount = Math.max(1, fieldCount);
+  const cycleTimeMs = schedule.config.cycleTimeSeconds * 1000;
+  const fieldOffsetMs = fieldStartOffsetSeconds * 1000;
+  const baseStartTime =
+    schedule.config.startTime ?? schedule.matches[0]?.startTime ?? Date.now();
+
+  return schedule.matches.map((match, index) => {
+    const roundIndex = Math.floor(index / safeFieldCount);
+    const fieldIndex = index % safeFieldCount;
+    const startTime =
+      baseStartTime + roundIndex * cycleTimeMs + fieldIndex * fieldOffsetMs;
+
+    return {
+      matchNumber: match.matchNumber,
+      startTime,
+      matchLabel: `Quals ${match.matchNumber}`,
+      fieldNumber: (index % safeFieldCount) + 1,
+      redTeam: match.redTeam,
+      redTeamName: match.redTeamName ?? teamNamesByNumber[match.redTeam],
+      redSurrogate: match.redSurrogate,
+      blueTeam: match.blueTeam,
+      blueTeamName: match.blueTeamName ?? teamNamesByNumber[match.blueTeam],
+      blueSurrogate: match.blueSurrogate,
+    };
+  });
+};
 
 const computeQualificationTeamCount = (
   schedule: QualificationScheduleResponse
@@ -121,18 +166,24 @@ const computeQualificationTeamCount = (
     : 0;
 
 const resolveQualificationScheduleTiming = ({
+  fieldCount,
   fieldStartOffsetSeconds,
   matchBlocks,
+  matchesPerTeam,
   scheduleDate,
   setErrorMessage,
 }: {
+  fieldCount: number;
   fieldStartOffsetSeconds: number;
   matchBlocks: MatchBlockState[];
+  matchesPerTeam: number;
   scheduleDate: string;
   setErrorMessage: SetMessage;
 }): {
   cycleTimeSeconds: number;
+  fieldCount: number;
   fieldStartOffsetSeconds: number;
+  matchesPerTeam: number;
   startTime: number;
 } | null => {
   let startTime: number;
@@ -154,45 +205,27 @@ const resolveQualificationScheduleTiming = ({
   return {
     startTime,
     cycleTimeSeconds: firstBlock.cycleTimeMinutes * 60,
+    fieldCount,
     fieldStartOffsetSeconds,
+    matchesPerTeam,
   };
 };
-
-interface QualificationFieldStartOffsetControlProps {
-  fieldStartOffsetSeconds: number;
-  onChange: (value: number) => void;
-}
-
-const QualificationFieldStartOffsetControl = ({
-  fieldStartOffsetSeconds,
-  onChange,
-}: QualificationFieldStartOffsetControlProps): JSX.Element => (
-  <label className="schedule-overview-field">
-    <span>Field Start Offset (sec)</span>
-    <input
-      min={0}
-      onChange={(event) =>
-        onChange(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
-      }
-      type="number"
-      value={fieldStartOffsetSeconds}
-    />
-  </label>
-);
 
 interface CreateQualificationScheduleActionHandlersArgs {
   dispatch: (action: QualificationAction) => void;
   eventCode: string;
+  fieldCount: number;
   fieldStartOffsetSeconds: number;
   fileInputRef: RefObject<HTMLInputElement>;
   hasMatches: boolean;
   isActive: boolean;
   matchBlocks: MatchBlockState[];
+  matchesPerTeam: number;
   schedule: QualificationScheduleResponse | null;
   scheduleDate: string;
   setErrorMessage: SetMessage;
   setSuccessMessage: SetMessage;
-  setTeamCount: (value: number) => void;
+  teamNamesByNumber: TeamNamesByNumber;
   token: string | null;
 }
 
@@ -206,16 +239,18 @@ interface QualificationScheduleActionHandlers {
 const createQualificationScheduleActionHandlers = ({
   dispatch,
   eventCode,
+  fieldCount,
   fieldStartOffsetSeconds,
   fileInputRef,
   hasMatches,
   isActive,
   matchBlocks,
+  matchesPerTeam,
   schedule,
   scheduleDate,
   setErrorMessage,
   setSuccessMessage,
-  setTeamCount,
+  teamNamesByNumber,
   token,
 }: CreateQualificationScheduleActionHandlersArgs): QualificationScheduleActionHandlers => {
   const handleImportCsv = async (): Promise<void> => {
@@ -232,8 +267,10 @@ const createQualificationScheduleActionHandlers = ({
     }
 
     const timing = resolveQualificationScheduleTiming({
+      fieldCount,
       fieldStartOffsetSeconds,
       matchBlocks,
+      matchesPerTeam,
       scheduleDate,
       setErrorMessage,
     });
@@ -255,6 +292,7 @@ const createQualificationScheduleActionHandlers = ({
         {
           startTime: timing.startTime,
           cycleTimeSeconds: timing.cycleTimeSeconds,
+          fieldCount: timing.fieldCount,
           fieldStartOffsetSeconds: timing.fieldStartOffsetSeconds,
           matches: mapCsvMatchesToQualificationMatches(importedMatches),
         },
@@ -267,8 +305,15 @@ const createQualificationScheduleActionHandlers = ({
           result.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
+      dispatch({
+        type: "SET_FIELD_COUNT",
+        payload: result.config.fieldCount ?? DEFAULT_FIELD_COUNT,
+      });
+      dispatch({
+        type: "SET_MATCHES_PER_TEAM",
+        payload: result.config.matchesPerTeam ?? DEFAULT_MATCHES_PER_TEAM,
+      });
       dispatch({ type: "SET_SCHEDULE", payload: result });
-      setTeamCount(computeQualificationTeamCount(result));
       setSuccessMessage(
         `Imported and saved ${importedMatches.length} qualification matches.`
       );
@@ -284,7 +329,14 @@ const createQualificationScheduleActionHandlers = ({
 
   const handleExportCsv = (): void => {
     const csvContent = buildMatchesCsvFileContent(
-      schedule ? mapQualsToMatchRows(schedule) : []
+      schedule
+        ? mapQualsToMatchRows(
+            schedule,
+            fieldStartOffsetSeconds,
+            fieldCount,
+            teamNamesByNumber
+          )
+        : []
     );
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const objectUrl = URL.createObjectURL(blob);
@@ -314,8 +366,15 @@ const createQualificationScheduleActionHandlers = ({
           refreshed.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
+      dispatch({
+        type: "SET_FIELD_COUNT",
+        payload: refreshed.config.fieldCount ?? DEFAULT_FIELD_COUNT,
+      });
+      dispatch({
+        type: "SET_MATCHES_PER_TEAM",
+        payload: refreshed.config.matchesPerTeam ?? DEFAULT_MATCHES_PER_TEAM,
+      });
       dispatch({ type: "SET_SCHEDULE", payload: refreshed });
-      setTeamCount(computeQualificationTeamCount(refreshed));
       setSuccessMessage("Qualification schedule cleared.");
     } catch (error) {
       setErrorMessage(
@@ -357,8 +416,15 @@ const createQualificationScheduleActionHandlers = ({
           result.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
+      dispatch({
+        type: "SET_FIELD_COUNT",
+        payload: result.config.fieldCount ?? DEFAULT_FIELD_COUNT,
+      });
+      dispatch({
+        type: "SET_MATCHES_PER_TEAM",
+        payload: result.config.matchesPerTeam ?? DEFAULT_MATCHES_PER_TEAM,
+      });
       dispatch({ type: "SET_SCHEDULE", payload: result });
-      setTeamCount(computeQualificationTeamCount(result));
       setSuccessMessage(
         result.isActive
           ? "Qualification schedule activated."
@@ -397,20 +463,41 @@ export const QualificationSchedulePage = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  interface QualificationLoadContext {
+    teamNamesByNumber: TeamNamesByNumber;
+  }
+
   const loadQualification = useCallback(
     async (
       currentEventCode: string,
       currentToken: string
-    ): Promise<OneVsOneLoadResult<QualificationScheduleResponse>> => {
-      const response = await fetchQualificationSchedule(
-        currentEventCode,
-        currentToken
-      );
+    ): Promise<
+      OneVsOneLoadResult<
+        QualificationScheduleResponse,
+        QualificationLoadContext
+      >
+    > => {
+      const [response, teamsResponse] = await Promise.all([
+        fetchQualificationSchedule(currentEventCode, currentToken),
+        fetchEventTeams(currentEventCode, currentToken, "").catch(() => ({
+          teams: [] as EventTeamItem[],
+        })),
+      ]);
+
+      const teamCountFromTeams = teamsResponse.teams.length;
+      const teamCount =
+        teamCountFromTeams > 0
+          ? teamCountFromTeams
+          : computeQualificationTeamCount(response);
+
       return {
         config: response.config,
+        context: {
+          teamNamesByNumber: buildTeamNamesByNumber(teamsResponse.teams),
+        },
         matchCount: response.matches.length,
         schedule: response,
-        teamCount: computeQualificationTeamCount(response),
+        teamCount,
       };
     },
     []
@@ -433,10 +520,12 @@ export const QualificationSchedulePage = ({
       return {
         startTime,
         cycleTimeSeconds: firstBlock.cycleTimeMinutes * 60,
+        fieldCount: state.fieldCount,
         fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
+        matchesPerTeam: state.matchesPerTeam,
       };
     },
-    [state.fieldStartOffsetSeconds]
+    [state.fieldCount, state.fieldStartOffsetSeconds, state.matchesPerTeam]
   );
 
   const generateQualification = useCallback(
@@ -456,19 +545,32 @@ export const QualificationSchedulePage = ({
         matchCount: generated.matches.length,
         schedule: generated,
         successMessage: `Generated ${generated.matches.length} qualification matches (1v1).`,
-        teamCount: computeQualificationTeamCount(generated),
       };
     },
     []
   );
 
   const handleLoadedSchedule = useCallback(
-    (result: OneVsOneLoadResult<QualificationScheduleResponse>): void => {
+    (
+      result: OneVsOneLoadResult<
+        QualificationScheduleResponse,
+        QualificationLoadContext
+      >
+    ): void => {
       dispatch({
         type: "SET_FIELD_START_OFFSET",
         payload:
           result.schedule.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
+      });
+      dispatch({
+        type: "SET_FIELD_COUNT",
+        payload: result.schedule.config.fieldCount ?? DEFAULT_FIELD_COUNT,
+      });
+      dispatch({
+        type: "SET_MATCHES_PER_TEAM",
+        payload:
+          result.schedule.config.matchesPerTeam ?? DEFAULT_MATCHES_PER_TEAM,
       });
       dispatch({ type: "SET_SCHEDULE", payload: result.schedule });
     },
@@ -483,12 +585,22 @@ export const QualificationSchedulePage = ({
           result.schedule.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
+      dispatch({
+        type: "SET_FIELD_COUNT",
+        payload: result.schedule.config.fieldCount ?? DEFAULT_FIELD_COUNT,
+      });
+      dispatch({
+        type: "SET_MATCHES_PER_TEAM",
+        payload:
+          result.schedule.config.matchesPerTeam ?? DEFAULT_MATCHES_PER_TEAM,
+      });
       dispatch({ type: "SET_SCHEDULE", payload: result.schedule });
     },
     []
   );
 
   const {
+    context,
     errorMessage,
     handleGenerate,
     isGenerating,
@@ -499,12 +611,12 @@ export const QualificationSchedulePage = ({
     setMatchBlocks,
     setScheduleDate,
     setSuccessMessage,
-    setTeamCount,
     successMessage,
     teamCount,
   } = useOneVsOneScheduleController<
     QualificationScheduleResponse,
-    GenerateQualificationSchedulePayload
+    GenerateQualificationSchedulePayload,
+    QualificationLoadContext
   >({
     buildGeneratePayload,
     defaultCycleMinutes: DEFAULT_CYCLE_MINUTES,
@@ -524,39 +636,39 @@ export const QualificationSchedulePage = ({
 
   const hasMatches = (state.schedule?.matches.length ?? 0) > 0;
   const isActive = state.schedule?.isActive ?? false;
-  const matchesPerTeam = state.schedule?.config.matchesPerTeam ?? 0;
+  const matchesPerTeam = state.matchesPerTeam;
   const totalMatchesRequired = Math.ceil((teamCount * matchesPerTeam) / 2);
   const cycleTimeSeconds =
     state.schedule?.config.cycleTimeSeconds ??
     (matchBlocks[0]?.cycleTimeMinutes ?? DEFAULT_CYCLE_MINUTES) * 60;
 
-  const summaryItems = buildOneVsOneSummaryItems({
-    cycleTimeSeconds,
-    fieldCount: state.schedule?.config.fieldCount ?? 0,
-    fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
-    generatedMatchCount: state.schedule?.matches.length ?? 0,
-    isActive,
-    matchesPerTeam,
-    teamCount,
-    totalMatchesRequired,
-  });
-  const metricItems = buildOneVsOneMetricItems(
-    state.schedule?.metrics ?? EMPTY_ONE_VS_ONE_SCHEDULE_METRICS
+  const handleCycleTimeChange = useCallback(
+    (seconds: number) => {
+      const minutes = Math.max(1, seconds) / 60;
+      setMatchBlocks((prev) =>
+        prev.map((block) => ({ ...block, cycleTimeMinutes: minutes }))
+      );
+    },
+    [setMatchBlocks]
   );
+
+  const metrics = state.schedule?.metrics ?? EMPTY_ONE_VS_ONE_SCHEDULE_METRICS;
 
   const actionHandlers = createQualificationScheduleActionHandlers({
     dispatch,
     eventCode,
+    fieldCount: state.fieldCount,
     fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
     fileInputRef,
     hasMatches,
     isActive,
     matchBlocks,
+    matchesPerTeam: state.matchesPerTeam,
     schedule: state.schedule,
     scheduleDate,
     setErrorMessage,
     setSuccessMessage,
-    setTeamCount,
+    teamNamesByNumber: context?.teamNamesByNumber ?? {},
     token,
   });
 
@@ -573,28 +685,51 @@ export const QualificationSchedulePage = ({
         />
       }
       configSection={
-        <ScheduleOverviewSection
-          controls={
-            <QualificationFieldStartOffsetControl
-              fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
-              onChange={(value) =>
-                dispatch({
-                  type: "SET_FIELD_START_OFFSET",
-                  payload: value,
-                })
-              }
-            />
-          }
-          metricItems={metricItems}
-          summaryItems={summaryItems}
+        <OneVsOneScheduleOverview
+          cycleTimeSeconds={cycleTimeSeconds}
+          editable={{
+            matchesPerTeam: {
+              min: 1,
+              onChange: (v) =>
+                dispatch({ type: "SET_MATCHES_PER_TEAM", payload: v }),
+            },
+            fieldCount: {
+              min: 1,
+              onChange: (v) =>
+                dispatch({ type: "SET_FIELD_COUNT", payload: v }),
+            },
+            cycleTimeSeconds: { min: 1, onChange: handleCycleTimeChange },
+            fieldStartOffsetSeconds: {
+              min: 0,
+              onChange: (v) =>
+                dispatch({ type: "SET_FIELD_START_OFFSET", payload: v }),
+            },
+          }}
+          fieldCount={state.fieldCount}
+          fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+          generatedMatchCount={state.schedule?.matches.length ?? 0}
+          isActive={isActive}
+          matchesPerTeam={matchesPerTeam}
+          metrics={metrics}
+          teamCount={teamCount}
+          totalMatchesRequired={totalMatchesRequired}
         />
       }
       defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
       errorMessage={errorMessage}
       eventCode={eventCode}
+      fieldCount={state.fieldCount}
+      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
       generatedEmptyMessage="No qualification matches available."
       generatedMatches={
-        state.schedule ? mapQualsToMatchRows(state.schedule) : []
+        state.schedule
+          ? mapQualsToMatchRows(
+              state.schedule,
+              state.fieldStartOffsetSeconds,
+              state.fieldCount,
+              context?.teamNamesByNumber ?? {}
+            )
+          : []
       }
       hasMatches={hasMatches}
       isLoading={isLoading}

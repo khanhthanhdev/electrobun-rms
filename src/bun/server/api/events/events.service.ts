@@ -77,6 +77,7 @@ export function updateEvent(eventCode: string, payload: UpdateEventBody) {
       start: startTs,
       end: endTs,
       divisions: payload.divisions,
+      fields: payload.fields ?? 1,
       finals: payload.finals ?? 0,
       status: payload.status ?? 0,
     })

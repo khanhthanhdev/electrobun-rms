@@ -3,6 +3,12 @@ import {
   type ScheduleConfigCardItem,
   ScheduleConfigCards,
 } from "./schedule-config-cards";
+import type { OneVsOneScheduleMetrics } from "./schedule-metrics";
+import {
+  type BuildSummaryItemsInput,
+  buildOneVsOneMetricItems,
+  buildOneVsOneSummaryItems,
+} from "./schedule-overview";
 import { ScheduleSection } from "./schedule-section";
 
 interface ScheduleOverviewSectionProps {
@@ -32,3 +38,31 @@ export const ScheduleOverviewSection = ({
     </ScheduleSection>
   </div>
 );
+
+interface OneVsOneScheduleOverviewProps extends BuildSummaryItemsInput {
+  controls?: ReactNode;
+  metrics: OneVsOneScheduleMetrics;
+  metricTitle?: string;
+  summaryTitle?: string;
+}
+
+export const OneVsOneScheduleOverview = ({
+  controls,
+  metrics,
+  metricTitle,
+  summaryTitle,
+  ...summaryInput
+}: OneVsOneScheduleOverviewProps): JSX.Element => {
+  const summaryItems = buildOneVsOneSummaryItems(summaryInput);
+  const metricItems = buildOneVsOneMetricItems(metrics);
+
+  return (
+    <ScheduleOverviewSection
+      controls={controls}
+      metricItems={metricItems}
+      metricTitle={metricTitle}
+      summaryItems={summaryItems}
+      summaryTitle={summaryTitle}
+    />
+  );
+};

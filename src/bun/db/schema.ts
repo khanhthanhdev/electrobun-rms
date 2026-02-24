@@ -28,6 +28,7 @@ export const events = sqliteTable("events", {
   status: integer("status").notNull(),
   finals: integer("finals").notNull(),
   divisions: integer("divisions").notNull(),
+  fields: integer("fields").notNull().default(1),
   start: integer("start").notNull(),
   end: integer("end").notNull(),
   region: text("region").notNull(),

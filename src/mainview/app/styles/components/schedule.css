@@ -104,6 +104,13 @@
   font-weight: var(--font-semibold);
 }
 
+.schedule-metric-input {
+  width: 5.5rem;
+  font-family: inherit;
+  font-size: var(--text-5);
+  font-weight: var(--font-semibold);
+}
+
 .schedule-csv-controls {
   display: grid;
   gap: var(--space-1);

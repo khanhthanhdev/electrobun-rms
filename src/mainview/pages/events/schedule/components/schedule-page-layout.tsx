@@ -11,6 +11,8 @@ interface SchedulePageLayoutProps {
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
   eventCode: string;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   isLoading: boolean;
   matchBlocks: MatchBlockState[];
   onMatchBlocksChange: (blocks: MatchBlockState[]) => void;
@@ -35,6 +37,8 @@ export const SchedulePageLayout = ({
   matchBlocks,
   onMatchBlocksChange,
   defaultCycleTimeMinutes,
+  fieldCount,
+  fieldStartOffsetSeconds,
   teamCount,
   toolbar,
   children,
@@ -95,6 +99,8 @@ export const SchedulePageLayout = ({
 
         <MatchBlockEditor
           defaultCycleTimeMinutes={defaultCycleTimeMinutes}
+          fieldCount={fieldCount}
+          fieldStartOffsetSeconds={fieldStartOffsetSeconds}
           matchBlocks={matchBlocks}
           onMatchBlocksChange={onMatchBlocksChange}
           scheduleDate={scheduleDate}

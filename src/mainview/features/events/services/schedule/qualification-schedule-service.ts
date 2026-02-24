@@ -36,12 +36,15 @@ export interface QualificationScheduleResponse {
 
 export interface GenerateQualificationSchedulePayload {
   cycleTimeSeconds?: number;
+  fieldCount?: number;
   fieldStartOffsetSeconds?: number;
+  matchesPerTeam?: number;
   startTime?: number;
 }
 
 export interface SaveQualificationSchedulePayload {
   cycleTimeSeconds?: number;
+  fieldCount?: number;
   fieldStartOffsetSeconds?: number;
   matches: Array<{
     blueSurrogate?: boolean;

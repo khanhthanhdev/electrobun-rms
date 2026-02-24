@@ -38,7 +38,12 @@ const renderValue = (
       max={config.max}
       min={config.min ?? 0}
       onChange={(e) =>
-        config.onChange(Number.parseInt(e.target.value, 10) || 0)
+        config.onChange(
+          Math.min(
+            config.max ?? Number.POSITIVE_INFINITY,
+            Math.max(config.min ?? 0, Number.parseInt(e.target.value, 10) || 0)
+          )
+        )
       }
       type="number"
       value={value}

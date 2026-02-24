@@ -24,6 +24,7 @@ export const manualEventBodySchema = object({
   startDate: pipe(string(), minLength(1)),
   endDate: pipe(string(), minLength(1)),
   divisions: number(),
+  fields: optional(number()),
   finals: optional(number()),
   status: optional(number()),
 });
@@ -37,6 +38,7 @@ export const updateEventBodySchema = object({
   startDate: pipe(string(), minLength(1)),
   endDate: pipe(string(), minLength(1)),
   divisions: number(),
+  fields: optional(number()),
   finals: optional(number()),
   status: optional(number()),
 });

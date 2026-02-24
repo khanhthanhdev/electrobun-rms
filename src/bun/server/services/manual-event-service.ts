@@ -21,6 +21,7 @@ export interface ManualEventPayload {
   eventCode: string;
   eventName: string;
   eventType: number;
+  fields?: number;
   finals?: number;
   region: string;
   startDate: string;
@@ -41,6 +42,7 @@ export interface ManualEventResult {
     status: number;
     finals: number;
     divisions: number;
+    fields: number;
     start: number;
     end: number;
     region: string;
@@ -213,6 +215,7 @@ export async function createManualEvent(
   const { eventCode, eventName, region, eventType, startDate, endDate } =
     payload;
   const divisions = payload.divisions;
+  const fields = payload.fields ?? 1;
   const finals = payload.finals ?? 0;
   const status = payload.status ?? 1;
 
@@ -293,6 +296,7 @@ export async function createManualEvent(
         status,
         finals,
         divisions,
+        fields,
         start: startTs,
         end: endTs,
         region,
@@ -317,6 +321,7 @@ export async function createManualEvent(
         status,
         finals,
         divisions,
+        fields,
         start: startTs,
         end: endTs,
         region,

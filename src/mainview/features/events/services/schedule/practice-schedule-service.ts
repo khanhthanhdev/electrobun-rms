@@ -34,6 +34,7 @@ export interface SavePracticeSchedulePayload {
 }
 
 export interface GeneratePracticeSchedulePayload {
+  fieldStartOffsetSeconds?: number;
   matchBlocks: Array<{
     cycleTimeSeconds: number;
     endTime: number;

@@ -4,6 +4,8 @@ import { useSchedulePageState } from "./schedule-utils";
 
 interface ScheduleServerConfig {
   cycleTimeSeconds: number;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   startTime: number | null;
 }
 

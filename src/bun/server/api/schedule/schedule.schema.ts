@@ -27,6 +27,7 @@ export const savePracticeScheduleBodySchema = object({
 export const saveQualificationScheduleBodySchema = object({
   startTime: pipe(number(), minValue(1)),
   cycleTimeSeconds: optional(pipe(number(), minValue(1))),
+  fieldCount: optional(pipe(number(), minValue(1))),
   fieldStartOffsetSeconds: optional(pipe(number(), minValue(0))),
   matches: array(scheduleMatchInputSchema),
 });
@@ -39,13 +40,16 @@ export const matchBlockInputSchema = object({
 
 export const generatePracticeScheduleBodySchema = object({
   matchesPerTeam: pipe(number(), minValue(1)),
+  fieldStartOffsetSeconds: optional(pipe(number(), minValue(0))),
   matchBlocks: pipe(array(matchBlockInputSchema), minLength(1)),
 });
 
 export const generateQualificationScheduleBodySchema = object({
   startTime: optional(pipe(number(), minValue(1))),
   cycleTimeSeconds: optional(pipe(number(), minValue(1))),
+  fieldCount: optional(pipe(number(), minValue(1))),
   fieldStartOffsetSeconds: optional(pipe(number(), minValue(0))),
+  matchesPerTeam: optional(pipe(number(), minValue(1))),
 });
 
 export const setScheduleActivationBodySchema = object({

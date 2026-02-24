@@ -13,6 +13,7 @@ export interface OneVsOneScheduleMatch {
 export interface ScheduleConfigBase {
   cycleTimeSeconds: number;
   fieldCount: number;
+  fieldStartOffsetSeconds?: number;
   matchTimeSeconds: number;
   startTime: number | null;
 }

@@ -1,16 +1,33 @@
+import { useState } from "react";
 import {
   computeBlockCapacity,
+  computeMinimumBlockDurationMinutesForMatchCount,
   formatTimeForInput,
   type MatchBlockState,
 } from "./schedule-utils";
 
 interface MatchBlockEditorProps {
   defaultCycleTimeMinutes: number;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   matchBlocks: MatchBlockState[];
   onMatchBlocksChange: (blocks: MatchBlockState[]) => void;
   scheduleDate: string;
   teamCount: number;
 }
+
+const formatMinutesValue = (minutes: number): string =>
+  Number.isInteger(minutes) ? minutes.toString() : minutes.toFixed(1);
+
+const getRoundCountForMatches = (
+  matchCount: number,
+  fieldCount: number
+): number => {
+  if (matchCount <= 0) {
+    return 0;
+  }
+  return Math.ceil(matchCount / Math.max(1, fieldCount));
+};
 
 export const MatchBlockEditor = ({
   matchBlocks,
@@ -18,9 +35,21 @@ export const MatchBlockEditor = ({
   scheduleDate,
   teamCount,
   defaultCycleTimeMinutes,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0,
 }: MatchBlockEditorProps): JSX.Element => {
+  const safeFieldCount = Math.max(1, fieldCount);
+  const [matchCountDraftByBlockId, setMatchCountDraftByBlockId] = useState<
+    Record<string, string>
+  >({});
+
   const cumulativeMatches = matchBlocks.reduce<number[]>((acc, block) => {
-    const { matchesInBlock } = computeBlockCapacity(block, scheduleDate);
+    const { matchesInBlock } = computeBlockCapacity(
+      block,
+      scheduleDate,
+      safeFieldCount,
+      fieldStartOffsetSeconds
+    );
     const prev = acc.at(-1) ?? 0;
     acc.push(prev + matchesInBlock);
     return acc;
@@ -57,6 +86,46 @@ export const MatchBlockEditor = ({
     ]);
   };
 
+  const clearMatchCountDraft = (blockId: string): void => {
+    setMatchCountDraftByBlockId((previousDrafts) => {
+      if (!(blockId in previousDrafts)) {
+        return previousDrafts;
+      }
+      const nextDrafts = { ...previousDrafts };
+      delete nextDrafts[blockId];
+      return nextDrafts;
+    });
+  };
+
+  const commitDesiredMatches = (
+    block: MatchBlockState,
+    index: number,
+    startTimeMs: number,
+    rawValue: string
+  ): void => {
+    if (!Number.isFinite(startTimeMs)) {
+      return;
+    }
+
+    const desiredMatches = Math.max(0, Number.parseInt(rawValue, 10) || 0);
+    const dayEndMs = new Date(`${scheduleDate}T23:59:59`).getTime();
+    const minimumDurationMinutes =
+      fieldStartOffsetSeconds > 0
+        ? computeMinimumBlockDurationMinutesForMatchCount(
+            desiredMatches,
+            block.cycleTimeMinutes,
+            safeFieldCount,
+            fieldStartOffsetSeconds
+          )
+        : getRoundCountForMatches(desiredMatches, safeFieldCount) *
+          block.cycleTimeMinutes;
+    const rawEndMs = startTimeMs + minimumDurationMinutes * 60_000;
+    const newEndMs = Math.min(rawEndMs, dayEndMs);
+    const newEndDate = new Date(newEndMs);
+    const newEndText = `${String(newEndDate.getHours()).padStart(2, "0")}:${String(newEndDate.getMinutes()).padStart(2, "0")}`;
+    updateBlock(index, { endTimeText: newEndText });
+  };
+
   return (
     <>
       <div className="stack" style={{ gap: "1rem" }}>
@@ -65,8 +134,23 @@ export const MatchBlockEditor = ({
           const endDate = new Date(`${scheduleDate}T${block.endTimeText}`);
           const { matchesInBlock, durationMinutes } = computeBlockCapacity(
             block,
-            scheduleDate
+            scheduleDate,
+            safeFieldCount,
+            fieldStartOffsetSeconds
           );
+          const minimumDurationMinutes =
+            fieldStartOffsetSeconds > 0
+              ? computeMinimumBlockDurationMinutesForMatchCount(
+                  matchesInBlock,
+                  block.cycleTimeMinutes,
+                  safeFieldCount,
+                  fieldStartOffsetSeconds
+                )
+              : getRoundCountForMatches(matchesInBlock, safeFieldCount) *
+                block.cycleTimeMinutes;
+          const roundSlackMinutes = durationMinutes - minimumDurationMinutes;
+          const desiredMatchCountInputValue =
+            matchCountDraftByBlockId[block.id] ?? matchesInBlock;
 
           const teamsPlayedSoFar =
             teamCount > 0
@@ -92,33 +176,40 @@ export const MatchBlockEditor = ({
                 {formatTimeForInput(startDate.getTime() || 0)} -{" "}
                 {formatTimeForInput(endDate.getTime() || 0)}:{" "}
                 <input
+                  aria-label={`Desired matches for block ${index + 1}`}
+                  className="schedule-metric-input"
                   min={0}
-                  onChange={(e) => {
-                    const desiredMatches = Math.max(
-                      0,
-                      Number.parseInt(e.target.value, 10) || 0
+                  onBlur={(e) => {
+                    commitDesiredMatches(
+                      block,
+                      index,
+                      startDate.getTime(),
+                      e.target.value
                     );
-                    const dayEndMs = new Date(
-                      `${scheduleDate}T23:59:59`
-                    ).getTime();
-                    const rawEndMs =
-                      startDate.getTime() +
-                      desiredMatches * block.cycleTimeMinutes * 60_000;
-                    const newEndMs = Math.min(rawEndMs, dayEndMs);
-                    const newEndDate = new Date(newEndMs);
-                    const newEndText = `${String(newEndDate.getHours()).padStart(2, "0")}:${String(newEndDate.getMinutes()).padStart(2, "0")}`;
-                    updateBlock(index, { endTimeText: newEndText });
+                    clearMatchCountDraft(block.id);
                   }}
-                  style={{ width: "50px" }}
+                  onChange={(e) => {
+                    setMatchCountDraftByBlockId((previousDrafts) => ({
+                      ...previousDrafts,
+                      [block.id]: e.target.value,
+                    }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") {
+                      return;
+                    }
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }}
+                  step={1}
                   type="number"
-                  value={matchesInBlock}
+                  value={desiredMatchCountInputValue}
                 />{" "}
                 Matches
               </div>
               <div style={{ marginBottom: "var(--space-2)" }}>
-                {durationMinutes} minutes (Last match ends{" "}
-                {durationMinutes - matchesInBlock * block.cycleTimeMinutes}{" "}
-                minutes before end of block)
+                {durationMinutes} minutes (Round slack:{" "}
+                {formatMinutesValue(roundSlackMinutes)} min)
               </div>
 
               <div

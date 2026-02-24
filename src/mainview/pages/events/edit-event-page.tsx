@@ -105,6 +105,7 @@ export const EditEventPage = ({
                 startDate: timestampToDateString(event.start),
                 endDate: timestampToDateString(event.end),
                 divisions: event.divisions,
+                fields: event.fields ?? 1,
                 finals: event.finals,
                 status: event.status,
               },
@@ -336,6 +337,20 @@ export const EditEventPage = ({
                 value={state.form.divisions}
               />
             </div>
+          </div>
+
+          <div className="form-row" data-field>
+            <label htmlFor="fields">Number of Fields</label>
+            <input
+              id="fields"
+              min={1}
+              onChange={(e) => {
+                updateField("fields", Number(e.target.value));
+              }}
+              required
+              type="number"
+              value={state.form.fields}
+            />
           </div>
         </div>
 

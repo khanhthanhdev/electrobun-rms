@@ -13,6 +13,7 @@ interface CreateManualEventPayload {
   eventCode: string;
   eventName: string;
   eventType: number;
+  fields?: number;
   finals?: number;
   region: string;
   startDate: string;
@@ -28,6 +29,7 @@ interface UpdateEventPayload {
   endDate: string;
   eventName: string;
   eventType: number;
+  fields?: number;
   finals?: number;
   region: string;
   startDate: string;

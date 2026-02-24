@@ -31,11 +31,7 @@ import { ScheduleCsvSection } from "./components/schedule-csv-section";
 import { ScheduleManagementToolbar } from "./components/schedule-management-toolbar";
 import type { ScheduleMatchRow } from "./components/schedule-match-table";
 import { computeOneVsOneScheduleMetrics } from "./components/schedule-metrics";
-import {
-  buildOneVsOneMetricItems,
-  buildOneVsOneSummaryItems,
-} from "./components/schedule-overview";
-import { ScheduleOverviewSection } from "./components/schedule-overview-section";
+import { OneVsOneScheduleOverview } from "./components/schedule-overview-section";
 import type { MatchBlockState } from "./components/schedule-utils";
 import {
   getFirstBlockStartTime,
@@ -50,6 +46,7 @@ interface PracticeSchedulePageProps {
 }
 
 const DEFAULT_CYCLE_MINUTES = 7;
+const DEFAULT_FIELD_START_OFFSET_SECONDS = 0;
 
 type TeamNamesByNumber = Record<number, string>;
 type EditablePracticeMatch = SavePracticeSchedulePayload["matches"][number] & {
@@ -74,28 +71,34 @@ const buildTeamNamesByNumber = (teams: EventTeamItem[]): TeamNamesByNumber => {
 
 interface PracticeState {
   fieldCount: number;
+  fieldStartOffsetSeconds: number;
   isActive: boolean;
   isClearing: boolean;
   isImporting: boolean;
   isUpdatingActivation: boolean;
   matches: EditablePracticeMatch[];
+  maxFieldCount: number;
 }
 
 type PracticeAction =
   | { type: "SET_FIELD_COUNT"; payload: number }
+  | { type: "SET_FIELD_START_OFFSET"; payload: number }
   | { type: "SET_IS_ACTIVE"; payload: boolean }
   | { type: "SET_IS_CLEARING"; payload: boolean }
   | { type: "SET_IS_IMPORTING"; payload: boolean }
   | { type: "SET_IS_UPDATING_ACTIVATION"; payload: boolean }
-  | { type: "SET_MATCHES"; payload: EditablePracticeMatch[] };
+  | { type: "SET_MATCHES"; payload: EditablePracticeMatch[] }
+  | { type: "SET_MAX_FIELD_COUNT"; payload: number };
 
 const initialPracticeState: PracticeState = {
   fieldCount: 1,
+  fieldStartOffsetSeconds: 0,
   isActive: false,
   isClearing: false,
   isImporting: false,
   isUpdatingActivation: false,
   matches: [],
+  maxFieldCount: 1,
 };
 
 const practiceReducer = (
@@ -104,7 +107,12 @@ const practiceReducer = (
 ): PracticeState => {
   switch (action.type) {
     case "SET_FIELD_COUNT":
-      return { ...state, fieldCount: action.payload };
+      return {
+        ...state,
+        fieldCount: Math.min(Math.max(1, action.payload), state.maxFieldCount),
+      };
+    case "SET_FIELD_START_OFFSET":
+      return { ...state, fieldStartOffsetSeconds: Math.max(0, action.payload) };
     case "SET_IS_ACTIVE":
       return { ...state, isActive: action.payload };
     case "SET_IS_CLEARING":
@@ -115,6 +123,14 @@ const practiceReducer = (
       return { ...state, isUpdatingActivation: action.payload };
     case "SET_MATCHES":
       return { ...state, matches: action.payload };
+    case "SET_MAX_FIELD_COUNT": {
+      const maxFieldCount = Math.max(1, action.payload);
+      return {
+        ...state,
+        maxFieldCount,
+        fieldCount: Math.min(state.fieldCount, maxFieldCount),
+      };
+    }
     default:
       return state;
   }
@@ -168,12 +184,14 @@ const mapToMatchRow = (
 
 const buildPracticeMatchRows = ({
   fieldCount,
+  fieldStartOffsetSeconds,
   firstBlock,
   matches,
   scheduleDate,
   teamNamesByNumber,
 }: {
   fieldCount: number;
+  fieldStartOffsetSeconds: number;
   firstBlock: MatchBlockState | undefined;
   matches: EditablePracticeMatch[];
   scheduleDate: string;
@@ -187,8 +205,15 @@ const buildPracticeMatchRows = ({
       if (Number.isNaN(blockDate.getTime())) {
         return mapToMatchRow(match, Date.now(), fieldCount, teamNamesByNumber);
       }
-      const cycleTimeSeconds = firstBlock.cycleTimeMinutes * 60;
-      computedStart = blockDate.getTime() + index * cycleTimeSeconds * 1000;
+      const cycleTimeMs = firstBlock.cycleTimeMinutes * 60 * 1000;
+      const fieldOffsetMs = fieldStartOffsetSeconds * 1000;
+      const safeFieldCount = Math.max(1, fieldCount);
+      const roundIndex = Math.floor(index / safeFieldCount);
+      const fieldIndex = index % safeFieldCount;
+      computedStart =
+        blockDate.getTime() +
+        roundIndex * cycleTimeMs +
+        fieldIndex * fieldOffsetMs;
     }
 
     return mapToMatchRow(match, computedStart, fieldCount, teamNamesByNumber);
@@ -227,28 +252,6 @@ const resolvePracticeScheduleTiming = ({
     cycleTimeSeconds: firstBlock.cycleTimeMinutes * 60,
   };
 };
-
-interface PracticeMatchesPerTeamControlProps {
-  matchesPerTeam: number;
-  onChange: (value: number) => void;
-}
-
-const PracticeMatchesPerTeamControl = ({
-  matchesPerTeam,
-  onChange,
-}: PracticeMatchesPerTeamControlProps): JSX.Element => (
-  <label className="schedule-overview-field">
-    <span>Matches Per Team</span>
-    <input
-      min={1}
-      onChange={(event) =>
-        onChange(Math.max(1, Number.parseInt(event.target.value, 10) || 1))
-      }
-      type="number"
-      value={matchesPerTeam}
-    />
-  </label>
-);
 
 interface CreatePracticeScheduleActionHandlersArgs {
   dispatch: (action: PracticeAction) => void;
@@ -323,9 +326,14 @@ const createPracticeScheduleActionHandlers = ({
         token
       );
 
+      const importedFieldCount = result.config.fieldCount || 1;
+      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: importedFieldCount });
+      dispatch({ type: "SET_FIELD_COUNT", payload: importedFieldCount });
       dispatch({
-        type: "SET_FIELD_COUNT",
-        payload: result.config.fieldCount || 1,
+        type: "SET_FIELD_START_OFFSET",
+        payload:
+          result.config.fieldStartOffsetSeconds ??
+          DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_IS_ACTIVE", payload: result.isActive });
       dispatch({
@@ -369,9 +377,14 @@ const createPracticeScheduleActionHandlers = ({
     try {
       await clearPracticeSchedule(eventCode, token);
       const refreshed = await fetchPracticeSchedule(eventCode, token);
+      const clearedFieldCount = refreshed.config.fieldCount || 1;
+      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: clearedFieldCount });
+      dispatch({ type: "SET_FIELD_COUNT", payload: clearedFieldCount });
       dispatch({
-        type: "SET_FIELD_COUNT",
-        payload: refreshed.config.fieldCount || 1,
+        type: "SET_FIELD_START_OFFSET",
+        payload:
+          refreshed.config.fieldStartOffsetSeconds ??
+          DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_IS_ACTIVE", payload: refreshed.isActive });
       dispatch({
@@ -413,9 +426,14 @@ const createPracticeScheduleActionHandlers = ({
         !state.isActive,
         token
       );
+      const activationFieldCount = result.config.fieldCount || 1;
+      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: activationFieldCount });
+      dispatch({ type: "SET_FIELD_COUNT", payload: activationFieldCount });
       dispatch({
-        type: "SET_FIELD_COUNT",
-        payload: result.config.fieldCount || 1,
+        type: "SET_FIELD_START_OFFSET",
+        payload:
+          result.config.fieldStartOffsetSeconds ??
+          DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_IS_ACTIVE", payload: result.isActive });
       dispatch({
@@ -472,9 +490,14 @@ export const PracticeSchedulePage = ({
     (
       result: OneVsOneLoadResult<PracticeScheduleResponse, PracticeLoadContext>
     ): void => {
+      const serverFieldCount = result.schedule.config.fieldCount || 1;
+      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: serverFieldCount });
+      dispatch({ type: "SET_FIELD_COUNT", payload: serverFieldCount });
       dispatch({
-        type: "SET_FIELD_COUNT",
-        payload: result.schedule.config.fieldCount || 1,
+        type: "SET_FIELD_START_OFFSET",
+        payload:
+          result.schedule.config.fieldStartOffsetSeconds ??
+          DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_IS_ACTIVE", payload: result.schedule.isActive });
       dispatch({
@@ -488,9 +511,14 @@ export const PracticeSchedulePage = ({
 
   const handleGeneratedSchedule = useCallback(
     (result: OneVsOneGenerateResult<PracticeScheduleResponse>): void => {
+      const serverFieldCount = result.schedule.config.fieldCount || 1;
+      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: serverFieldCount });
+      dispatch({ type: "SET_FIELD_COUNT", payload: serverFieldCount });
       dispatch({
-        type: "SET_FIELD_COUNT",
-        payload: result.schedule.config.fieldCount || 1,
+        type: "SET_FIELD_START_OFFSET",
+        payload:
+          result.schedule.config.fieldStartOffsetSeconds ??
+          DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
       dispatch({ type: "SET_IS_ACTIVE", payload: result.schedule.isActive });
       dispatch({
@@ -536,6 +564,7 @@ export const PracticeSchedulePage = ({
       matchBlocks: MatchBlockState[];
       scheduleDate: string;
     }): GeneratePracticeSchedulePayload => ({
+      fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
       matchesPerTeam,
       matchBlocks: matchBlocks.map((block) => {
         const startDate = new Date(`${scheduleDate}T${block.startTimeText}`);
@@ -553,7 +582,7 @@ export const PracticeSchedulePage = ({
         };
       }),
     }),
-    [matchesPerTeam]
+    [matchesPerTeam, state.fieldStartOffsetSeconds]
   );
 
   const generatePractice = useCallback(
@@ -619,22 +648,21 @@ export const PracticeSchedulePage = ({
   const cycleTimeSeconds =
     (firstBlock?.cycleTimeMinutes ?? DEFAULT_CYCLE_MINUTES) * 60;
 
-  const metricItems = buildOneVsOneMetricItems(
-    computeOneVsOneScheduleMetrics(state.matches)
+  const handleCycleTimeChange = useCallback(
+    (seconds: number) => {
+      const minutes = Math.max(1, seconds) / 60;
+      setMatchBlocks((prev) =>
+        prev.map((block) => ({ ...block, cycleTimeMinutes: minutes }))
+      );
+    },
+    [setMatchBlocks]
   );
-  const summaryItems = buildOneVsOneSummaryItems({
-    cycleTimeSeconds,
-    fieldCount: state.fieldCount,
-    fieldStartOffsetSeconds: 0,
-    generatedMatchCount: state.matches.length,
-    isActive: state.isActive,
-    matchesPerTeam,
-    teamCount,
-    totalMatchesRequired,
-  });
+
+  const metrics = computeOneVsOneScheduleMetrics(state.matches);
 
   const tableRows = buildPracticeMatchRows({
     fieldCount: state.fieldCount,
+    fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
     firstBlock,
     matches: state.matches,
     scheduleDate,
@@ -712,20 +740,38 @@ export const PracticeSchedulePage = ({
         />
       }
       configSection={
-        <ScheduleOverviewSection
-          controls={
-            <PracticeMatchesPerTeamControl
-              matchesPerTeam={matchesPerTeam}
-              onChange={setMatchesPerTeam}
-            />
-          }
-          metricItems={metricItems}
-          summaryItems={summaryItems}
+        <OneVsOneScheduleOverview
+          cycleTimeSeconds={cycleTimeSeconds}
+          editable={{
+            matchesPerTeam: { min: 1, onChange: setMatchesPerTeam },
+            fieldCount: {
+              min: 1,
+              max: state.maxFieldCount,
+              onChange: (v) =>
+                dispatch({ type: "SET_FIELD_COUNT", payload: v }),
+            },
+            cycleTimeSeconds: { min: 1, onChange: handleCycleTimeChange },
+            fieldStartOffsetSeconds: {
+              min: 0,
+              onChange: (v) =>
+                dispatch({ type: "SET_FIELD_START_OFFSET", payload: v }),
+            },
+          }}
+          fieldCount={state.fieldCount}
+          fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+          generatedMatchCount={state.matches.length}
+          isActive={state.isActive}
+          matchesPerTeam={matchesPerTeam}
+          metrics={metrics}
+          teamCount={teamCount}
+          totalMatchesRequired={totalMatchesRequired}
         />
       }
       defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
       errorMessage={errorMessage}
       eventCode={eventCode}
+      fieldCount={state.fieldCount}
+      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
       generatedEmptyMessage="No practice matches available."
       generatedMatches={tableRows}
       hasMatches={hasMatches}

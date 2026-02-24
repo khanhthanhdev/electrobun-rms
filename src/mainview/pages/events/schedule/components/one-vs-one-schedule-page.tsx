@@ -9,6 +9,8 @@ interface OneVsOneSchedulePageProps {
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
   eventCode: string;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   hasMatches: boolean;
   isLoading: boolean;
   matchBlocks: MatchBlockState[];
@@ -28,6 +30,8 @@ export const OneVsOneSchedulePage = ({
   defaultCycleTimeMinutes,
   errorMessage,
   eventCode,
+  fieldCount,
+  fieldStartOffsetSeconds,
   hasMatches,
   isLoading,
   matchBlocks,
@@ -45,6 +49,8 @@ export const OneVsOneSchedulePage = ({
     defaultCycleTimeMinutes={defaultCycleTimeMinutes}
     errorMessage={errorMessage}
     eventCode={eventCode}
+    fieldCount={fieldCount}
+    fieldStartOffsetSeconds={fieldStartOffsetSeconds}
     isLoading={isLoading}
     matchBlocks={matchBlocks}
     onMatchBlocksChange={onMatchBlocksChange}

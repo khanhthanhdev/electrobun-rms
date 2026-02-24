@@ -33,9 +33,130 @@ export interface BlockCapacity {
   matchesInBlock: number;
 }
 
+const MS_IN_MINUTE = 60_000;
+const MS_IN_SECOND = 1000;
+
+const toSafeFieldCount = (fieldCount: number): number =>
+  Math.max(1, fieldCount);
+
+const toSafeFieldOffsetMs = (fieldStartOffsetSeconds: number): number =>
+  Math.max(0, fieldStartOffsetSeconds) * MS_IN_SECOND;
+
+export const computeMatchCountForDurationMs = (
+  durationMs: number,
+  cycleTimeMinutes: number,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0
+): number => {
+  if (durationMs <= 0 || cycleTimeMinutes <= 0) {
+    return 0;
+  }
+
+  const cycleTimeMs = cycleTimeMinutes * MS_IN_MINUTE;
+  const safeFieldCount = toSafeFieldCount(fieldCount);
+  const fieldOffsetMs = toSafeFieldOffsetMs(fieldStartOffsetSeconds);
+
+  let matchesInBlock = 0;
+  for (
+    let roundStartOffsetMs = 0;
+    roundStartOffsetMs < durationMs;
+    roundStartOffsetMs += cycleTimeMs
+  ) {
+    let hasMatchesInRound = false;
+
+    for (let fieldIndex = 0; fieldIndex < safeFieldCount; fieldIndex += 1) {
+      const matchStartOffsetMs =
+        roundStartOffsetMs + fieldIndex * fieldOffsetMs;
+      if (matchStartOffsetMs >= durationMs) {
+        continue;
+      }
+
+      matchesInBlock += 1;
+      hasMatchesInRound = true;
+    }
+
+    if (!hasMatchesInRound) {
+      break;
+    }
+  }
+
+  return matchesInBlock;
+};
+
+export const computeRequiredBlockDurationMsForMatchCount = (
+  matchCount: number,
+  cycleTimeMinutes: number,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0
+): number => {
+  if (matchCount <= 0 || cycleTimeMinutes <= 0) {
+    return 0;
+  }
+
+  const cycleTimeMs = cycleTimeMinutes * MS_IN_MINUTE;
+  const safeFieldCount = toSafeFieldCount(fieldCount);
+  const fieldOffsetMs = toSafeFieldOffsetMs(fieldStartOffsetSeconds);
+
+  let matchesAssigned = 0;
+  for (let roundStartOffsetMs = 0; ; roundStartOffsetMs += cycleTimeMs) {
+    for (let fieldIndex = 0; fieldIndex < safeFieldCount; fieldIndex += 1) {
+      const matchStartOffsetMs =
+        roundStartOffsetMs + fieldIndex * fieldOffsetMs;
+      matchesAssigned += 1;
+      if (matchesAssigned >= matchCount) {
+        return matchStartOffsetMs + 1;
+      }
+    }
+  }
+};
+
+export const computeMinimumBlockDurationMinutesForMatchCount = (
+  matchCount: number,
+  cycleTimeMinutes: number,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0
+): number => {
+  if (matchCount <= 0 || cycleTimeMinutes <= 0) {
+    return 0;
+  }
+
+  const upperBoundMinutes = Math.max(
+    1,
+    Math.ceil(
+      computeRequiredBlockDurationMsForMatchCount(
+        matchCount,
+        cycleTimeMinutes,
+        fieldCount,
+        fieldStartOffsetSeconds
+      ) / MS_IN_MINUTE
+    )
+  );
+
+  for (
+    let durationMinutes = 0;
+    durationMinutes <= upperBoundMinutes;
+    durationMinutes += 1
+  ) {
+    const durationMs = durationMinutes * MS_IN_MINUTE;
+    const capacity = computeMatchCountForDurationMs(
+      durationMs,
+      cycleTimeMinutes,
+      fieldCount,
+      fieldStartOffsetSeconds
+    );
+    if (capacity >= matchCount) {
+      return durationMinutes;
+    }
+  }
+
+  return upperBoundMinutes;
+};
+
 export const computeBlockCapacity = (
   block: MatchBlockState,
-  scheduleDate: string
+  scheduleDate: string,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0
 ): BlockCapacity => {
   const startDate = new Date(`${scheduleDate}T${block.startTimeText}`);
   const endDate = new Date(`${scheduleDate}T${block.endTimeText}`);
@@ -44,30 +165,46 @@ export const computeBlockCapacity = (
     return { matchesInBlock: 0, durationMinutes: 0 };
   }
 
-  const durationMinutes = Math.floor(
-    (endDate.getTime() - startDate.getTime()) / 60_000
-  );
+  const durationMs = endDate.getTime() - startDate.getTime();
+  const durationMinutes = Math.floor(durationMs / 60_000);
 
-  if (durationMinutes <= 0) {
-    return { matchesInBlock: 0, durationMinutes: 0 };
+  if (durationMs <= 0 || block.cycleTimeMinutes <= 0) {
+    return { matchesInBlock: 0, durationMinutes: Math.max(0, durationMinutes) };
   }
 
-  const matchesInBlock =
-    block.cycleTimeMinutes > 0
-      ? Math.floor(durationMinutes / block.cycleTimeMinutes)
-      : 0;
-
-  return { matchesInBlock, durationMinutes };
+  return {
+    matchesInBlock: computeMatchCountForDurationMs(
+      durationMs,
+      block.cycleTimeMinutes,
+      fieldCount,
+      fieldStartOffsetSeconds
+    ),
+    durationMinutes,
+  };
 };
 
 export const buildInitialMatchBlocks = (
   startTime: number,
   matchCount: number,
   cycleTimeSeconds: number,
-  defaultCycleMinutes: number
+  defaultCycleMinutes: number,
+  fieldCount = 1,
+  fieldStartOffsetSeconds = 0
 ): MatchBlockState[] => {
   const cycleMinutes = Math.floor(cycleTimeSeconds / 60) || defaultCycleMinutes;
-  const endTimestamp = startTime + matchCount * cycleMinutes * 60 * 1000;
+  const safeFieldCount = toSafeFieldCount(fieldCount);
+  const endTimestamp =
+    fieldStartOffsetSeconds > 0
+      ? startTime +
+        computeMinimumBlockDurationMinutesForMatchCount(
+          matchCount,
+          cycleMinutes,
+          safeFieldCount,
+          fieldStartOffsetSeconds
+        ) *
+          MS_IN_MINUTE
+      : startTime +
+        Math.ceil(matchCount / safeFieldCount) * cycleMinutes * MS_IN_MINUTE;
 
   return [
     {
@@ -81,6 +218,8 @@ export const buildInitialMatchBlocks = (
 
 interface ScheduleServerConfig {
   cycleTimeSeconds: number;
+  fieldCount?: number;
+  fieldStartOffsetSeconds?: number;
   startTime: number | null;
 }
 
@@ -119,7 +258,9 @@ export const useSchedulePageState = ({
             config.startTime,
             matchCount,
             config.cycleTimeSeconds,
-            defaultCycleMinutes
+            defaultCycleMinutes,
+            config.fieldCount ?? 1,
+            config.fieldStartOffsetSeconds ?? 0
           )
         );
       }
