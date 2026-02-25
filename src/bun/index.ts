@@ -60,6 +60,35 @@ mainWindow.on("close", () => {
   Utils.quit();
 });
 
+// --- Auto Update ---
+async function checkAndApplyUpdate() {
+  try {
+    const updateInfo = await Updater.checkForUpdate();
+    console.log(
+      `Update check: v${updateInfo.version}, available=${updateInfo.updateAvailable}`
+    );
+
+    if (updateInfo.updateAvailable) {
+      console.log("Downloading update...");
+      await Updater.downloadUpdate();
+
+      const info = Updater.updateInfo();
+      if (info?.updateReady) {
+        console.log("Applying update and relaunching...");
+        await Updater.applyUpdate();
+      }
+    }
+  } catch (error) {
+    console.error("Update check failed:", error);
+  }
+}
+
+if (channel !== "dev") {
+  checkAndApplyUpdate();
+  // Check for updates every 30 minutes
+  setInterval(checkAndApplyUpdate, 30 * 60 * 1000);
+}
+
 console.log("✅ ElectroBun app started!");
 
 // --- Helper ---

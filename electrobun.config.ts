@@ -27,6 +27,10 @@ export default {
       bundleCEF: false,
     },
   },
+  release: {
+    baseUrl:
+      "https://github.com/khanhthanhdev/electrobun-rms/releases/latest/download",
+  },
   runtime: {
     exitOnLastWindowClosed: true,
   },
