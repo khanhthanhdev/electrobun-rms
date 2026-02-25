@@ -743,7 +743,9 @@ const buildRemainingCountsByTeam = (
 
 const chooseEntryIndex = (
   entries: PairingEntry[],
-  random: () => number
+  random: () => number,
+  currentRound?: number,
+  lastRoundByTeam?: Map<number, number>
 ): number => {
   const remainingCounts = buildRemainingCountsByTeam(entries);
   let bestIndex = 0;
@@ -753,7 +755,20 @@ const chooseEntryIndex = (
     const entry = entries[index];
     const remainingCount = remainingCounts.get(entry.teamNumber) ?? 0;
     const surrogatePenalty = entry.isSurrogate ? 0.4 : 0;
-    const score = remainingCount - surrogatePenalty + random() * 0.001;
+
+    let restPenalty = 0;
+    if (currentRound !== undefined && lastRoundByTeam) {
+      const lastRound = lastRoundByTeam.get(entry.teamNumber);
+      if (lastRound !== undefined) {
+        const roundGap = currentRound - lastRound;
+        if (roundGap <= MIN_REST_GAP) {
+          restPenalty = (MIN_REST_GAP + 1 - roundGap) * 10;
+        }
+      }
+    }
+
+    const score =
+      remainingCount - surrogatePenalty - restPenalty + random() * 0.001;
 
     if (score > bestScore) {
       bestScore = score;
@@ -806,23 +821,35 @@ const chooseSideAssignment = (
     : { red: second, blue: first };
 };
 
+const MIN_REST_GAP = 3;
+
 const calculateRestPenalty = (
-  currentMatchNumber: number,
-  lastMatchByTeam: Map<number, number>,
+  currentRound: number,
+  lastRoundByTeam: Map<number, number>,
   teamNumber: number
 ): number => {
-  const previousMatchNumber = lastMatchByTeam.get(teamNumber);
-  if (previousMatchNumber === undefined) {
+  const previousRound = lastRoundByTeam.get(teamNumber);
+  if (previousRound === undefined) {
     return 0;
   }
-  return currentMatchNumber - previousMatchNumber <= 1 ? 20 : 0;
+  const gap = currentRound - previousRound;
+  if (gap <= 1) {
+    return 500;
+  }
+  if (gap <= 2) {
+    return 200;
+  }
+  if (gap <= MIN_REST_GAP) {
+    return 80;
+  }
+  return 0;
 };
 
 const calculateOpponentCost = (options: {
   candidate: PairingEntry;
-  currentMatchNumber: number;
+  currentRound: number;
   first: PairingEntry;
-  lastMatchByTeam: Map<number, number>;
+  lastRoundByTeam: Map<number, number>;
   pairCounts: Map<string, number>;
   random: () => number;
   sideCounts: Map<number, SideCounter>;
@@ -834,13 +861,13 @@ const calculateOpponentCost = (options: {
   const repeatPenalty = (options.pairCounts.get(pairKey) ?? 0) * 100;
 
   const firstRestPenalty = calculateRestPenalty(
-    options.currentMatchNumber,
-    options.lastMatchByTeam,
+    options.currentRound,
+    options.lastRoundByTeam,
     options.first.teamNumber
   );
   const candidateRestPenalty = calculateRestPenalty(
-    options.currentMatchNumber,
-    options.lastMatchByTeam,
+    options.currentRound,
+    options.lastRoundByTeam,
     options.candidate.teamNumber
   );
 
@@ -877,8 +904,8 @@ const calculateOpponentCost = (options: {
 const chooseOpponentIndex = (
   entries: PairingEntry[],
   firstIndex: number,
-  currentMatchNumber: number,
-  lastMatchByTeam: Map<number, number>,
+  currentRound: number,
+  lastRoundByTeam: Map<number, number>,
   pairCounts: Map<string, number>,
   sideCounts: Map<number, SideCounter>,
   random: () => number
@@ -897,9 +924,9 @@ const chooseOpponentIndex = (
 
     const cost = calculateOpponentCost({
       candidate,
-      currentMatchNumber,
+      currentRound,
       first,
-      lastMatchByTeam,
+      lastRoundByTeam,
       pairCounts,
       random,
       sideCounts,
@@ -977,17 +1004,24 @@ const buildQualificationLineups = (
   const remainingEntries = [...entries];
   const pairCounts = new Map<string, number>();
   const sideCounts = new Map<number, SideCounter>();
-  const lastMatchByTeam = new Map<number, number>();
+  const lastRoundByTeam = new Map<number, number>();
   const matches: OneVsOneScheduleMatch[] = [];
+  const effectiveFieldCount = Math.max(1, fieldCount);
 
   let matchNumber = 1;
   while (remainingEntries.length >= 2) {
-    const firstIndex = chooseEntryIndex(remainingEntries, random);
+    const currentRound = Math.floor((matchNumber - 1) / effectiveFieldCount);
+    const firstIndex = chooseEntryIndex(
+      remainingEntries,
+      random,
+      currentRound,
+      lastRoundByTeam
+    );
     const opponentIndex = chooseOpponentIndex(
       remainingEntries,
       firstIndex,
-      matchNumber,
-      lastMatchByTeam,
+      currentRound,
+      lastRoundByTeam,
       pairCounts,
       sideCounts,
       random
@@ -1020,8 +1054,8 @@ const buildQualificationLineups = (
     incrementPairCount(pairCounts, match.redTeam, match.blueTeam);
     incrementSideCount(sideCounts, match.redTeam, "red");
     incrementSideCount(sideCounts, match.blueTeam, "blue");
-    lastMatchByTeam.set(match.redTeam, matchNumber);
-    lastMatchByTeam.set(match.blueTeam, matchNumber);
+    lastRoundByTeam.set(match.redTeam, currentRound);
+    lastRoundByTeam.set(match.blueTeam, currentRound);
 
     const indexesToRemove = [firstIndex, opponentIndex].sort(
       (left, right) => right - left
@@ -1900,45 +1934,37 @@ const shuffleArray = <T>(array: T[], random: () => number): void => {
 /**
  * Score a schedule: lower is better.
  * - Opponent duplication penalty (seeing same opponent multiple times)
- * - Back-to-back penalty (playing consecutive matches)
+ * - Rest gap penalty (teams must rest at least MIN_REST_GAP rounds between matches)
+ *
+ * Gap is measured in rounds (accounting for fieldCount parallel matches).
  */
-const scorePracticeSchedule = (schedule: [number, number][]): number => {
+const scorePracticeSchedule = (
+  schedule: [number, number][],
+  fieldCount: number
+): number => {
   const opponentCounts = new Map<string, number>();
-  const lastMatch = new Map<number, number>();
+  const lastRound = new Map<number, number>();
+  const effectiveFieldCount = Math.max(1, fieldCount);
   let score = 0;
 
   for (let matchIdx = 0; matchIdx < schedule.length; matchIdx += 1) {
     const [teamA, teamB] = schedule[matchIdx];
+    const currentRound = Math.floor(matchIdx / effectiveFieldCount);
 
     // Opponent duplication penalty
     const key = teamA < teamB ? `${teamA}:${teamB}` : `${teamB}:${teamA}`;
     const prevCount = opponentCounts.get(key) ?? 0;
     if (prevCount > 0) {
-      // Quadratic penalty for repeated opponents
       score += prevCount * prevCount * 100;
     }
     opponentCounts.set(key, prevCount + 1);
 
-    // Back-to-back penalty
-    const lastA = lastMatch.get(teamA);
-    if (lastA !== undefined && matchIdx - lastA <= 1) {
-      score += 50;
-    }
-    const lastB = lastMatch.get(teamB);
-    if (lastB !== undefined && matchIdx - lastB <= 1) {
-      score += 50;
-    }
+    // Rest gap penalty – teams must have at least MIN_REST_GAP rounds between matches
+    score += calculateRestPenalty(currentRound, lastRound, teamA);
+    score += calculateRestPenalty(currentRound, lastRound, teamB);
 
-    // Close match separation penalty (gap of 2)
-    if (lastA !== undefined && matchIdx - lastA <= 2) {
-      score += 10;
-    }
-    if (lastB !== undefined && matchIdx - lastB <= 2) {
-      score += 10;
-    }
-
-    lastMatch.set(teamA, matchIdx);
-    lastMatch.set(teamB, matchIdx);
+    lastRound.set(teamA, currentRound);
+    lastRound.set(teamB, currentRound);
   }
 
   return score;
@@ -1991,10 +2017,11 @@ const balanceSidesInSchedule = (schedule: [number, number][]): void => {
 const runSimulatedAnnealing = (
   initialSchedule: [number, number][],
   maxIterations: number,
-  random: () => number
+  random: () => number,
+  fieldCount: number
 ): [number, number][] => {
   let currentSchedule = initialSchedule;
-  let currentScore = scorePracticeSchedule(currentSchedule);
+  let currentScore = scorePracticeSchedule(currentSchedule, fieldCount);
   let bestSchedule = currentSchedule.map(
     (pair) => [...pair] as [number, number]
   );
@@ -2036,7 +2063,7 @@ const runSimulatedAnnealing = (
     candidate[matchA][slotA] = teamAtB;
     candidate[matchB][slotB] = teamAtA;
 
-    const candidateScore = scorePracticeSchedule(candidate);
+    const candidateScore = scorePracticeSchedule(candidate, fieldCount);
     const delta = candidateScore - currentScore;
 
     if (delta < 0 || random() < Math.exp(-delta / temperature)) {
@@ -2112,7 +2139,8 @@ const convertScheduleToResults = (
  */
 const buildPracticeLineups = (
   teamNumbers: number[],
-  matchesPerTeam: number
+  matchesPerTeam: number,
+  fieldCount: number
 ): Array<{
   blueTeam: number;
   isBlueSurrogate: boolean;
@@ -2156,7 +2184,8 @@ const buildPracticeLineups = (
   const bestSchedule = runSimulatedAnnealing(
     currentSchedule,
     maxIterations,
-    random
+    random,
+    fieldCount
   );
 
   // Post-process: balance sides and convert to final results
@@ -2307,7 +2336,7 @@ export function generatePracticeSchedule(
   }
 
   // Generate lineups using simulated annealing matchmaker
-  const lineups = buildPracticeLineups(teamNumbers, matchesPerTeam);
+  const lineups = buildPracticeLineups(teamNumbers, matchesPerTeam, fieldCount);
 
   // Assign to time blocks
   const scheduledMatches = assignMatchesToBlocks(
