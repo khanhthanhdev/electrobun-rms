@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { DATA_DIR, db, schema } from "../../db";
 import { ServiceError } from "./manual-event-service";
 
-export type MatchType = "quals" | "elims";
+export type MatchType = "practice" | "quals" | "elims";
 export type AllianceColor = "red" | "blue";
 
 export interface SaveMatchAllianceScoreInput {
@@ -52,11 +52,15 @@ export interface SaveMatchAllianceScoreResponse {
 
 interface ScoreTableConfig {
   gameSpecificHistoryTable:
+    | "practice_game_specific_history"
     | "quals_game_specific_history"
     | "elims_game_specific_history";
-  gameSpecificTable: "quals_game_specific" | "elims_game_specific";
-  lineupTable: "quals" | "elims";
-  resultsTable: "quals_results" | "elims_results";
+  gameSpecificTable:
+    | "practice_game_specific"
+    | "quals_game_specific"
+    | "elims_game_specific";
+  lineupTable: "practice" | "quals" | "elims";
+  resultsTable: "practice_results" | "quals_results" | "elims_results";
 }
 
 interface ExistingResultRow {
@@ -64,6 +68,47 @@ interface ExistingResultRow {
   blueScore: number;
   redPenaltyCommitted: number;
   redScore: number;
+}
+
+interface TeamMetadataNameRow {
+  teamName: string | null;
+  teamNumber: number;
+}
+
+interface LegacyTeamNameRow {
+  teamNameLong: string | null;
+  teamNameShort: string | null;
+  teamNumber: number;
+}
+
+interface TeamNumberRow {
+  teamNumber: number;
+}
+
+interface LineupColumnExpressions {
+  blueSurrogateSelect: string;
+  blueTeamSelect: string;
+  joinedBlueSurrogateSelect: string;
+  joinedBlueTeamSelect: string;
+  joinedRedSurrogateSelect: string;
+  joinedRedTeamSelect: string;
+  redSurrogateSelect: string;
+  redTeamSelect: string;
+}
+
+interface MatchSubmissionState {
+  hasBlueSubmission: boolean;
+  hasRedSubmission: boolean;
+}
+
+interface MatchSubmissionSummary {
+  byMatch: Map<number, MatchSubmissionState>;
+  isReliable: boolean;
+}
+
+interface GameSpecificSubmissionRow {
+  alliance: number;
+  matchNumber: number;
 }
 
 const RED_ALLIANCE_VALUE = 0;
@@ -75,14 +120,21 @@ const POINTS_B_CENTER_FLAG_DOWN = 30;
 const POINTS_B_BASE_FLAG_DOWN = 10;
 const POINTS_D_GOLD_FLAG_DEFENDED = 10;
 const VALID_TABLE_NAMES = new Set([
+  "practice",
   "quals",
   "elims",
+  "practice_results",
   "quals_results",
   "elims_results",
+  "practice_game_specific",
   "quals_game_specific",
   "elims_game_specific",
+  "practice_game_specific_history",
   "quals_game_specific_history",
   "elims_game_specific_history",
+  "team",
+  "team_metadata",
+  "teams",
 ]);
 
 const assertValidTableName = (tableName: string): void => {
@@ -205,6 +257,190 @@ const getTableColumns = (eventDb: Database, tableName: string): Set<string> => {
   return columns;
 };
 
+const toNormalizedTeamName = (teamName: string | null | undefined): string => {
+  return teamName?.trim() ?? "";
+};
+
+const toFallbackTeamName = (teamNumber: number): string => {
+  return `Team ${teamNumber}`;
+};
+
+const upsertTeamName = (
+  teamNamesByNumber: Map<number, string>,
+  teamNumber: number,
+  teamName: string | null | undefined
+): void => {
+  const normalizedTeamName = toNormalizedTeamName(teamName);
+  if (normalizedTeamName) {
+    teamNamesByNumber.set(teamNumber, normalizedTeamName);
+    return;
+  }
+
+  if (!teamNamesByNumber.has(teamNumber)) {
+    teamNamesByNumber.set(teamNumber, toFallbackTeamName(teamNumber));
+  }
+};
+
+const loadTeamNamesByNumber = (eventDb: Database): Map<number, string> => {
+  const teamNamesByNumber = new Map<number, string>();
+
+  if (tableExists(eventDb, "team")) {
+    const teamColumns = getTableColumns(eventDb, "team");
+    const longNameExpression = teamColumns.has("team_name_long")
+      ? "team_name_long"
+      : "NULL";
+    const shortNameExpression = teamColumns.has("team_name_short")
+      ? "team_name_short"
+      : "NULL";
+    const teamRows = eventDb
+      .query(
+        `SELECT
+          team_number AS teamNumber,
+          ${longNameExpression} AS teamNameLong,
+          ${shortNameExpression} AS teamNameShort
+         FROM team
+         ORDER BY team_number ASC`
+      )
+      .all() as LegacyTeamNameRow[];
+
+    for (const row of teamRows) {
+      const preferredName =
+        toNormalizedTeamName(row.teamNameLong) || row.teamNameShort;
+      upsertTeamName(teamNamesByNumber, row.teamNumber, preferredName);
+    }
+  }
+
+  if (tableExists(eventDb, "team_metadata")) {
+    const metadataColumns = getTableColumns(eventDb, "team_metadata");
+    let metadataTeamNameExpression = "''";
+    if (metadataColumns.has("team_name")) {
+      metadataTeamNameExpression = "team_name";
+    } else if (metadataColumns.has("short_name")) {
+      metadataTeamNameExpression = "short_name";
+    }
+
+    const metadataRows = eventDb
+      .query(
+        `SELECT
+          team_number AS teamNumber,
+          ${metadataTeamNameExpression} AS teamName
+         FROM team_metadata
+         ORDER BY team_number ASC`
+      )
+      .all() as TeamMetadataNameRow[];
+
+    for (const row of metadataRows) {
+      upsertTeamName(teamNamesByNumber, row.teamNumber, row.teamName);
+    }
+  }
+
+  if (tableExists(eventDb, "teams")) {
+    const teamRows = eventDb
+      .query("SELECT number AS teamNumber FROM teams ORDER BY number ASC")
+      .all() as TeamNumberRow[];
+
+    for (const row of teamRows) {
+      upsertTeamName(teamNamesByNumber, row.teamNumber, null);
+    }
+  }
+
+  return teamNamesByNumber;
+};
+
+const resolveTeamName = (
+  teamNamesByNumber: Map<number, string>,
+  teamNumber: number
+): string => {
+  const teamName = teamNamesByNumber.get(teamNumber);
+  if (teamName) {
+    return teamName;
+  }
+
+  const fallbackName = toFallbackTeamName(teamNumber);
+  teamNamesByNumber.set(teamNumber, fallbackName);
+  return fallbackName;
+};
+
+const isMissingRequiredTableError = (
+  error: unknown,
+  tableName: string
+): boolean =>
+  error instanceof ServiceError &&
+  error.status === 500 &&
+  error.message.includes(`"${tableName}"`);
+
+const resolveLineupColumnExpressions = (
+  lineupColumns: Set<string>
+): LineupColumnExpressions => {
+  if (!(lineupColumns.has("red") && lineupColumns.has("blue"))) {
+    throw new ServiceError(
+      'Event lineup table is missing required "red" and "blue" columns.',
+      500
+    );
+  }
+
+  return {
+    redTeamSelect: "red AS redTeam",
+    blueTeamSelect: "blue AS blueTeam",
+    redSurrogateSelect: lineupColumns.has("reds")
+      ? "reds AS reds"
+      : "0 AS reds",
+    blueSurrogateSelect: lineupColumns.has("blues")
+      ? "blues AS blues"
+      : "0 AS blues",
+    joinedRedTeamSelect: "l.red AS redTeam",
+    joinedBlueTeamSelect: "l.blue AS blueTeam",
+    joinedRedSurrogateSelect: lineupColumns.has("reds")
+      ? "l.reds AS reds"
+      : "0 AS reds",
+    joinedBlueSurrogateSelect: lineupColumns.has("blues")
+      ? "l.blues AS blues"
+      : "0 AS blues",
+  };
+};
+
+const loadMatchSubmissionState = (
+  eventDb: Database,
+  tableName:
+    | "practice_game_specific"
+    | "quals_game_specific"
+    | "elims_game_specific"
+): MatchSubmissionSummary => {
+  const states = new Map<number, MatchSubmissionState>();
+  if (!tableExists(eventDb, tableName)) {
+    return { byMatch: states, isReliable: false };
+  }
+
+  const columns = getTableColumns(eventDb, tableName);
+  if (!hasRequiredColumns(columns, GAME_SPECIFIC_REQUIRED_COLUMNS)) {
+    return { byMatch: states, isReliable: false };
+  }
+
+  const rows = eventDb
+    .query(
+      `SELECT match AS matchNumber, alliance AS alliance
+       FROM ${tableName}`
+    )
+    .all() as GameSpecificSubmissionRow[];
+
+  for (const row of rows) {
+    const existing = states.get(row.matchNumber) ?? {
+      hasRedSubmission: false,
+      hasBlueSubmission: false,
+    };
+
+    if (row.alliance === RED_ALLIANCE_VALUE) {
+      existing.hasRedSubmission = true;
+    } else if (row.alliance === BLUE_ALLIANCE_VALUE) {
+      existing.hasBlueSubmission = true;
+    }
+
+    states.set(row.matchNumber, existing);
+  }
+
+  return { byMatch: states, isReliable: true };
+};
+
 const assertTableExists = (eventDb: Database, tableName: string): void => {
   if (!tableExists(eventDb, tableName)) {
     throw new ServiceError(
@@ -228,7 +464,10 @@ const hasRequiredColumns = (
 };
 
 const createGameSpecificTableSql = (
-  tableName: "quals_game_specific" | "elims_game_specific"
+  tableName:
+    | "practice_game_specific"
+    | "quals_game_specific"
+    | "elims_game_specific"
 ): string => `CREATE TABLE IF NOT EXISTS ${tableName} (
   match INTEGER NOT NULL,
   alliance INTEGER NOT NULL,
@@ -249,7 +488,10 @@ const createGameSpecificTableSql = (
 )`;
 
 const createGameSpecificHistoryTableSql = (
-  tableName: "quals_game_specific_history" | "elims_game_specific_history"
+  tableName:
+    | "practice_game_specific_history"
+    | "quals_game_specific_history"
+    | "elims_game_specific_history"
 ): string => `CREATE TABLE IF NOT EXISTS ${tableName} (
   match INTEGER NOT NULL,
   ts INTEGER NOT NULL,
@@ -282,7 +524,10 @@ const backupAndDropTable = (eventDb: Database, tableName: string): void => {
 
 const ensureCurrentGameSpecificTable = (
   eventDb: Database,
-  tableName: "quals_game_specific" | "elims_game_specific"
+  tableName:
+    | "practice_game_specific"
+    | "quals_game_specific"
+    | "elims_game_specific"
 ): void => {
   const tableColumns = getTableColumns(eventDb, tableName);
   if (
@@ -298,7 +543,10 @@ const ensureCurrentGameSpecificTable = (
 
 const ensureGameSpecificHistoryTable = (
   eventDb: Database,
-  tableName: "quals_game_specific_history" | "elims_game_specific_history"
+  tableName:
+    | "practice_game_specific_history"
+    | "quals_game_specific_history"
+    | "elims_game_specific_history"
 ): void => {
   const tableColumns = getTableColumns(eventDb, tableName);
   if (
@@ -320,20 +568,32 @@ const ensureScoringSchema = (
   ensureGameSpecificHistoryTable(eventDb, tables.gameSpecificHistoryTable);
 };
 
-const resolveScoreTableConfig = (matchType: MatchType): ScoreTableConfig =>
-  matchType === "quals"
-    ? {
-        lineupTable: "quals",
-        resultsTable: "quals_results",
-        gameSpecificTable: "quals_game_specific",
-        gameSpecificHistoryTable: "quals_game_specific_history",
-      }
-    : {
-        lineupTable: "elims",
-        resultsTable: "elims_results",
-        gameSpecificTable: "elims_game_specific",
-        gameSpecificHistoryTable: "elims_game_specific_history",
-      };
+const resolveScoreTableConfig = (matchType: MatchType): ScoreTableConfig => {
+  if (matchType === "practice") {
+    return {
+      lineupTable: "practice",
+      resultsTable: "practice_results",
+      gameSpecificTable: "practice_game_specific",
+      gameSpecificHistoryTable: "practice_game_specific_history",
+    };
+  }
+
+  if (matchType === "quals") {
+    return {
+      lineupTable: "quals",
+      resultsTable: "quals_results",
+      gameSpecificTable: "quals_game_specific",
+      gameSpecificHistoryTable: "quals_game_specific_history",
+    };
+  }
+
+  return {
+    lineupTable: "elims",
+    resultsTable: "elims_results",
+    gameSpecificTable: "elims_game_specific",
+    gameSpecificHistoryTable: "elims_game_specific_history",
+  };
+};
 
 const getAllianceValue = (alliance: AllianceColor): number =>
   alliance === "red" ? RED_ALLIANCE_VALUE : BLUE_ALLIANCE_VALUE;
@@ -375,7 +635,7 @@ const computeScoreBreakdown = (input: SaveMatchAllianceScoreInput) => {
 
 const assertMatchExists = (
   eventDb: Database,
-  lineupTable: "quals" | "elims",
+  lineupTable: "practice" | "quals" | "elims",
   matchNumber: number
 ): void => {
   const row = eventDb
@@ -392,7 +652,7 @@ const assertMatchExists = (
 
 const loadExistingResultRow = (
   eventDb: Database,
-  resultsTable: "quals_results" | "elims_results",
+  resultsTable: "practice_results" | "quals_results" | "elims_results",
   matchNumber: number
 ): ExistingResultRow | null =>
   eventDb
@@ -403,7 +663,10 @@ const loadExistingResultRow = (
 
 const persistCurrentGameSpecificRow = (
   eventDb: Database,
-  tableName: "quals_game_specific" | "elims_game_specific",
+  tableName:
+    | "practice_game_specific"
+    | "quals_game_specific"
+    | "elims_game_specific",
   matchNumber: number,
   alliance: number,
   input: SaveMatchAllianceScoreInput,
@@ -454,7 +717,10 @@ const persistCurrentGameSpecificRow = (
 
 const persistGameSpecificHistoryRow = (
   eventDb: Database,
-  tableName: "quals_game_specific_history" | "elims_game_specific_history",
+  tableName:
+    | "practice_game_specific_history"
+    | "quals_game_specific_history"
+    | "elims_game_specific_history",
   timestamp: number,
   matchNumber: number,
   alliance: number,
@@ -504,7 +770,7 @@ const persistGameSpecificHistoryRow = (
 
 const persistResultsRow = (
   eventDb: Database,
-  tableName: "quals_results" | "elims_results",
+  tableName: "practice_results" | "quals_results" | "elims_results",
   matchNumber: number,
   redScore: number,
   blueScore: number,
@@ -629,5 +895,376 @@ export const saveMatchAllianceScore = (
         500
       );
     }
+  });
+};
+
+export interface MatchResultItem {
+  blueScore: number | null;
+  blueSurrogate: boolean;
+  blueTeam: number;
+  blueTeamName: string;
+  matchNumber: number;
+  redScore: number | null;
+  redSurrogate: boolean;
+  redTeam: number;
+  redTeamName: string;
+}
+
+export const getMatchResults = (
+  eventCode: string,
+  matchType: MatchType
+): MatchResultItem[] => {
+  const normalizedEventCode = normalizeEventCode(eventCode);
+  assertEventExists(normalizedEventCode);
+  const tables = resolveScoreTableConfig(matchType);
+
+  return withEventDb(normalizedEventCode, (eventDb) => {
+    try {
+      assertTableExists(eventDb, tables.lineupTable);
+    } catch (error) {
+      if (isMissingRequiredTableError(error, tables.lineupTable)) {
+        return [];
+      }
+      throw error;
+    }
+    const teamNamesByNumber = loadTeamNamesByNumber(eventDb);
+    const submissionsByMatch = loadMatchSubmissionState(
+      eventDb,
+      tables.gameSpecificTable
+    );
+
+    let resultsTableExists = true;
+    try {
+      assertTableExists(eventDb, tables.resultsTable);
+    } catch (error) {
+      if (!isMissingRequiredTableError(error, tables.resultsTable)) {
+        throw error;
+      }
+      resultsTableExists = false;
+    }
+
+    const columns = getTableColumns(eventDb, tables.lineupTable);
+    const lineupExpressions = resolveLineupColumnExpressions(columns);
+
+    if (!resultsTableExists) {
+      interface LineupRow {
+        blues: number;
+        blueTeam: number;
+        matchNumber: number;
+        reds: number;
+        redTeam: number;
+      }
+      const rows = eventDb
+        .query(
+          `SELECT
+            match AS matchNumber,
+            ${lineupExpressions.redTeamSelect},
+            ${lineupExpressions.blueTeamSelect},
+            ${lineupExpressions.redSurrogateSelect},
+            ${lineupExpressions.blueSurrogateSelect}
+           FROM ${tables.lineupTable}
+           ORDER BY match ASC`
+        )
+        .all() as LineupRow[];
+
+      return rows.map((row) => ({
+        matchNumber: row.matchNumber,
+        redTeam: row.redTeam,
+        redTeamName: resolveTeamName(teamNamesByNumber, row.redTeam),
+        blueTeam: row.blueTeam,
+        blueTeamName: resolveTeamName(teamNamesByNumber, row.blueTeam),
+        redSurrogate: row.reds > 0,
+        blueSurrogate: row.blues > 0,
+        redScore: null,
+        blueScore: null,
+      }));
+    }
+
+    interface ResultRow {
+      blueScore: number | null;
+      blues: number;
+      blueTeam: number;
+      matchNumber: number;
+      redScore: number | null;
+      reds: number;
+      redTeam: number;
+    }
+    const rows = eventDb
+      .query(
+        `SELECT
+          l.match AS matchNumber,
+          ${lineupExpressions.joinedRedTeamSelect},
+          ${lineupExpressions.joinedBlueTeamSelect},
+          ${lineupExpressions.joinedRedSurrogateSelect},
+          ${lineupExpressions.joinedBlueSurrogateSelect},
+          r.red_score AS redScore,
+          r.blue_score AS blueScore
+         FROM ${tables.lineupTable} l
+         LEFT JOIN ${tables.resultsTable} r ON l.match = r.match
+         ORDER BY l.match ASC`
+      )
+      .all() as ResultRow[];
+
+    return rows.map((row) => {
+      const submissionState = submissionsByMatch.byMatch.get(row.matchNumber);
+      const hasRedSubmission = submissionState?.hasRedSubmission ?? false;
+      const hasBlueSubmission = submissionState?.hasBlueSubmission ?? false;
+      const shouldShowResultsWithoutSubmissionCheck =
+        !submissionsByMatch.isReliable;
+
+      let redScore: number | null = null;
+      if (row.redScore !== null) {
+        redScore =
+          shouldShowResultsWithoutSubmissionCheck || hasRedSubmission
+            ? row.redScore
+            : null;
+      }
+
+      let blueScore: number | null = null;
+      if (row.blueScore !== null) {
+        blueScore =
+          shouldShowResultsWithoutSubmissionCheck || hasBlueSubmission
+            ? row.blueScore
+            : null;
+      }
+
+      return {
+        matchNumber: row.matchNumber,
+        redTeam: row.redTeam,
+        redTeamName: resolveTeamName(teamNamesByNumber, row.redTeam),
+        blueTeam: row.blueTeam,
+        blueTeamName: resolveTeamName(teamNamesByNumber, row.blueTeam),
+        redSurrogate: row.reds > 0,
+        blueSurrogate: row.blues > 0,
+        redScore,
+        blueScore,
+      };
+    });
+  });
+};
+
+export interface MatchHistoryItem {
+  aCenterFlags: number;
+  aFirstTierFlags: number;
+  alliance: AllianceColor;
+  aSecondTierFlags: number;
+  bBaseFlagsDown: number;
+  bCenterFlagDown: number;
+  cOpponentBackfieldBullets: number;
+  dGoldFlagsDefended: number;
+  dRobotParkState: number;
+  scoreA: number;
+  scoreB: number;
+  scoreC: number;
+  scoreD: number;
+  scoreTotal: number;
+  ts: number;
+}
+
+export interface MatchHistoryEventItem {
+  blueScore: number | null;
+  redScore: number | null;
+  scoresheetAlliance: AllianceColor;
+  ts: number;
+  type: string;
+}
+
+export const getMatchHistory = (
+  eventCode: string,
+  matchType: MatchType,
+  matchNumber: number
+): MatchHistoryEventItem[] => {
+  const normalizedEventCode = normalizeEventCode(eventCode);
+  assertEventExists(normalizedEventCode);
+  const tables = resolveScoreTableConfig(matchType);
+
+  return withEventDb(normalizedEventCode, (eventDb) => {
+    assertTableExists(eventDb, tables.lineupTable);
+    assertMatchExists(eventDb, tables.lineupTable, matchNumber);
+
+    let historyTableExists = true;
+    try {
+      assertTableExists(eventDb, tables.gameSpecificHistoryTable);
+    } catch (error) {
+      if (
+        !isMissingRequiredTableError(error, tables.gameSpecificHistoryTable)
+      ) {
+        throw error;
+      }
+      historyTableExists = false;
+    }
+
+    if (!historyTableExists) {
+      return [];
+    }
+    const historyColumns = getTableColumns(
+      eventDb,
+      tables.gameSpecificHistoryTable
+    );
+    if (
+      !hasRequiredColumns(
+        historyColumns,
+        GAME_SPECIFIC_HISTORY_REQUIRED_COLUMNS
+      )
+    ) {
+      return [];
+    }
+
+    interface HistoryRow {
+      alliance: number;
+      scoreTotal: number;
+      ts: number;
+    }
+
+    const rows = eventDb
+      .query(
+        `SELECT ts, alliance, score_total AS scoreTotal
+         FROM ${tables.gameSpecificHistoryTable} 
+         WHERE match = ? 
+         ORDER BY ts ASC`
+      )
+      .all(matchNumber) as HistoryRow[];
+
+    const historyEvents: MatchHistoryEventItem[] = [];
+    let currentRedScore: number | null = null;
+    let currentBlueScore: number | null = null;
+
+    for (const row of rows) {
+      const alliance = row.alliance === RED_ALLIANCE_VALUE ? "red" : "blue";
+      if (alliance === "red") {
+        currentRedScore = row.scoreTotal;
+      } else {
+        currentBlueScore = row.scoreTotal;
+      }
+
+      historyEvents.push({
+        ts: row.ts,
+        type: alliance === "red" ? "Red Ref Save" : "Blue Ref Save",
+        redScore: currentRedScore,
+        blueScore: currentBlueScore,
+        scoresheetAlliance: alliance,
+      });
+    }
+
+    return historyEvents.reverse();
+  });
+};
+
+export interface MatchScoresheet {
+  blue: MatchHistoryItem | null;
+  red: MatchHistoryItem | null;
+}
+
+const createDefaultScoresheetItem = (
+  alliance: AllianceColor
+): MatchHistoryItem => ({
+  ts: 0,
+  alliance,
+  aSecondTierFlags: 0,
+  aFirstTierFlags: 0,
+  aCenterFlags: 0,
+  bCenterFlagDown: 0,
+  bBaseFlagsDown: 0,
+  cOpponentBackfieldBullets: 0,
+  dRobotParkState: 0,
+  dGoldFlagsDefended: 0,
+  scoreA: 0,
+  scoreB: 0,
+  scoreC: 0,
+  scoreD: 0,
+  scoreTotal: 0,
+});
+
+const createDefaultMatchScoresheet = (): MatchScoresheet => ({
+  red: createDefaultScoresheetItem("red"),
+  blue: createDefaultScoresheetItem("blue"),
+});
+
+export const getMatchScoresheet = (
+  eventCode: string,
+  matchType: MatchType,
+  matchNumber: number
+): MatchScoresheet => {
+  const normalizedEventCode = normalizeEventCode(eventCode);
+  assertEventExists(normalizedEventCode);
+  const tables = resolveScoreTableConfig(matchType);
+
+  return withEventDb(normalizedEventCode, (eventDb) => {
+    assertTableExists(eventDb, tables.lineupTable);
+    assertMatchExists(eventDb, tables.lineupTable, matchNumber);
+
+    let specificTableExists = true;
+    try {
+      assertTableExists(eventDb, tables.gameSpecificTable);
+    } catch (error) {
+      if (!isMissingRequiredTableError(error, tables.gameSpecificTable)) {
+        throw error;
+      }
+      specificTableExists = false;
+    }
+
+    if (!specificTableExists) {
+      return createDefaultMatchScoresheet();
+    }
+    const gameSpecificColumns = getTableColumns(
+      eventDb,
+      tables.gameSpecificTable
+    );
+    if (
+      !hasRequiredColumns(gameSpecificColumns, GAME_SPECIFIC_REQUIRED_COLUMNS)
+    ) {
+      return createDefaultMatchScoresheet();
+    }
+
+    interface ScoresheetRow {
+      aCenterFlags: number;
+      aFirstTierFlags: number;
+      alliance: number;
+      aSecondTierFlags: number;
+      bBaseFlagsDown: number;
+      bCenterFlagDown: number;
+      cOpponentBackfieldBullets: number;
+      dGoldFlagsDefended: number;
+      dRobotParkState: number;
+      scoreA: number;
+      scoreB: number;
+      scoreC: number;
+      scoreD: number;
+      scoreTotal: number;
+    }
+    const rows = eventDb
+      .query(
+        `SELECT alliance, a_second_tier_flags AS aSecondTierFlags, a_first_tier_flags AS aFirstTierFlags, a_center_flags AS aCenterFlags, b_center_flag_down AS bCenterFlagDown, b_base_flags_down AS bBaseFlagsDown, c_opponent_backfield_bullets AS cOpponentBackfieldBullets, d_robot_park_state AS dRobotParkState, d_gold_flags_defended AS dGoldFlagsDefended, score_a AS scoreA, score_b AS scoreB, score_c AS scoreC, score_d AS scoreD, score_total AS scoreTotal 
+         FROM ${tables.gameSpecificTable} 
+         WHERE match = ?`
+      )
+      .all(matchNumber) as ScoresheetRow[];
+
+    const result = createDefaultMatchScoresheet();
+    for (const row of rows) {
+      const item: MatchHistoryItem = {
+        ts: Date.now(), // gameSpecific doesn't store ts, but history item has it.
+        alliance: row.alliance === RED_ALLIANCE_VALUE ? "red" : "blue",
+        aSecondTierFlags: row.aSecondTierFlags,
+        aFirstTierFlags: row.aFirstTierFlags,
+        aCenterFlags: row.aCenterFlags,
+        bCenterFlagDown: row.bCenterFlagDown,
+        bBaseFlagsDown: row.bBaseFlagsDown,
+        cOpponentBackfieldBullets: row.cOpponentBackfieldBullets,
+        dRobotParkState: row.dRobotParkState,
+        dGoldFlagsDefended: row.dGoldFlagsDefended,
+        scoreA: row.scoreA,
+        scoreB: row.scoreB,
+        scoreC: row.scoreC,
+        scoreD: row.scoreD,
+        scoreTotal: row.scoreTotal,
+      };
+      if (item.alliance === "red") {
+        result.red = item;
+      } else {
+        result.blue = item;
+      }
+    }
+    return result;
   });
 };

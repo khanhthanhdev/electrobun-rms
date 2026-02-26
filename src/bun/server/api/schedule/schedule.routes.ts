@@ -28,12 +28,8 @@ import {
 
 export const scheduleRoutes = new Hono<AppEnv>();
 
-scheduleRoutes.get("/:eventCode/schedule/practice", requireAuth, (c) => {
+scheduleRoutes.get("/:eventCode/schedule/practice", (c) => {
   const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
-  }
 
   try {
     const schedule = listPracticeSchedule(eventCode);
@@ -151,12 +147,8 @@ scheduleRoutes.delete("/:eventCode/schedule/practice", requireAuth, (c) => {
   }
 });
 
-scheduleRoutes.get("/:eventCode/schedule/quals", requireAuth, (c) => {
+scheduleRoutes.get("/:eventCode/schedule/quals", (c) => {
   const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
-  }
 
   try {
     const schedule = listQualificationSchedule(eventCode);

@@ -8,7 +8,12 @@ import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
 import { saveMatchAllianceScoreBodySchema } from "./scoring.schema";
-import { saveEventMatchAllianceScore } from "./scoring.service";
+import {
+  getEventMatchHistory,
+  getEventMatchResults,
+  getEventMatchScoresheet,
+  saveEventMatchAllianceScore,
+} from "./scoring.service";
 import {
   createScoringSnapshotHintEvent,
   SCORING_SYNC_EVENT_NAME,
@@ -20,6 +25,25 @@ export const scoringRoutes = new Hono<AppEnv>();
 
 const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
+const POSITIVE_INTEGER_PARAM_PATTERN = /^[1-9]\d*$/;
+const READ_MATCH_TYPES = new Set(["practice", "quals", "elims"]);
+
+const isReadMatchType = (
+  value: string
+): value is "practice" | "quals" | "elims" => READ_MATCH_TYPES.has(value);
+
+const parsePositiveIntegerParam = (value: string): number | null => {
+  if (!POSITIVE_INTEGER_PARAM_PATTERN.test(value)) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) {
+    return null;
+  }
+
+  return parsed;
+};
 
 const writeScoringSyncEvent = async (
   stream: SSEStreamingApi,
@@ -133,6 +157,89 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
     if (error instanceof ServiceError) {
       return c.json(
         { error: "Failed to save match score", message: error.message },
+        error.status as 400 | 404 | 500
+      );
+    }
+    throw error;
+  }
+});
+
+scoringRoutes.get("/:eventCode/scoring/:matchType/results", (c) => {
+  const eventCode = c.req.param("eventCode");
+
+  const matchType = c.req.param("matchType");
+  if (!isReadMatchType(matchType)) {
+    return c.json({ error: "Invalid match type" }, 400);
+  }
+
+  try {
+    const results = getEventMatchResults(eventCode, matchType);
+    return c.json(results);
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return c.json(
+        { error: "Failed to load match results", message: error.message },
+        error.status as 400 | 404 | 500
+      );
+    }
+    throw error;
+  }
+});
+
+scoringRoutes.get(
+  "/:eventCode/scoring/:matchType/:matchNumber/history",
+  (c) => {
+    const eventCode = c.req.param("eventCode");
+
+    const matchType = c.req.param("matchType");
+    if (!isReadMatchType(matchType)) {
+      return c.json({ error: "Invalid match type" }, 400);
+    }
+
+    const matchNumber = parsePositiveIntegerParam(c.req.param("matchNumber"));
+    if (matchNumber === null) {
+      return c.json({ error: "Invalid match number" }, 400);
+    }
+
+    try {
+      const history = getEventMatchHistory(eventCode, matchType, matchNumber);
+      return c.json(history);
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        return c.json(
+          { error: "Failed to load match history", message: error.message },
+          error.status as 400 | 404 | 500
+        );
+      }
+      throw error;
+    }
+  }
+);
+
+scoringRoutes.get("/:eventCode/scoring/:matchType/:matchNumber", (c) => {
+  const eventCode = c.req.param("eventCode");
+
+  const matchType = c.req.param("matchType");
+  if (!isReadMatchType(matchType)) {
+    return c.json({ error: "Invalid match type" }, 400);
+  }
+
+  const matchNumber = parsePositiveIntegerParam(c.req.param("matchNumber"));
+  if (matchNumber === null) {
+    return c.json({ error: "Invalid match number" }, 400);
+  }
+
+  try {
+    const scoresheet = getEventMatchScoresheet(
+      eventCode,
+      matchType,
+      matchNumber
+    );
+    return c.json(scoresheet);
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return c.json(
+        { error: "Failed to load match scoresheet", message: error.message },
         error.status as 400 | 404 | 500
       );
     }

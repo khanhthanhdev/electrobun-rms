@@ -41,6 +41,22 @@ const INSPECTION_DETAIL_PATTERN = /^\/event\/([^/]+)\/inspection\/(\d+)\/?$/;
 const INSPECTION_NOTES_PATTERN = /^\/event\/([^/]+)\/inspection\/notes\/?$/;
 const INSPECTION_EVENT_OVERRIDE_PATTERN =
   /^\/event\/([^/]+)\/inspection\/override\/?$/;
+const REFEREE_RED_SCORING_PATTERN =
+  /^\/event\/([^/]+)\/ref\/red\/scoring(?:\/([^/]+))?\/?$/;
+const REFEREE_BLUE_SCORING_PATTERN =
+  /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
+const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
+const REFEREE_RED_SCORE_ENTRY_PATTERN =
+  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+const REFEREE_BLUE_SCORE_ENTRY_PATTERN =
+  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+const HEAD_REFEREE_MATCH_PATTERN =
+  /^\/event\/([^/]+)\/hr\/([^/]+)\/match\/(\d+)\/?$/;
+const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;
+const MATCH_HISTORY_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/history\/?$/;
+const MATCH_SCORESHEET_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/?$/;
+const MATCH_ALLIANCE_SCORESHEET_PATTERN =
+  /^\/event\/([^/]+)\/match\/([^/]+)\/(red|blue)\/?$/;
 
 const LoginForm = lazy(() =>
   import("../features/auth/components/login-dialog").then((module) => ({
@@ -162,6 +178,41 @@ const InspectionTeamsPage = lazy(() =>
 const ManageUsersPage = lazy(() =>
   import("../pages/users/manage-users-page").then((module) => ({
     default: module.ManageUsersPage,
+  }))
+);
+const RefereeSelectionPage = lazy(() =>
+  import("../pages/events/referee/referee-selection-page").then((module) => ({
+    default: module.RefereeSelectionPage,
+  }))
+);
+const MatchSelectionPage = lazy(() =>
+  import("../pages/events/referee/match-selection-page").then((module) => ({
+    default: module.MatchSelectionPage,
+  }))
+);
+const ScoringEntryPage = lazy(() =>
+  import("../pages/events/referee/scoring-entry-page").then((module) => ({
+    default: module.ScoringEntryPage,
+  }))
+);
+const HrMatchPage = lazy(() =>
+  import("../pages/events/referee/hr-match-page").then((module) => ({
+    default: module.HrMatchPage,
+  }))
+);
+const MatchResultsPage = lazy(() =>
+  import("../pages/events/results/match-results-page").then((module) => ({
+    default: module.MatchResultsPage,
+  }))
+);
+const MatchHistoryPage = lazy(() =>
+  import("../pages/events/results/match-history-page").then((module) => ({
+    default: module.MatchHistoryPage,
+  }))
+);
+const MatchScoresheetPage = lazy(() =>
+  import("../pages/events/results/match-scoresheet-page").then((module) => ({
+    default: module.MatchScoresheetPage,
   }))
 );
 
@@ -793,6 +844,224 @@ const renderInspectionRoutePage = ({
   return null;
 };
 
+interface RefereeRoutePageArgs {
+  events: EventItem[];
+  headRefereeMatch: RegExpExecArray | null;
+  headRefereeMatchEntryMatch: RegExpExecArray | null;
+  isEventsLoading: boolean;
+  onNavigate: (path: string) => void;
+  refereeBlueScoreEntryMatch: RegExpExecArray | null;
+  refereeBlueScoringMatch: RegExpExecArray | null;
+  refereeRedScoreEntryMatch: RegExpExecArray | null;
+  refereeRedScoringMatch: RegExpExecArray | null;
+  token: string | null;
+}
+
+const renderScoringEntryPage = (
+  match: RegExpExecArray,
+  alliance: "blue" | "red",
+  onNavigate: (path: string) => void
+): JSX.Element | null => {
+  const eventCode = decodePathSegment(match[1]);
+  const fieldNumber = match[2] ? decodePathSegment(match[2]) : null;
+  const matchNumber = Number.parseInt(match[3], 10);
+  if (
+    eventCode === null ||
+    fieldNumber === null ||
+    !Number.isInteger(matchNumber)
+  ) {
+    return <RouteErrorPage message="Invalid scoring URL." />;
+  }
+  return (
+    <ScoringEntryPage
+      alliance={alliance}
+      eventCode={eventCode}
+      fieldNumber={fieldNumber}
+      matchNumber={matchNumber}
+      onNavigate={onNavigate}
+    />
+  );
+};
+
+const renderHrMatchEntryPage = (
+  match: RegExpExecArray,
+  onNavigate: (path: string) => void
+): JSX.Element | null => {
+  const eventCode = decodePathSegment(match[1]);
+  const fieldNumber = match[2] ? decodePathSegment(match[2]) : null;
+  const matchNumber = Number.parseInt(match[3], 10);
+  if (
+    eventCode === null ||
+    fieldNumber === null ||
+    !Number.isInteger(matchNumber)
+  ) {
+    return <RouteErrorPage message="Invalid HR match URL." />;
+  }
+  return (
+    <HrMatchPage
+      eventCode={eventCode}
+      fieldNumber={fieldNumber}
+      matchNumber={matchNumber}
+      onNavigate={onNavigate}
+    />
+  );
+};
+
+const renderRefereeRoutePage = ({
+  refereeRedScoringMatch,
+  refereeRedScoreEntryMatch,
+  refereeBlueScoringMatch,
+  refereeBlueScoreEntryMatch,
+  headRefereeMatch,
+  headRefereeMatchEntryMatch,
+  events,
+  isEventsLoading,
+  onNavigate,
+  token,
+}: RefereeRoutePageArgs): JSX.Element | null => {
+  if (refereeRedScoreEntryMatch) {
+    return renderScoringEntryPage(refereeRedScoreEntryMatch, "red", onNavigate);
+  }
+
+  if (refereeBlueScoreEntryMatch) {
+    return renderScoringEntryPage(
+      refereeBlueScoreEntryMatch,
+      "blue",
+      onNavigate
+    );
+  }
+
+  if (headRefereeMatchEntryMatch) {
+    return renderHrMatchEntryPage(headRefereeMatchEntryMatch, onNavigate);
+  }
+
+  const match =
+    refereeRedScoringMatch ?? refereeBlueScoringMatch ?? headRefereeMatch;
+  if (!match) {
+    return null;
+  }
+
+  const eventCode = decodePathSegment(match[1]);
+  if (eventCode === null) {
+    return <RouteErrorPage message="Invalid event code in URL." />;
+  }
+
+  const fieldSelection = match[2] ? decodePathSegment(match[2]) : null;
+
+  let role: "red" | "blue" | "hr" = "hr";
+  if (refereeRedScoringMatch) {
+    role = "red";
+  } else if (refereeBlueScoringMatch) {
+    role = "blue";
+  }
+
+  if (fieldSelection) {
+    return (
+      <MatchSelectionPage
+        eventCode={eventCode}
+        fieldNumber={fieldSelection}
+        onNavigate={onNavigate}
+        role={role}
+        token={token}
+      />
+    );
+  }
+
+  return (
+    <RefereeSelectionPage
+      eventCode={eventCode}
+      events={events}
+      isEventsLoading={isEventsLoading}
+      onNavigate={onNavigate}
+      role={role}
+    />
+  );
+};
+
+interface RenderMatchResultsRoutePageArgs {
+  matchAllianceScoresheetMatch: RegExpExecArray | null;
+  matchHistoryMatch: RegExpExecArray | null;
+  matchResultsMatch: RegExpExecArray | null;
+  matchScoresheetMatch: RegExpExecArray | null;
+  onNavigate: (path: string) => void;
+  token: string | null;
+}
+
+const renderMatchResultsRoutePage = ({
+  matchResultsMatch,
+  matchHistoryMatch,
+  matchScoresheetMatch,
+  matchAllianceScoresheetMatch,
+  onNavigate,
+  token,
+}: RenderMatchResultsRoutePageArgs) => {
+  if (matchResultsMatch) {
+    const evCode = decodePathSegment(matchResultsMatch[1]);
+    if (evCode === null) {
+      return <RouteErrorPage message="Invalid event code" />;
+    }
+    return (
+      <MatchResultsPage
+        eventCode={evCode}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  if (matchHistoryMatch) {
+    const evCode = decodePathSegment(matchHistoryMatch[1]);
+    const mName = decodePathSegment(matchHistoryMatch[2]);
+    if (evCode === null || mName === null) {
+      return <RouteErrorPage message="Invalid URL" />;
+    }
+    return (
+      <MatchHistoryPage
+        eventCode={evCode}
+        matchName={mName}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  if (matchAllianceScoresheetMatch) {
+    const evCode = decodePathSegment(matchAllianceScoresheetMatch[1]);
+    const mName = decodePathSegment(matchAllianceScoresheetMatch[2]);
+    const alliance = matchAllianceScoresheetMatch[3] as "red" | "blue";
+    if (evCode === null || mName === null) {
+      return <RouteErrorPage message="Invalid URL" />;
+    }
+    return (
+      <MatchScoresheetPage
+        allianceFilter={alliance}
+        eventCode={evCode}
+        matchName={mName}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  if (matchScoresheetMatch) {
+    const evCode = decodePathSegment(matchScoresheetMatch[1]);
+    const mName = decodePathSegment(matchScoresheetMatch[2]);
+    if (evCode === null || mName === null) {
+      return <RouteErrorPage message="Invalid URL" />;
+    }
+    return (
+      <MatchScoresheetPage
+        eventCode={evCode}
+        matchName={mName}
+        onNavigate={onNavigate}
+        token={token}
+      />
+    );
+  }
+
+  return null;
+};
+
 const AppRouteContent = ({
   currentPath,
   errorMessage,
@@ -842,6 +1111,17 @@ const AppRouteContent = ({
   const inspectionDetailMatch = INSPECTION_DETAIL_PATTERN.exec(currentPath);
   const inspectionEventOverrideMatch =
     INSPECTION_EVENT_OVERRIDE_PATTERN.exec(currentPath);
+  const refereeRedScoringMatch = REFEREE_RED_SCORING_PATTERN.exec(currentPath);
+  const refereeBlueScoringMatch =
+    REFEREE_BLUE_SCORING_PATTERN.exec(currentPath);
+  const headRefereeMatch = HEAD_REFEREE_PATTERN.exec(currentPath);
+  // More specific match-level routes — must be exec'd before field-level patterns
+  const refereeRedScoreEntryMatch =
+    REFEREE_RED_SCORE_ENTRY_PATTERN.exec(currentPath);
+  const refereeBlueScoreEntryMatch =
+    REFEREE_BLUE_SCORE_ENTRY_PATTERN.exec(currentPath);
+  const headRefereeMatchEntryMatch =
+    HEAD_REFEREE_MATCH_PATTERN.exec(currentPath);
 
   const hasAdminRoute =
     isCreateEventPage ||
@@ -910,6 +1190,40 @@ const AppRouteContent = ({
   });
   if (inspectionRoutePage) {
     return inspectionRoutePage;
+  }
+
+  const refereeRoutePage = renderRefereeRoutePage({
+    refereeRedScoringMatch,
+    refereeRedScoreEntryMatch,
+    refereeBlueScoringMatch,
+    refereeBlueScoreEntryMatch,
+    headRefereeMatch,
+    headRefereeMatchEntryMatch,
+    events,
+    isEventsLoading,
+    onNavigate,
+    token,
+  });
+  if (refereeRoutePage) {
+    return refereeRoutePage;
+  }
+
+  const matchResultsMatch = MATCH_RESULTS_PATTERN.exec(currentPath);
+  const matchHistoryMatch = MATCH_HISTORY_PATTERN.exec(currentPath);
+  const matchScoresheetMatch = MATCH_SCORESHEET_PATTERN.exec(currentPath);
+  const matchAllianceScoresheetMatch =
+    MATCH_ALLIANCE_SCORESHEET_PATTERN.exec(currentPath);
+
+  const matchResultsRoutePage = renderMatchResultsRoutePage({
+    matchResultsMatch,
+    matchHistoryMatch,
+    matchScoresheetMatch,
+    matchAllianceScoresheetMatch,
+    onNavigate,
+    token,
+  });
+  if (matchResultsRoutePage) {
+    return matchResultsRoutePage;
   }
 
   if (eventDetailMatch) {

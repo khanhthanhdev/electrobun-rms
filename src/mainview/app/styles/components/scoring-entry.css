@@ -1,0 +1,33 @@
+.back-text {
+  display: inline;
+}
+
+@media (max-width: 640px) {
+  .back-text {
+    display: none;
+  }
+}
+
+.scoresheet-grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin-top: 2rem;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.scoresheet-grid-container.single {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 768px) {
+  .scoresheet-grid-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+}

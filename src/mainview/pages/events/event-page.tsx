@@ -16,6 +16,7 @@ interface DirectorySection {
 }
 
 interface DirectoryItem {
+  color?: string;
   label: string;
   path: string;
   type: "item";
@@ -67,7 +68,7 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
             { type: "item", label: "Bracket", path: "/playoff/bracket" },
           ],
         },
-        { type: "item", label: "Match Results", path: "/match-results" },
+        { type: "item", label: "Match Results", path: "/results" },
         { type: "item", label: "Pit Display", path: "/pit-display" },
         { type: "item", label: "Event Reports", path: "/event-reports" },
       ],
@@ -123,6 +124,7 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
             { type: "item", label: "Bracket", path: "/playoff/bracket" },
           ],
         },
+        { type: "item", label: "Match Results", path: "/results" },
         { type: "item", label: "Pit Display", path: "/pit-display" },
         { type: "item", label: "Event Reports", path: "/event-reports" },
       ],
@@ -184,14 +186,16 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
             {
               type: "item",
               label: "Red Scoring Referee",
-              path: "/referee/red",
+              path: "/ref/red/scoring",
+              color: "#dc2626",
             },
             {
               type: "item",
               label: "Blue Scoring Referee",
-              path: "/referee/blue",
+              path: "/ref/blue/scoring",
+              color: "#0284c7",
             },
-            { type: "item", label: "Head Referee", path: "/referee/head" },
+            { type: "item", label: "Head Referee", path: "/hr" },
           ],
         },
       ],
@@ -227,7 +231,14 @@ const renderDirectoryItem = (
   if (item.type === "item") {
     return (
       <li key={item.label}>
-        <a href={`${baseEventPath}${item.path}`}>{item.label}</a>
+        <a
+          href={`${baseEventPath}${item.path}`}
+          style={
+            item.color ? { color: item.color, fontWeight: "500" } : undefined
+          }
+        >
+          {item.label}
+        </a>
       </li>
     );
   }

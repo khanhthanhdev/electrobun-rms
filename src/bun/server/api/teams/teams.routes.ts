@@ -22,12 +22,8 @@ const parseTeamNumberParam = (
   return { teamNumber: parsedTeamNumber };
 };
 
-teamsRoutes.get("/:eventCode/teams", requireAuth, (c) => {
+teamsRoutes.get("/:eventCode/teams", (c) => {
   const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
-  }
   const search = c.req.query("search");
 
   try {

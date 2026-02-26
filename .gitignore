@@ -23,6 +23,8 @@ dist/
 .env.local
 .env.*.local
 
+.codex
+.claude
 # Logs
 logs/
 *.log
