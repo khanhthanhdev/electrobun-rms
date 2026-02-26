@@ -256,7 +256,7 @@ const AllianceScoresheet = ({
         <ScoreRow
           label="Vị trí đỗ"
           pts={`${parseParkState(scoresheetData.dRobotParkState)}`}
-          value={0}
+          value={scoresheetData.dRobotParkState}
         />
         <ScoreRow
           label="Bảo vệ cờ vàng"

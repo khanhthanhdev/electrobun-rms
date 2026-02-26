@@ -409,15 +409,16 @@ export const ScoringEntryPage = ({
           {/* Section B */}
           <SectionHeader
             accent={accent}
-            label="B — Bắn phá  trên sân đối phương"
+            label="B — Bắn phá trên sân đối phương"
           />
           <CounterRow
             label="Bắn hạ cờ trung tâm"
             onDecrement={() => dec("flagsCenterShot")}
             onIncrement={() => inc("flagsCenterShot")}
-            pts="30 pts each"
+            pts="30 điểm / 1"
             value={score.flagsCenterShot}
           />
+
           <CounterRow
             label="Bắn hạ cờ khác"
             onDecrement={() => dec("flagsOtherShot")}

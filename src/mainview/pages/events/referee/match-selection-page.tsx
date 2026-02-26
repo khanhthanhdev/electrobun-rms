@@ -8,7 +8,7 @@ interface MatchSelectionPageProps {
   eventCode: string;
   fieldNumber: string;
   onNavigate: (path: string) => void;
-  role: "blue" | "hr" | "red";
+  refereeRole: "blue" | "hr" | "red";
   token: string | null;
 }
 
@@ -127,7 +127,7 @@ export const MatchSelectionPage = ({
   eventCode,
   fieldNumber,
   onNavigate,
-  role,
+  refereeRole,
   token,
 }: MatchSelectionPageProps): JSX.Element => {
   const { matches, isLoading, error } = useMatchSchedule(
@@ -163,13 +163,13 @@ export const MatchSelectionPage = ({
     },
   };
 
-  const config = roleStyles[role];
+  const config = roleStyles[refereeRole];
 
   // Back path goes to field selection for the role
   const selectionBackPath =
-    role === "hr"
+    refereeRole === "hr"
       ? `/event/${eventCode}/hr`
-      : `/event/${eventCode}/ref/${role}/scoring`;
+      : `/event/${eventCode}/ref/${refereeRole}/scoring`;
 
   if (isLoading) {
     return (
@@ -244,9 +244,9 @@ export const MatchSelectionPage = ({
               key={`${mb.type}-${mb.match.matchNumber}-${idx}`}
               onClick={() => {
                 const matchPath =
-                  role === "hr"
+                  refereeRole === "hr"
                     ? `/event/${eventCode}/hr/${fieldNumber}/match/${mb.match.matchNumber}`
-                    : `/event/${eventCode}/ref/${role}/scoring/${fieldNumber}/match/${mb.match.matchNumber}`;
+                    : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/match/${mb.match.matchNumber}`;
                 onNavigate(matchPath);
               }}
               style={{

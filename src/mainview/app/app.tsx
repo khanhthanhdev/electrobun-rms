@@ -200,6 +200,11 @@ const HrMatchPage = lazy(() =>
     default: module.HrMatchPage,
   }))
 );
+const HeadRefereePage = lazy(() =>
+  import("../pages/events/referee/head-referee-page").then((module) => ({
+    default: module.HeadRefereePage,
+  }))
+);
 const MatchResultsPage = lazy(() =>
   import("../pages/events/results/match-results-page").then((module) => ({
     default: module.MatchResultsPage,
@@ -935,8 +940,39 @@ const renderRefereeRoutePage = ({
     return renderHrMatchEntryPage(headRefereeMatchEntryMatch, onNavigate);
   }
 
-  const match =
-    refereeRedScoringMatch ?? refereeBlueScoringMatch ?? headRefereeMatch;
+  // Head Referee gets its own tabbed page when a field is selected
+  if (headRefereeMatch) {
+    const hrEventCode = decodePathSegment(headRefereeMatch[1]);
+    if (hrEventCode === null) {
+      return <RouteErrorPage message="Invalid event code in URL." />;
+    }
+    const hrFieldSelection = headRefereeMatch[2]
+      ? decodePathSegment(headRefereeMatch[2])
+      : null;
+
+    if (hrFieldSelection) {
+      return (
+        <HeadRefereePage
+          eventCode={hrEventCode}
+          fieldNumber={hrFieldSelection}
+          onNavigate={onNavigate}
+          token={token}
+        />
+      );
+    }
+
+    return (
+      <RefereeSelectionPage
+        eventCode={hrEventCode}
+        events={events}
+        isEventsLoading={isEventsLoading}
+        onNavigate={onNavigate}
+        refereeRole="hr"
+      />
+    );
+  }
+
+  const match = refereeRedScoringMatch ?? refereeBlueScoringMatch;
   if (!match) {
     return null;
   }
@@ -948,12 +984,7 @@ const renderRefereeRoutePage = ({
 
   const fieldSelection = match[2] ? decodePathSegment(match[2]) : null;
 
-  let role: "red" | "blue" | "hr" = "hr";
-  if (refereeRedScoringMatch) {
-    role = "red";
-  } else if (refereeBlueScoringMatch) {
-    role = "blue";
-  }
+  const role: "red" | "blue" = refereeRedScoringMatch ? "red" : "blue";
 
   if (fieldSelection) {
     return (
@@ -961,7 +992,7 @@ const renderRefereeRoutePage = ({
         eventCode={eventCode}
         fieldNumber={fieldSelection}
         onNavigate={onNavigate}
-        role={role}
+        refereeRole={role}
         token={token}
       />
     );
@@ -973,7 +1004,7 @@ const renderRefereeRoutePage = ({
       events={events}
       isEventsLoading={isEventsLoading}
       onNavigate={onNavigate}
-      role={role}
+      refereeRole={role}
     />
   );
 };

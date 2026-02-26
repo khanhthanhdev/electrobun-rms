@@ -6,14 +6,14 @@ interface RefereeSelectionPageProps {
   events: EventItem[];
   isEventsLoading: boolean;
   onNavigate: (path: string) => void;
-  role: "red" | "blue" | "hr";
+  refereeRole: "red" | "blue" | "hr";
 }
 
 export const RefereeSelectionPage = ({
   eventCode,
   events,
   isEventsLoading,
-  role,
+  refereeRole,
   onNavigate,
 }: RefereeSelectionPageProps): JSX.Element => {
   if (isEventsLoading) {
@@ -33,9 +33,13 @@ export const RefereeSelectionPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             Event not found.
           </p>
-          <a className="app-link-inline" href="/">
+          <button
+            className="app-link-inline"
+            onClick={() => onNavigate("/")}
+            type="button"
+          >
             Back to Home
-          </a>
+          </button>
         </div>
       </main>
     );
@@ -64,16 +68,16 @@ export const RefereeSelectionPage = ({
     },
   };
 
-  const config = roleStyles[role];
+  const config = roleStyles[refereeRole];
 
   const handleSelection = (fieldNumber: number | "all") => {
     if (fieldNumber === "all") {
       onNavigate(
-        `/event/${eventCode}/${role === "hr" ? "hr" : `ref/${role}/scoring`}/all`
+        `/event/${eventCode}/${refereeRole === "hr" ? "hr" : `ref/${refereeRole}/scoring`}/all`
       );
     } else {
       onNavigate(
-        `/event/${eventCode}/${role === "hr" ? "hr" : `ref/${role}/scoring`}/${fieldNumber}`
+        `/event/${eventCode}/${refereeRole === "hr" ? "hr" : `ref/${refereeRole}/scoring`}/${fieldNumber}`
       );
     }
   };
@@ -115,7 +119,7 @@ export const RefereeSelectionPage = ({
             }}
             type="button"
           >
-            ← Back to Home
+            ← Back to Event
           </button>
           <div
             style={{

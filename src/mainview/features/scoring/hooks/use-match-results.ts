@@ -72,13 +72,14 @@ export const useMatchHistory = (
   const currentRequestId = useRef(0);
 
   const loadHistory = useCallback(async () => {
+    const requestId = ++currentRequestId.current;
     if (!enabled) {
       setHistory([]);
       setError(null);
       setIsLoading(false);
       return;
     }
-    const requestId = ++currentRequestId.current;
+    setIsLoading(true);
     setIsLoading(true);
     setError(null);
     try {

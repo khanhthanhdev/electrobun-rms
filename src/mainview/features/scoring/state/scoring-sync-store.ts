@@ -87,27 +87,27 @@ export const applyScoringRealtimeEvent = (
       LATEST_VERSION_CELL_ID,
       0
     );
-    const nextVersion =
-      event.version > currentVersion ? event.version : currentVersion;
 
-    scoringRealtimeStore.setCell(
-      SCORING_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_AT_CELL_ID,
-      event.changedAt
-    );
-    scoringRealtimeStore.setCell(
-      SCORING_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_ID_CELL_ID,
-      `${event.eventCode}:${event.version}`
-    );
-    scoringRealtimeStore.setCell(
-      SCORING_REALTIME_TABLE_ID,
-      event.eventCode,
-      LATEST_VERSION_CELL_ID,
-      nextVersion
-    );
+    if (event.version > currentVersion) {
+      scoringRealtimeStore.setCell(
+        SCORING_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_AT_CELL_ID,
+        event.changedAt
+      );
+      scoringRealtimeStore.setCell(
+        SCORING_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_ID_CELL_ID,
+        `${event.eventCode}:${event.version}`
+      );
+      scoringRealtimeStore.setCell(
+        SCORING_REALTIME_TABLE_ID,
+        event.eventCode,
+        LATEST_VERSION_CELL_ID,
+        event.version
+      );
+    }
   });
 };
 

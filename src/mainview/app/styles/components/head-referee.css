@@ -1,0 +1,532 @@
+/* Head Referee Page */
+
+.hr-page {
+  min-height: 100vh;
+  background: var(--faint);
+}
+
+.hr-container {
+  max-width: 1100px;
+  padding: 0;
+  margin: 0 auto;
+}
+
+/* Header */
+.hr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background-color: #f97316;
+}
+
+.hr-header-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  color: #fff;
+  cursor: pointer;
+  background: none;
+  border: none;
+  opacity: 0.9;
+}
+
+.hr-header-btn:hover {
+  opacity: 1;
+}
+
+.hr-header-title {
+  font-size: 1.1rem;
+  font-weight: var(--font-bold);
+  text-align: center;
+}
+
+/* Tab Navigation */
+.hr-tabs {
+  display: flex;
+  overflow-x: auto;
+  background: var(--card);
+  border-bottom: 2px solid var(--muted);
+}
+
+.hr-tab {
+  flex: none;
+  padding: 0.65rem 1.25rem;
+  margin-bottom: -2px;
+  font-size: 0.875rem;
+  font-weight: var(--font-medium);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+}
+
+.hr-tab:hover {
+  color: var(--foreground);
+}
+
+.hr-tab--active {
+  font-weight: var(--font-semibold);
+  color: #f97316;
+  border-bottom-color: #f97316;
+}
+
+/* Tab content area */
+.hr-content {
+  padding: 1rem;
+}
+
+/* Match info banner */
+.hr-match-info {
+  padding: 0.75rem 0;
+  text-align: center;
+}
+
+.hr-match-name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+.hr-match-detail {
+  margin: 0.15rem 0;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+/* Controls row */
+.hr-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.hr-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: var(--font-medium);
+  color: var(--foreground);
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+/* 3-column scoring layout */
+.hr-scoring-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  margin-top: 0.75rem;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+}
+
+.hr-alliance-col {
+  padding: 0.75rem;
+}
+
+.hr-alliance-col--blue {
+  background: rgba(2, 132, 199, 0.03);
+}
+
+.hr-alliance-col--red {
+  background: rgba(220, 38, 38, 0.03);
+}
+
+.hr-center-col {
+  min-width: 200px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.hr-alliance-title {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: var(--font-bold);
+  color: #fff;
+  text-align: center;
+  border-radius: var(--radius-small);
+}
+
+.hr-alliance-title--blue {
+  background: #0284c7;
+}
+
+.hr-alliance-title--red {
+  background: #dc2626;
+}
+
+.hr-center-title {
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: var(--font-bold);
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--muted);
+}
+
+/* Foul value display */
+.hr-foul-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+  background: var(--faint);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-small);
+}
+
+/* Foul referee breakdown */
+.hr-foul-breakdown {
+  margin-bottom: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* Increment/decrement controls */
+.hr-counter {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.hr-counter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--foreground);
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.hr-counter-btn:hover {
+  background: var(--faint);
+}
+
+.hr-counter-value {
+  min-width: 28px;
+  font-size: 1rem;
+  font-weight: var(--font-bold);
+  text-align: center;
+}
+
+/* Center column section labels */
+.hr-center-section {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--muted);
+}
+
+.hr-center-section-title {
+  margin-bottom: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hr-center-section-sub {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* Accordion for normal scores */
+.hr-accordion-toggle {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: var(--font-semibold);
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  background: var(--faint);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-small);
+}
+
+.hr-accordion-content {
+  padding: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-top: none;
+  border-radius: 0 0 var(--radius-small) var(--radius-small);
+}
+
+/* Score row in accordion (read-only) */
+.hr-score-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--muted);
+}
+
+.hr-score-row:last-child {
+  border-bottom: none;
+}
+
+.hr-score-label {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--foreground);
+  text-align: center;
+}
+
+.hr-score-pts {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+/* Total score display */
+.hr-total-score {
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  background: var(--faint);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-small);
+}
+
+.hr-total-label {
+  font-size: 0.8rem;
+  font-weight: var(--font-medium);
+  color: var(--muted-foreground);
+}
+
+.hr-total-value {
+  font-size: 1.5rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+/* Teams / Cards section */
+.hr-teams-section {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.hr-teams-title {
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+.hr-team-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+  font-weight: var(--font-bold);
+  background: var(--faint);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius-small);
+}
+
+.hr-card-btn {
+  min-width: 90px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+/* Notes tab */
+.hr-notes-filters {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.hr-notes-hint {
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.hr-notes-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hr-notes-table th,
+.hr-notes-table td {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.hr-notes-table th {
+  font-size: 0.85rem;
+  font-weight: var(--font-semibold);
+  color: var(--muted-foreground);
+  background: var(--faint);
+}
+
+.hr-notes-table tr {
+  cursor: pointer;
+}
+
+.hr-notes-table tr:hover td {
+  background: var(--faint);
+}
+
+/* Timers tab */
+.hr-timer-card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+}
+
+.hr-timer-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+  text-align: center;
+}
+
+.hr-timer-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.hr-timer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+.hr-timer-warning {
+  font-size: 0.85rem;
+  font-weight: var(--font-semibold);
+  color: var(--danger);
+}
+
+.hr-timer-table {
+  width: 100%;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+}
+
+.hr-timer-table th,
+.hr-timer-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.hr-timer-table th {
+  font-weight: var(--font-semibold);
+  color: var(--muted-foreground);
+  background: var(--faint);
+}
+
+.hr-timer-highlight {
+  font-weight: var(--font-bold);
+  color: var(--success);
+}
+
+/* Scoresheets tab */
+.hr-scoresheet-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.hr-scoresheet-select {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+.hr-scoresheet-radio-group {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--foreground);
+}
+
+.hr-scoresheet-radio-group label {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.hr-scoresheet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hr-scoring-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hr-center-col {
+    border-top: 1px solid var(--border);
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    border-left: none;
+  }
+
+  .hr-scoresheet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hr-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

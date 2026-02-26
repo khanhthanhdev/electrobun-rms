@@ -226,7 +226,10 @@ const AlliancePanel = ({
             >
               {cards[team] === "none"
                 ? "No Card"
-                : cards[team].charAt(0).toUpperCase() + cards[team].slice(1)}
+                : cards[team]
+                    .split("+")
+                    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                    .join("+")}
             </button>
           </div>
         ))}
