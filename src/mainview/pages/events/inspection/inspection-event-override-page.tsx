@@ -47,6 +47,13 @@ const OverrideTableRow = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = () => setIsDropdownOpen(false);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const handleStatusChange = async (newStatusStr: string) => {
     if (!token) {
@@ -81,29 +88,97 @@ const OverrideTableRow = ({
   return (
     <tr>
       <td className="table-teams-team-number">{team.teamNumber}</td>
-      <td>{team.teamName ?? "—"}</td>
+      <td className="table-teams-team-name" title={team.teamName ?? ""}>
+        {team.teamName ?? "—"}
+      </td>
       <td
-        className={`inspection-override-status-cell inspection-override-status-cell--${team.status.replace("_", "-").toLowerCase()}`}
-        style={{
-          backgroundColor: `var(--status-${team.status.replace("_", "-").toLowerCase()})`,
-        }}
+        className={`inspection-cell-status inspection-cell-status--${team.status}`}
       >
         <div
-          className="select-wrap"
-          style={{ display: "inline-block", width: "auto" }}
+          style={{
+            position: "relative",
+            display: "inline-block",
+            width: "100%",
+          }}
         >
-          <select
+          <button
             disabled={isUpdating}
-            onChange={(e) => handleStatusChange(e.currentTarget.value)}
-            style={{ width: "100%" }}
-            value={team.status}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isUpdating) {
+                setIsDropdownOpen(!isDropdownOpen);
+              }
+            }}
+            style={{
+              width: "100%",
+              padding: "4px 8px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: isUpdating ? "default" : "pointer",
+              border: "1px solid rgba(0,0,0,0.1)",
+              borderRadius: "4px",
+              backgroundColor: "transparent",
+            }}
+            type="button"
           >
-            {STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
+            <span>
+              {STATUS_LABELS[team.status as InspectionStatus] ??
+                team.statusLabel}
+            </span>
+            <svg
+              aria-label="Toggle status menu"
+              fill="none"
+              height="16"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {isDropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                backgroundColor: "white",
+                color: "black",
+                zIndex: 100,
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                overflow: "hidden",
+              }}
+            >
+              {STATUS_ORDER.map((status) => (
+                <button
+                  key={status}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatusChange(status);
+                    setIsDropdownOpen(false);
+                  }}
+                  style={{
+                    padding: "8px",
+                    cursor: "pointer",
+                    borderBottom: "1px solid #eee",
+                    backgroundColor:
+                      team.status === status ? "#f0f0f0" : "transparent",
+                    border: "none",
+                    width: "100%",
+                    textAlign: "left",
+                  }}
+                  type="button"
+                >
+                  {STATUS_LABELS[status]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {isUpdating && (
           <span
@@ -230,47 +305,61 @@ export const InspectionEventOverridePage = ({
   }
 
   return (
-    <main className="page-shell page-shell--top">
-      <section className="card surface-card surface-card--xlarge stack">
-        <a
-          className="app-link-inline"
-          href={`/event/${eventCode}/inspection`}
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate(`/event/${eventCode}/inspection`);
-          }}
-        >
-          ← Back to Team Select
-        </a>
-
-        <div className="inspection-detail-header">
-          <h1 className="app-heading">Robot Inspection — {eventCode}</h1>
+    <main className="page-shell page-shell--top inspection-page-shell">
+      <section className="card surface-card surface-card--xlarge stack inspection-page-card">
+        <div className="inspection-header-layout">
+          <div className="inspection-header-top-row">
+            <a
+              className="inspection-header-link"
+              href={`/event/${eventCode}/inspection`}
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate(`/event/${eventCode}/inspection`);
+              }}
+            >
+              <span className="hide-mobile">&lt;&lt; Back to Team Select</span>
+              <span className="show-mobile">&lt;&lt; Back</span>
+            </a>
+            <div className="inspection-header-right-links" />
+          </div>
+          <h1 className="inspection-header-title">
+            Robot Inspection Override - {eventCode}
+          </h1>
         </div>
 
-        <div className="inspection-legend">
-          {STATUS_ORDER.map((status) => {
-            const currentCount =
-              progressSegments.find((s) => s.status === status)?.count || 0;
-            return (
-              <span
-                className={`inspection-pill inspection-pill--${status}`}
-                key={status}
-              >
-                {STATUS_LABELS[status]} ({currentCount})
-              </span>
-            );
-          })}
-        </div>
+        <div className="inspection-legend-section">
+          <div className="inspection-legend-label">Legend:</div>
+          <div className="inspection-legend-grid">
+            <div className="inspection-legend-cell inspection-legend-cell--NOT_STARTED">
+              Not Started
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--IN_PROGRESS">
+              In Progress
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--PASSED">
+              Passed
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--INCOMPLETE">
+              Incomplete
+            </div>
+          </div>
 
-        <div className="inspection-progress-bar">
-          {progressSegments.map((segment) => (
-            <div
-              className={`inspection-progress-segment inspection-progress-segment--${segment.status}`}
-              key={segment.status}
-              style={{ width: `${segment.percentage}%` }}
-              title={`${STATUS_LABELS[segment.status]}: ${segment.count}`}
-            />
-          ))}
+          <div className="inspection-progress-bar-container">
+            {progressSegments.map((segment) => (
+              <div
+                className={`inspection-progress-segment inspection-progress-segment--${segment.status}`}
+                key={segment.status}
+                style={{ width: `${segment.percentage}%` }}
+                title={`${STATUS_LABELS[segment.status]}: ${segment.count}`}
+              />
+            ))}
+            <div className="inspection-progress-bar-text">
+              {totalTeams > 0 &&
+              progressSegments.find((s) => s.status === "PASSED")
+                ? `${Math.round(progressSegments.find((s) => s.status === "PASSED")?.percentage ?? 0)}% Passed`
+                : null}
+            </div>
+          </div>
         </div>
 
         <div className="form-row">
@@ -284,10 +373,10 @@ export const InspectionEventOverridePage = ({
         ) : null}
 
         <div className="table-wrap">
-          <table>
+          <table className="inspection-teams-table">
             <thead>
               <tr>
-                <th scope="col">Team #</th>
+                <th scope="col">Team</th>
                 <th scope="col">Name</th>
                 <th scope="col">Status</th>
               </tr>

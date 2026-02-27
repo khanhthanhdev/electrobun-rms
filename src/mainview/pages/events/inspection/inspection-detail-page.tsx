@@ -127,8 +127,8 @@ export const InspectionDetailPage = ({
   };
 
   return (
-    <main className="page-shell page-shell--top">
-      <section className="card surface-card surface-card--xlarge stack">
+    <main className="page-shell page-shell--top inspection-page-shell">
+      <section className="card surface-card surface-card--xlarge stack inspection-page-card">
         <InspectionHeader
           eventCode={eventCode}
           onNavigate={onNavigate}

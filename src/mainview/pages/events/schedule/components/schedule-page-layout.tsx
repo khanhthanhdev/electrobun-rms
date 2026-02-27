@@ -52,8 +52,8 @@ export const SchedulePageLayout = ({
   }
 
   return (
-    <main className="page-shell page-shell--top schedule-page">
-      <div className="card surface-card stack schedule-page-shell">
+    <main className="schedule-page-shell">
+      <div className="schedule-page-card">
         <a
           className="back-link schedule-page-back-link"
           href={`/event/${eventCode}/dashboard`}

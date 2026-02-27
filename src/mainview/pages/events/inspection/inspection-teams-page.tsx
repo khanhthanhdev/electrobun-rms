@@ -76,75 +76,72 @@ export const InspectionTeamsPage = ({
   }
 
   return (
-    <main className="page-shell page-shell--top">
-      <section className="card surface-card surface-card--xlarge stack">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div>
-            <a className="app-link-inline" href={`/event/${eventCode}`}>
-              ← Back to Event
+    <main className="page-shell page-shell--top inspection-page-shell">
+      <section className="card surface-card surface-card--xlarge stack inspection-page-card">
+        <div className="inspection-header-layout">
+          <div className="inspection-header-top-row">
+            <a className="inspection-header-link" href={`/event/${eventCode}`}>
+              <span className="hide-mobile">&lt;&lt; Back to Event Home</span>
+              <span className="show-mobile">&lt;&lt; Back</span>
             </a>
-            <h1 className="app-heading" style={{ marginTop: "0.5rem" }}>
-              Robot Inspection — {eventCode}
-            </h1>
+            <div className="inspection-header-right-links">
+              <a
+                className="inspection-header-link"
+                href={`/event/${eventCode}/inspection/override`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate(`/event/${eventCode}/inspection/override`);
+                }}
+              >
+                Lead Inspector Override
+              </a>
+              <a
+                className="inspection-header-link"
+                href={`/event/${eventCode}/inspection/notes`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate(`/event/${eventCode}/inspection/notes`);
+                }}
+              >
+                View Inspection Notes
+              </a>
+            </div>
           </div>
-          <div
-            style={{
-              textAlign: "right",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.25rem",
-              alignItems: "flex-end",
-            }}
-          >
-            <a
-              className="app-link-inline"
-              href={`/event/${eventCode}/inspection/notes`}
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigate(`/event/${eventCode}/inspection/notes`);
-              }}
-            >
-              View Notes
-            </a>
-            <a
-              className="app-link-inline"
-              href={`/event/${eventCode}/inspection/override`}
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigate(`/event/${eventCode}/inspection/override`);
-              }}
-            >
-              Lead Inspector Override
-            </a>
-          </div>
+          <h1 className="inspection-header-title">Inspection - {eventCode}</h1>
         </div>
 
-        <div className="inspection-legend">
-          {STATUS_ORDER.map((status) => (
-            <span
-              className={`inspection-pill inspection-pill--${status}`}
-              key={status}
-            >
-              {STATUS_LABELS[status]} ({statusCounts[status]})
-            </span>
-          ))}
-        </div>
+        <div className="inspection-legend-section">
+          <div className="inspection-legend-label">Legend:</div>
+          <div className="inspection-legend-grid">
+            <div className="inspection-legend-cell inspection-legend-cell--NOT_STARTED">
+              Not Started
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--IN_PROGRESS">
+              In Progress
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--PASSED">
+              Passed
+            </div>
+            <div className="inspection-legend-cell inspection-legend-cell--INCOMPLETE">
+              Incomplete
+            </div>
+          </div>
 
-        <div className="inspection-progress-bar">
-          {progressSegments.map((segment) => (
-            <div
-              className={`inspection-progress-segment inspection-progress-segment--${segment.status}`}
-              key={segment.status}
-              style={{ width: `${segment.percentage}%` }}
-              title={`${STATUS_LABELS[segment.status]}: ${statusCounts[segment.status]}`}
-            />
-          ))}
+          <div className="inspection-progress-bar-container">
+            {progressSegments.map((segment) => (
+              <div
+                className={`inspection-progress-segment inspection-progress-segment--${segment.status}`}
+                key={segment.status}
+                style={{ width: `${segment.percentage}%` }}
+                title={`${STATUS_LABELS[segment.status]}: ${statusCounts[segment.status]}`}
+              />
+            ))}
+            <div className="inspection-progress-bar-text">
+              {totalTeams > 0 && statusCounts.PASSED > 0
+                ? `${Math.round((statusCounts.PASSED / totalTeams) * 100)}% Passed`
+                : null}
+            </div>
+          </div>
         </div>
 
         <div className="form-row">
@@ -167,14 +164,13 @@ export const InspectionTeamsPage = ({
         ) : null}
 
         <div className="table-wrap">
-          <table>
+          <table className="inspection-teams-table">
             <thead>
               <tr>
-                <th scope="col">Team #</th>
+                <th scope="col">Team</th>
                 <th scope="col">Name</th>
                 <th scope="col">Status</th>
-                <th scope="col">Progress</th>
-                <th scope="col" />
+                <th scope="col">Inspect</th>
               </tr>
             </thead>
             <tbody>
@@ -184,36 +180,36 @@ export const InspectionTeamsPage = ({
                     <td className="table-teams-team-number">
                       {team.teamNumber}
                     </td>
-                    <td>{team.teamName ?? "—"}</td>
-                    <td>
-                      <span
-                        className={`inspection-pill inspection-pill--${team.status}`}
-                      >
-                        {team.statusLabel}
-                      </span>
+                    <td
+                      className="table-teams-team-name"
+                      title={team.teamName ?? ""}
+                    >
+                      {team.teamName ?? "—"}
                     </td>
-                    <td>
-                      {team.progress.completedRequired}/
-                      {team.progress.totalRequired}
+                    <td
+                      className={`inspection-cell-status inspection-cell-status--${team.status}`}
+                    >
+                      {team.statusLabel}
                     </td>
-                    <td>
-                      <button
-                        className="small outline"
-                        onClick={() => {
+                    <td className="inspection-cell-action">
+                      <a
+                        className="inspection-action-link"
+                        href={`/event/${eventCode}/inspection/${team.teamNumber}`}
+                        onClick={(e) => {
+                          e.preventDefault();
                           onNavigate(
                             `/event/${eventCode}/inspection/${team.teamNumber}`
                           );
                         }}
-                        type="button"
                       >
                         Inspect
-                      </button>
+                      </a>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5}>No teams found.</td>
+                  <td colSpan={4}>No teams found.</td>
                 </tr>
               )}
             </tbody>

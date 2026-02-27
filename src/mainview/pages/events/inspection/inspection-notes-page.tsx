@@ -55,55 +55,44 @@ export const InspectionNotesPage = ({
     : teams;
 
   return (
-    <main className="page-shell page-shell--top">
-      <section
-        className="card surface-card surface-card--xlarge stack"
-        style={{ paddingTop: "1rem" }}
-      >
-        <div style={{ position: "relative" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.25rem",
-            }}
-          >
+    <main className="page-shell page-shell--top inspection-page-shell">
+      <section className="card surface-card surface-card--xlarge stack inspection-page-card">
+        <div className="inspection-header-layout">
+          <div className="inspection-header-top-row">
             <a
-              className="app-link-inline"
+              className="inspection-header-link"
               href={`/event/${eventCode}/inspection`}
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate(`/event/${eventCode}/inspection`);
               }}
             >
-              &lt;&lt; Back to Team Select
+              <span className="hide-mobile">&lt;&lt; Back to Team Select</span>
+              <span className="show-mobile">&lt;&lt; Back</span>
             </a>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25rem",
-                fontSize: "0.875rem",
-              }}
-            >
-              <input
-                checked={isCondensed}
-                onChange={(e) => setIsCondensed(e.target.checked)}
-                type="checkbox"
-              />
-              Condensed
-            </label>
+            <div className="inspection-header-right-links" />
           </div>
-
-          <h1
-            className="app-heading"
-            style={{ textAlign: "center", margin: 0 }}
-          >
+          <h1 className="inspection-header-title">
             Robot Inspection Notes - {eventCode}
           </h1>
+        </div>
+
+        <div className="form-row" style={{ marginTop: "0.5rem" }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.25rem",
+              fontSize: "0.875rem",
+            }}
+          >
+            <input
+              checked={isCondensed}
+              onChange={(e) => setIsCondensed(e.target.checked)}
+              type="checkbox"
+            />
+            Condensed
+          </label>
         </div>
 
         {error ? (
@@ -112,20 +101,20 @@ export const InspectionNotesPage = ({
           </p>
         ) : null}
 
-        <div className="table-wrap" style={{ marginTop: "2rem" }}>
-          <table>
+        <div className="table-wrap">
+          <table className="inspection-teams-table">
             <thead>
               <tr>
-                <th scope="col" style={{ width: "10%", textAlign: "center" }}>
+                <th scope="col" style={{ width: "10%" }}>
                   Team
                 </th>
-                <th scope="col" style={{ width: "30%", textAlign: "center" }}>
+                <th scope="col" style={{ width: "30%" }}>
                   Name
                 </th>
                 <th scope="col" style={{ width: "15%", textAlign: "center" }}>
                   Status
                 </th>
-                <th scope="col" style={{ width: "45%", textAlign: "center" }}>
+                <th scope="col" style={{ width: "45%" }}>
                   Notes
                 </th>
               </tr>
@@ -134,21 +123,19 @@ export const InspectionNotesPage = ({
               {displayTeams.length > 0 ? (
                 displayTeams.map((team) => (
                   <tr key={team.teamNumber}>
-                    <td
-                      className="table-teams-team-number"
-                      style={{ textAlign: "center" }}
-                    >
+                    <td className="table-teams-team-number">
                       {team.teamNumber}
                     </td>
-                    <td style={{ textAlign: "center" }}>
+                    <td
+                      className="table-teams-team-name"
+                      title={team.teamName ?? ""}
+                    >
                       {team.teamName ?? ""}
                     </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span
-                        className={`inspection-pill inspection-pill--${team.status}`}
-                      >
-                        {team.statusLabel}
-                      </span>
+                    <td
+                      className={`inspection-cell-status inspection-cell-status--${team.status}`}
+                    >
+                      {team.statusLabel}
                     </td>
                     <td style={{ textAlign: "center" }}>
                       {team.comment ?? ""}

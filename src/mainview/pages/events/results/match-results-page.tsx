@@ -1,4 +1,5 @@
 import "./match-results.css";
+import "../../../app/styles/components/schedule.css";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMatchResults } from "../../../features/scoring/hooks/use-match-results";
@@ -156,55 +157,68 @@ export const MatchResultsPage = ({
   const currentYear = new Date().getFullYear();
 
   return (
-    <main className="page-shell">
-      <div className="card surface-card match-results-container">
-        <header className="match-results-header">
-          <a
-            className="app-link-inline match-results-back"
-            href={`/event/${eventCode}`}
-            onClick={handleBack}
-          >
-            « Back to Event Home
-          </a>
+    <main className="schedule-page-shell schedule-public-view">
+      <div className="schedule-view-top-nav" style={{ padding: "0 0.5rem" }}>
+        <a
+          className="back-link schedule-page-back-link"
+          href={`/event/${eventCode}`}
+          onClick={handleBack}
+        >
+          &lt;&lt; Back <span className="hide-mobile">to Event Home</span>
+        </a>
 
-          <div className="match-results-controls">
-            <label className="checkbox-control">
-              <input
-                checked={isCondensed}
-                onChange={(e) => setIsCondensed(e.target.checked)}
-                type="checkbox"
-              />
-              <span className="checkbox-label">Condensed</span>
-            </label>
+        <div
+          className="match-results-controls show-desktop-flex"
+          style={{ marginLeft: "auto", marginRight: "1rem" }}
+        >
+          <label className="checkbox-control">
+            <input
+              checked={isCondensed}
+              onChange={(e) => setIsCondensed(e.target.checked)}
+              type="checkbox"
+            />
+            <span className="checkbox-label">Condensed</span>
+          </label>
 
-            <label className="checkbox-control">
-              <input
-                checked={keepBackground}
-                onChange={(e) => setKeepBackground(e.target.checked)}
-                type="checkbox"
-              />
-              <span className="checkbox-label">Keep Background on Print</span>
-            </label>
-          </div>
-
-          <h1 className="match-results-title">
-            NRC {currentYear} Match Results
-          </h1>
-        </header>
-
-        <div className="tab-navigation">
-          {tabs.map((tab) => (
-            <button
-              className={`tab-button ${matchType === tab ? "active" : ""}`}
-              key={tab}
-              onClick={() => setMatchType(tab)}
-              type="button"
-            >
-              {TAB_LABELS[tab]}
-            </button>
-          ))}
+          <label className="checkbox-control">
+            <input
+              checked={keepBackground}
+              onChange={(e) => setKeepBackground(e.target.checked)}
+              type="checkbox"
+            />
+            <span className="checkbox-label">Keep Background</span>
+          </label>
         </div>
 
+        <button
+          className="schedule-public-view__print-text-button"
+          onClick={() => window.print()}
+          type="button"
+        >
+          Print
+        </button>
+      </div>
+
+      <header className="schedule-public-view__header">
+        <h2 className="app-heading schedule-page-title schedule-public-view__title">
+          NRC {currentYear} Match Results
+        </h2>
+      </header>
+
+      <div className="tab-navigation" style={{ padding: "0 0.5rem" }}>
+        {tabs.map((tab) => (
+          <button
+            className={`tab-button ${matchType === tab ? "active" : ""}`}
+            key={tab}
+            onClick={() => setMatchType(tab)}
+            type="button"
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </div>
+
+      <div className="schedule-public-view__table-wrap">
         <StandardMatchesView
           error={error}
           eventCode={eventCode}

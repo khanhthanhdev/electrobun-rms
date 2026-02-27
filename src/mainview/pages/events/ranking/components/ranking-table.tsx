@@ -36,7 +36,7 @@ export const RankingTable = ({
   }
 
   return (
-    <table className="schedule-table">
+    <table className="schedule-table ranking-table">
       <thead>
         <tr>
           <th>Rank</th>
@@ -53,7 +53,9 @@ export const RankingTable = ({
           <tr key={row.teamNumber}>
             <td>{row.rank}</td>
             <td>{row.teamNumber}</td>
-            <td>{row.name || "-"}</td>
+            <td className="ranking-team-name" title={row.name || "-"}>
+              {row.name || "-"}
+            </td>
             <td>{formatNumber(row.rankingPoint)}</td>
             <td>{formatNumber(row.total)}</td>
             <td>

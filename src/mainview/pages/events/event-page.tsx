@@ -245,8 +245,8 @@ const renderDirectoryItem = (
 
   return (
     <li key={item.label}>
-      {item.label}
-      <ul>
+      <span className="event-directory-category-label">{item.label}</span>
+      <ul className="event-directory-list">
         {item.items.map((subItem) =>
           renderDirectoryItem(subItem, baseEventPath)
         )}
@@ -282,7 +282,9 @@ export const EventPage = ({
           {eventCode}: {event?.name ?? "Event"}
         </h1>
 
-        <div className="event-directory-grid">
+        <div
+          className={`event-directory-grid ${user ? "is-authenticated" : ""}`}
+        >
           {sections.map((section) => (
             <section className="event-directory-section" key={section.title}>
               <h2 className="event-directory-section-title">{section.title}</h2>

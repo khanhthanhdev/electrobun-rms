@@ -86,62 +86,36 @@ export const InspectionHeader = ({
   teamNumber,
 }: InspectionHeaderProps): JSX.Element => {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "0rem",
-        marginBottom: "0rem",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+    <div className="inspection-header-layout">
+      <div className="inspection-header-top-row">
         <a
-          className="app-link-inline"
+          className="inspection-header-link"
           href={`/event/${eventCode}/inspection`}
           onClick={(event) => {
             event.preventDefault();
             onNavigate(`/event/${eventCode}/inspection`);
           }}
         >
-          &lt;&lt; Back to Team Select
+          <span className="hide-mobile">&lt;&lt; Back to Team Select</span>
+          <span className="show-mobile">&lt;&lt; Back</span>
         </a>
-        <span className={`inspection-pill inspection-pill--${status}`}>
+        <div
+          className={`inspection-cell-status inspection-cell-status--${status}`}
+          style={{
+            padding: "0.25rem 0.5rem !important",
+            borderRadius: "4px",
+            fontWeight: "bold",
+            border: "1px solid #212529",
+          }}
+        >
           {statusLabel}
-        </span>
+        </div>
       </div>
 
-      <h1 className="app-heading" style={{ fontSize: "1.25rem", margin: 0 }}>
+      <h1 className="inspection-header-title">
         Inspection Checklist
+        <br />#{teamNumber} {teamName ?? "Unknown"}
       </h1>
-
-      <div className="inspection-detail-header" style={{ marginBottom: 0 }}>
-        {/* Desktop */}
-        <div className="inspection-desktop-header">
-          <h2 className="app-heading" style={{ fontSize: "1rem", margin: 0 }}>
-            {teamName ?? "Unknown"} — #{teamNumber}
-          </h2>
-        </div>
-
-        {/* Mobile */}
-        <div className="inspection-mobile-header">
-          <div className="inspection-detail-row">
-            <h2 className="app-heading" style={{ fontSize: "1rem", margin: 0 }}>
-              {teamName ?? "Unknown"}
-            </h2>
-          </div>
-          <div className="inspection-detail-row">
-            <h2 className="app-heading" style={{ fontSize: "1rem", margin: 0 }}>
-              #{teamNumber}
-            </h2>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -17,7 +17,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@knadh/oat": "^0.3.0",
+    "@knadh/oat": "^0.4.1",
     "@microsoft/fetch-event-source": "^2.0.1",
     "drizzle-orm": "^0.45.1",
     "electrobun": "latest",

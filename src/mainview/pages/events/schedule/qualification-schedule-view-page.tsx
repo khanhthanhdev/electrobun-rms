@@ -131,36 +131,32 @@ export const QualificationScheduleViewPage = ({
   }
 
   return (
-    <main className="page-shell page-shell--top schedule-page">
-      <div className="card surface-card stack schedule-page-shell schedule-public-view">
-        <a
-          className="back-link schedule-page-back-link"
-          href={`/event/${eventCode}`}
-        >
-          &lt;&lt; Back to Event Home
-        </a>
+    <main className="schedule-page-shell">
+      <div className="schedule-page-card schedule-public-view">
+        <div className="schedule-view-top-nav">
+          <a
+            className="back-link schedule-page-back-link"
+            href={`/event/${eventCode}`}
+          >
+            <span className="hide-mobile">&lt;&lt; Back to Event Home</span>
+            <span className="show-mobile">&lt;- Back</span>
+          </a>
+
+          <button
+            aria-label="Print qualification schedule"
+            className="schedule-public-view__print-text-button"
+            disabled={printRows.length === 0}
+            onClick={handlePrintClick}
+            type="button"
+          >
+            Print
+          </button>
+        </div>
 
         <header className="schedule-public-view__header">
           <h2 className="app-heading schedule-page-title schedule-public-view__title">
             {eventCode.toUpperCase()} Qualification Schedule
           </h2>
-          <button
-            aria-label="Print qualification schedule"
-            className="schedule-public-view__print-button"
-            disabled={printRows.length === 0}
-            onClick={handlePrintClick}
-            title="Print"
-            type="button"
-          >
-            <svg
-              fill="currentColor"
-              viewBox="0 0 16 16"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <title>Print</title>
-              <path d="M2 7a2 2 0 0 1 2-2h1V2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3h1a2 2 0 0 1 2 2v3H12v4H4v-4H2zm2 1H3v2h1zm8 0v2h1V8zm-2-3V2H6v3zM5 10v3h6v-3z" />
-            </svg>
-          </button>
         </header>
 
         {errorMessage ? (

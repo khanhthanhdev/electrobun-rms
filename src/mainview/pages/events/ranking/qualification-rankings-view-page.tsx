@@ -88,33 +88,40 @@ export const QualificationRankingsViewPage = ({
   }
 
   return (
-    <main className="page-shell page-shell--top schedule-page">
-      <div className="card surface-card stack schedule-page-shell schedule-public-view">
+    <main className="schedule-page-shell schedule-public-view">
+      <div className="schedule-view-top-nav">
         <a
           className="back-link schedule-page-back-link"
           href={`/event/${eventCode}`}
         >
-          &lt;&lt; Back to Event Home
+          &lt;&lt; Back <span className="hide-mobile">to Event Home</span>
         </a>
+        <button
+          className="schedule-public-view__print-text-button"
+          onClick={() => window.print()}
+          type="button"
+        >
+          Print
+        </button>
+      </div>
 
-        <header className="schedule-public-view__header">
-          <h2 className="app-heading schedule-page-title schedule-public-view__title">
-            {eventCode.toUpperCase()} Rankings
-          </h2>
-        </header>
+      <header className="schedule-public-view__header">
+        <h2 className="app-heading schedule-page-title schedule-public-view__title">
+          {eventCode.toUpperCase()} Rankings
+        </h2>
+      </header>
 
-        {errorMessage ? (
-          <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
-          </p>
-        ) : null}
+      {errorMessage ? (
+        <p className="message-block" data-variant="danger" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
 
-        <div className="schedule-public-view__table-wrap">
-          <RankingTable
-            emptyMessage="No qualification rankings available."
-            rows={rows}
-          />
-        </div>
+      <div className="schedule-public-view__table-wrap">
+        <RankingTable
+          emptyMessage="No qualification rankings available."
+          rows={rows}
+        />
       </div>
     </main>
   );
