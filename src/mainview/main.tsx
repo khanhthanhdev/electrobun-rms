@@ -1,3 +1,4 @@
+import "@knadh/oat/oat.min.js";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./app/styles/index.css";

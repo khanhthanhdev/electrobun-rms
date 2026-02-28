@@ -16,6 +16,7 @@ const readCurrentPath = (): string => {
 
 const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
 const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
+const EVENT_CONTROL_PATTERN = /^\/event\/([^/]+)\/control\/?$/;
 const EVENT_REPORTS_PATTERN = /^\/event\/([^/]+)\/dashboard\/reports\/?$/;
 const EVENT_TEAMS_PATTERN = /^\/event\/([^/]+)\/dashboard\/teams\/?$/;
 const PRACTICE_SCHEDULE_PATTERN =
@@ -86,6 +87,11 @@ const EditEventPage = lazy(() =>
 const EventDashboardPage = lazy(() =>
   import("../pages/events/event-dashboard-page").then((module) => ({
     default: module.EventDashboardPage,
+  }))
+);
+const EventControlPage = lazy(() =>
+  import("../pages/events/control/event-control-page").then((module) => ({
+    default: module.EventControlPage,
   }))
 );
 const EventPage = lazy(() =>
@@ -471,12 +477,14 @@ const renderEventScopedAdminRoute = (
 interface EventScopedAdminRoutesPageProps {
   defaultAccountsMatch: RegExpExecArray | null;
   editEventMatch: RegExpExecArray | null;
+  eventControlMatch: RegExpExecArray | null;
   eventDashboardMatch: RegExpExecArray | null;
   eventReportsMatch: RegExpExecArray | null;
   events: EventItem[];
   eventTeamsMatch: RegExpExecArray | null;
   isAuthLoading: boolean;
   isEventsLoading: boolean;
+  onNavigate: (path: string) => void;
   practiceScheduleMatch: RegExpExecArray | null;
   qualificationScheduleMatch: RegExpExecArray | null;
   token: string | null;
@@ -484,6 +492,7 @@ interface EventScopedAdminRoutesPageProps {
 }
 
 const EventScopedAdminRoutesPage = ({
+  eventControlMatch,
   defaultAccountsMatch,
   editEventMatch,
   eventDashboardMatch,
@@ -494,6 +503,7 @@ const EventScopedAdminRoutesPage = ({
   events,
   isAuthLoading,
   isEventsLoading,
+  onNavigate,
   token,
   user,
 }: EventScopedAdminRoutesPageProps): JSX.Element | null => {
@@ -525,6 +535,24 @@ const EventScopedAdminRoutesPage = ({
           events={events}
           isEventsLoading={isEventsLoading}
           user={user}
+        />
+      )
+    );
+  }
+
+  const controlRouteResolution = resolveEventScopedAdminMatch(
+    eventControlMatch,
+    isAuthLoading,
+    user
+  );
+  if (controlRouteResolution) {
+    return renderEventScopedAdminRoute(
+      controlRouteResolution,
+      (resolvedEventCode) => (
+        <EventControlPage
+          eventCode={resolvedEventCode}
+          onNavigate={onNavigate}
+          token={token}
         />
       )
     );
@@ -599,6 +627,7 @@ const EventScopedAdminRoutesPage = ({
 interface AdminRoutesPageProps {
   defaultAccountsMatch: RegExpExecArray | null;
   editEventMatch: RegExpExecArray | null;
+  eventControlMatch: RegExpExecArray | null;
   eventDashboardMatch: RegExpExecArray | null;
   eventReportsMatch: RegExpExecArray | null;
   events: EventItem[];
@@ -611,6 +640,7 @@ interface AdminRoutesPageProps {
   isManageServerPage: boolean;
   isManageUsersPage: boolean;
   manageUserDetailMatch: RegExpExecArray | null;
+  onNavigate: (path: string) => void;
   practiceScheduleMatch: RegExpExecArray | null;
   qualificationScheduleMatch: RegExpExecArray | null;
   token: string | null;
@@ -618,6 +648,7 @@ interface AdminRoutesPageProps {
 }
 
 const AdminRoutesPage = ({
+  eventControlMatch,
   defaultAccountsMatch,
   editEventMatch,
   eventDashboardMatch,
@@ -634,6 +665,7 @@ const AdminRoutesPage = ({
   isManageServerPage,
   isManageUsersPage,
   manageUserDetailMatch,
+  onNavigate,
   token,
   user,
 }: AdminRoutesPageProps): JSX.Element | null => {
@@ -693,12 +725,14 @@ const AdminRoutesPage = ({
     <EventScopedAdminRoutesPage
       defaultAccountsMatch={defaultAccountsMatch}
       editEventMatch={editEventMatch}
+      eventControlMatch={eventControlMatch}
       eventDashboardMatch={eventDashboardMatch}
       eventReportsMatch={eventReportsMatch}
       events={events}
       eventTeamsMatch={eventTeamsMatch}
       isAuthLoading={isAuthLoading}
       isEventsLoading={isEventsLoading}
+      onNavigate={onNavigate}
       practiceScheduleMatch={practiceScheduleMatch}
       qualificationScheduleMatch={qualificationScheduleMatch}
       token={token}
@@ -1124,6 +1158,7 @@ const AppRouteContent = ({
   const manageUserDetailMatch = MANAGE_USER_DETAIL_PATTERN.exec(currentPath);
   const editEventMatch = EDIT_EVENT_PATTERN.exec(currentPath);
   const eventDashboardMatch = EVENT_DASHBOARD_PATTERN.exec(currentPath);
+  const eventControlMatch = EVENT_CONTROL_PATTERN.exec(currentPath);
   const eventReportsMatch = EVENT_REPORTS_PATTERN.exec(currentPath);
   const eventTeamsMatch = EVENT_TEAMS_PATTERN.exec(currentPath);
   const practiceScheduleMatch = PRACTICE_SCHEDULE_PATTERN.exec(currentPath);
@@ -1162,6 +1197,7 @@ const AppRouteContent = ({
     isManageServerPage ||
     Boolean(editEventMatch) ||
     Boolean(eventDashboardMatch) ||
+    Boolean(eventControlMatch) ||
     Boolean(eventReportsMatch) ||
     Boolean(eventTeamsMatch) ||
     Boolean(practiceScheduleMatch) ||
@@ -1173,6 +1209,7 @@ const AppRouteContent = ({
       <AdminRoutesPage
         defaultAccountsMatch={defaultAccountsMatch}
         editEventMatch={editEventMatch}
+        eventControlMatch={eventControlMatch}
         eventDashboardMatch={eventDashboardMatch}
         eventReportsMatch={eventReportsMatch}
         events={events}
@@ -1185,6 +1222,7 @@ const AppRouteContent = ({
         isManageServerPage={isManageServerPage}
         isManageUsersPage={isManageUsersPage}
         manageUserDetailMatch={manageUserDetailMatch}
+        onNavigate={onNavigate}
         practiceScheduleMatch={practiceScheduleMatch}
         qualificationScheduleMatch={qualificationScheduleMatch}
         token={token}

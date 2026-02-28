@@ -327,7 +327,7 @@ const FoulCell = ({
   );
 };
 
-// Full scoring grid: Blue | Labels | Red, with horizontally aligned foul rows
+// Full scoring grid: Red (left) | Labels | Blue (right), with horizontally aligned foul rows
 const ScoringGrid = ({
   blueFouls,
   redFouls,
@@ -353,18 +353,18 @@ const ScoringGrid = ({
   redFouls: AllianceFoulState;
   redTeam: number;
 }): JSX.Element => {
-  const leftFouls = flipped ? redFouls : blueFouls;
-  const rightFouls = flipped ? blueFouls : redFouls;
-  const leftCards = flipped ? redCards : blueCards;
-  const rightCards = flipped ? blueCards : redCards;
-  const leftColor: "blue" | "red" = flipped ? "red" : "blue";
-  const rightColor: "blue" | "red" = flipped ? "blue" : "red";
-  const leftTeam = flipped ? redTeam : blueTeam;
-  const rightTeam = flipped ? blueTeam : redTeam;
-  const leftFoulChange = flipped ? onChangeRedFoul : onChangeBlueFoul;
-  const rightFoulChange = flipped ? onChangeBlueFoul : onChangeRedFoul;
-  const leftCardChange = flipped ? onChangeRedCard : onChangeBlueCard;
-  const rightCardChange = flipped ? onChangeBlueCard : onChangeRedCard;
+  const leftFouls = flipped ? blueFouls : redFouls;
+  const rightFouls = flipped ? redFouls : blueFouls;
+  const leftCards = flipped ? blueCards : redCards;
+  const rightCards = flipped ? redCards : blueCards;
+  const leftColor: "blue" | "red" = flipped ? "blue" : "red";
+  const rightColor: "blue" | "red" = flipped ? "red" : "blue";
+  const leftTeam = flipped ? blueTeam : redTeam;
+  const rightTeam = flipped ? redTeam : blueTeam;
+  const leftFoulChange = flipped ? onChangeBlueFoul : onChangeRedFoul;
+  const rightFoulChange = flipped ? onChangeRedFoul : onChangeBlueFoul;
+  const leftCardChange = flipped ? onChangeBlueCard : onChangeRedCard;
+  const rightCardChange = flipped ? onChangeRedCard : onChangeBlueCard;
 
   const leftTitleClass =
     leftColor === "blue" ? "hr-alliance-title--blue" : "hr-alliance-title--red";
@@ -420,7 +420,7 @@ const ScoringGrid = ({
         INIT
       </div>
 
-      {/* Row 3: MINOR FOULS — Blue value | Label | Red value */}
+      {/* Row 3: MINOR FOULS — Red value | Label | Blue value */}
       <div className="hr-alliance-col" style={{ padding: "0.5rem 0.75rem" }}>
         <FoulCell
           foulKey="minorHr"
@@ -448,7 +448,7 @@ const ScoringGrid = ({
         />
       </div>
 
-      {/* Row 4: MAJOR FOULS — Blue value | Label | Red value */}
+      {/* Row 4: MAJOR FOULS — Red value | Label | Blue value */}
       <div className="hr-alliance-col" style={{ padding: "0.5rem 0.75rem" }}>
         <FoulCell
           foulKey="majorHr"
@@ -476,7 +476,7 @@ const ScoringGrid = ({
         />
       </div>
 
-      {/* Row 5: Teams / Cards — Blue team | "Assign Cards" | Red team */}
+      {/* Row 5: Teams / Cards — Red team | "Assign Cards" | Blue team */}
       <div className="hr-alliance-col" style={{ padding: "0.5rem 0.75rem" }}>
         <div className="hr-team-badge">{leftTeam}</div>
         <div style={{ textAlign: "center" }}>
@@ -535,8 +535,8 @@ const NormalScoresAccordion = ({
   redData: MatchHistoryItem;
 }): JSX.Element => {
   const [open, setOpen] = useState(false);
-  const left = flipped ? redData : blueData;
-  const right = flipped ? blueData : redData;
+  const left = flipped ? blueData : redData;
+  const right = flipped ? redData : blueData;
 
   const scoreRows = [
     {
@@ -743,7 +743,7 @@ const ActiveMatchTab = ({
         </button>
       </div>
 
-      {/* Scoring grid: Blue | Minor/Major labels | Red */}
+      {/* Scoring grid: Red | Minor/Major labels | Blue */}
       <ScoringGrid
         blueCards={blueCards}
         blueFouls={blueFouls}

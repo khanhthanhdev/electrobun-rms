@@ -217,7 +217,7 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
         {
           type: "item",
           label: "Match Control Page",
-          path: "/match-control",
+          path: "/control",
         },
       ],
     },

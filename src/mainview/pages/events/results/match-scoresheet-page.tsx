@@ -315,16 +315,6 @@ const MobileAllianceSelector = ({
       Alliance selector
     </legend>
     <button
-      aria-pressed={mobileAllianceView === "blue"}
-      className={`scoresheet-mobile-toggle-btn ${
-        mobileAllianceView === "blue" ? "active" : ""
-      }`}
-      onClick={() => onSelect("blue")}
-      type="button"
-    >
-      Blue
-    </button>
-    <button
       aria-pressed={mobileAllianceView === "red"}
       className={`scoresheet-mobile-toggle-btn ${
         mobileAllianceView === "red" ? "active" : ""
@@ -333,6 +323,16 @@ const MobileAllianceSelector = ({
       type="button"
     >
       Red
+    </button>
+    <button
+      aria-pressed={mobileAllianceView === "blue"}
+      className={`scoresheet-mobile-toggle-btn ${
+        mobileAllianceView === "blue" ? "active" : ""
+      }`}
+      onClick={() => onSelect("blue")}
+      type="button"
+    >
+      Blue
     </button>
     <button
       aria-pressed={mobileAllianceView === "all"}
@@ -347,7 +347,7 @@ const MobileAllianceSelector = ({
   </fieldset>
 );
 
-const ScoresheetGrid = ({
+export const ScoresheetGrid = ({
   allianceFilter,
   mobileView,
   scoresheet,
@@ -380,17 +380,6 @@ const ScoresheetGrid = ({
           : "scoresheet-grid-container"
       }
     >
-      {showBlue && (
-        <div
-          style={
-            allianceFilter === "red" && mobileView !== "all"
-              ? { display: "none" }
-              : {}
-          }
-        >
-          <AllianceScoresheet alliance="blue" data={scoresheet?.blue ?? null} />
-        </div>
-      )}
       {showRed && (
         <div
           style={
@@ -400,6 +389,17 @@ const ScoresheetGrid = ({
           }
         >
           <AllianceScoresheet alliance="red" data={scoresheet?.red ?? null} />
+        </div>
+      )}
+      {showBlue && (
+        <div
+          style={
+            allianceFilter === "red" && mobileView !== "all"
+              ? { display: "none" }
+              : {}
+          }
+        >
+          <AllianceScoresheet alliance="blue" data={scoresheet?.blue ?? null} />
         </div>
       )}
     </div>

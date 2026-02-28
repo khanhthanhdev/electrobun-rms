@@ -61,7 +61,7 @@ const buildDashboardSections = (eventCode: string): DashboardSection[] => [
     items: [
       {
         label: "Match Control Page",
-        path: `/event/${eventCode}/dashboard/match-control`,
+        path: `/event/${eventCode}/control`,
       },
       {
         label: "Alliance Selection",
