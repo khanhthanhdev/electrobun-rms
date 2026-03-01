@@ -1,6 +1,6 @@
-import { LoadingIndicator } from "../../../shared/components/loading-indicator";
-import type { EventItem } from "../../../shared/types/event";
-import { formatDate } from "../../../shared/utils/date";
+import { formatDate } from "@/shared/lib/date";
+import type { EventItem } from "@/shared/types/event";
+import { LoadingIndicator } from "@/shared/ui/loading-indicator";
 import { EVENT_STATUS_LABELS } from "../constants/status-labels";
 
 interface EventsSectionProps {

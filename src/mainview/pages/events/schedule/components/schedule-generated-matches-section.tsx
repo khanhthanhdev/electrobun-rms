@@ -1,7 +1,7 @@
-import type { PrintDestination } from "../../../../shared/services/print-service";
-import type { ScheduleMatchRow } from "./schedule-match-table";
-import { ScheduleMatchTable } from "./schedule-match-table";
-import { ScheduleSection } from "./schedule-section";
+import type { PrintDestination } from "@/shared/services/print-service";
+import type { ScheduleMatchRow } from "@/widgets/schedule/schedule-match-table";
+import { ScheduleMatchTable } from "@/widgets/schedule/schedule-match-table";
+import { ScheduleSection } from "@/widgets/schedule/schedule-section";
 
 interface ScheduleGeneratedMatchesSectionProps {
   emptyMessage: string;

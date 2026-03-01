@@ -1,9 +1,5 @@
 import { type RefObject, useCallback, useReducer, useRef } from "react";
 import {
-  type EventTeamItem,
-  fetchEventTeams,
-} from "../../../features/events/services/event-teams-service";
-import {
   clearQualificationSchedule,
   fetchQualificationSchedule,
   type GenerateQualificationSchedulePayload,
@@ -12,25 +8,26 @@ import {
   type SaveQualificationSchedulePayload,
   saveQualificationSchedule,
   setQualificationScheduleActivation,
-} from "../../../features/events/services/schedule/qualification-schedule-service";
-import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
+} from "@/features/events/schedule";
+import { type EventTeamItem, fetchEventTeams } from "@/features/events/teams";
 import {
   buildMatchesCsvFileContent,
   type OneVsOneCsvMatch,
   parseMatchesFromCsvText,
-} from "./components/schedule-csv";
-import { ScheduleCsvSection } from "./components/schedule-csv-section";
-import { ScheduleManagementToolbar } from "./components/schedule-management-toolbar";
-import type { ScheduleMatchRow } from "./components/schedule-match-table";
-import { EMPTY_ONE_VS_ONE_SCHEDULE_METRICS } from "./components/schedule-metrics";
-import { OneVsOneScheduleOverview } from "./components/schedule-overview-section";
-import type { MatchBlockState } from "./components/schedule-utils";
+} from "@/widgets/schedule/schedule-csv";
+import { ScheduleCsvSection } from "@/widgets/schedule/schedule-csv-section";
+import { ScheduleManagementToolbar } from "@/widgets/schedule/schedule-management-toolbar";
+import type { ScheduleMatchRow } from "@/widgets/schedule/schedule-match-table";
+import { EMPTY_ONE_VS_ONE_SCHEDULE_METRICS } from "@/widgets/schedule/schedule-metrics";
+import { OneVsOneScheduleOverview } from "@/widgets/schedule/schedule-overview-section";
+import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import {
   getFirstBlockStartTime,
   type OneVsOneGenerateResult,
   type OneVsOneLoadResult,
   useOneVsOneScheduleController,
-} from "./components/use-one-vs-one-schedule-controller";
+} from "@/widgets/schedule/use-one-vs-one-schedule-controller";
+import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
 
 interface QualificationSchedulePageProps {
   eventCode: string;

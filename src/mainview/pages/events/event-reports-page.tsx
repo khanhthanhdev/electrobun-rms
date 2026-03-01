@@ -12,7 +12,7 @@ import {
   type PrintableMatchItem,
   type PrintableScheduleItem,
   type PrintableTeamItem,
-} from "../../features/events/services/event-print-lists-service";
+} from "@/features/events/event-admin";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 import {
   type PrintDestination,

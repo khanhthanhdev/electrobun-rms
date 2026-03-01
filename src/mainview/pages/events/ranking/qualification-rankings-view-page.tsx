@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { useQualificationRankingsRealtime } from "../../../features/events/hooks/use-qualification-rankings-realtime";
-import { useQualificationRankingsRealtimeRefresh } from "../../../features/events/hooks/use-qualification-rankings-realtime-refresh";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import {
   fetchQualificationRankings,
   type QualificationRankingItem,
-} from "../../../features/events/services/qualification-rankings-service";
+  useQualificationRankingsRealtime,
+  useQualificationRankingsRealtimeRefresh,
+} from "@/features/events/rankings";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
-import "../../../app/styles/components/schedule.css";
 import { RankingTable, type RankingTableRow } from "./components/ranking-table";
 
 interface QualificationRankingsViewPageProps {
@@ -29,14 +28,43 @@ const mapRankingItemsToRows = (
     played: rankingItem.played,
   }));
 
+interface QualificationRankingsState {
+  errorMessage: string | null;
+  isLoading: boolean;
+  rows: RankingTableRow[];
+}
+
+type QualificationRankingsAction =
+  | { type: "start" }
+  | { type: "success"; rows: RankingTableRow[] }
+  | { type: "error"; errorMessage: string };
+
+const qualificationRankingsReducer = (
+  _state: QualificationRankingsState,
+  action: QualificationRankingsAction
+): QualificationRankingsState => {
+  switch (action.type) {
+    case "start":
+      return { isLoading: true, errorMessage: null, rows: [] };
+    case "success":
+      return { isLoading: false, errorMessage: null, rows: action.rows };
+    case "error":
+      return { isLoading: false, errorMessage: action.errorMessage, rows: [] };
+    default:
+      return _state;
+  }
+};
+
 export const QualificationRankingsViewPage = ({
   eventCode,
   token,
 }: QualificationRankingsViewPageProps): JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [rows, setRows] = useState<RankingTableRow[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [state, dispatch] = useReducer(qualificationRankingsReducer, {
+    isLoading: true,
+    errorMessage: null,
+    rows: [],
+  });
 
   const refreshRankings = useCallback((): void => {
     setRefreshTick((tick) => tick + 1);
@@ -48,8 +76,7 @@ export const QualificationRankingsViewPage = ({
   useEffect(() => {
     let isCancelled = false;
 
-    setIsLoading(true);
-    setErrorMessage(null);
+    dispatch({ type: "start" });
 
     fetchQualificationRankings(eventCode, token, refreshTick)
       .then((response) => {
@@ -57,21 +84,21 @@ export const QualificationRankingsViewPage = ({
           return;
         }
 
-        setRows(mapRankingItemsToRows(response.rankings));
+        dispatch({
+          type: "success",
+          rows: mapRankingItemsToRows(response.rankings),
+        });
       })
       .catch((error) => {
         if (isCancelled) {
           return;
         }
 
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to load rankings."
-        );
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        dispatch({
+          type: "error",
+          errorMessage:
+            error instanceof Error ? error.message : "Failed to load rankings.",
+        });
       });
 
     return () => {
@@ -79,7 +106,7 @@ export const QualificationRankingsViewPage = ({
     };
   }, [eventCode, token, refreshTick]);
 
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center schedule-page">
         <LoadingIndicator />
@@ -111,16 +138,16 @@ export const QualificationRankingsViewPage = ({
         </h2>
       </header>
 
-      {errorMessage ? (
+      {state.errorMessage ? (
         <p className="message-block" data-variant="danger" role="alert">
-          {errorMessage}
+          {state.errorMessage}
         </p>
       ) : null}
 
       <div className="schedule-public-view__table-wrap">
         <RankingTable
           emptyMessage="No qualification rankings available."
-          rows={rows}
+          rows={state.rows}
         />
       </div>
     </main>

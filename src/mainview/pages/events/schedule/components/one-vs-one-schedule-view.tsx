@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import type { PrintDestination } from "../../../../shared/services/print-service";
+import type { PrintDestination } from "@/shared/services/print-service";
+import type { ScheduleMatchRow } from "@/widgets/schedule/schedule-match-table";
+import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import { OneVsOneSchedulePage } from "./one-vs-one-schedule-page";
 import { ScheduleGeneratedMatchesSection } from "./schedule-generated-matches-section";
-import type { ScheduleMatchRow } from "./schedule-match-table";
-import type { MatchBlockState } from "./schedule-utils";
 
 interface OneVsOneScheduleViewProps {
   alerts?: ReactNode;

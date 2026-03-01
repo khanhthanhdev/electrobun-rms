@@ -11,3 +11,7 @@
 @import "./components/scoring-entry.css";
 @import "./components/head-referee.css";
 @import "./components/match-control.css";
+@import "./components/schedule.css";
+@import "./components/teams.css";
+@import "./components/event-directory.css";
+@import "../../pages/events/results/match-results.css";

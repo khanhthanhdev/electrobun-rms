@@ -1,5 +1,3 @@
-import "./match-results.css";
-import "../../../app/styles/components/schedule.css";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMatchResults } from "../../../features/scoring/hooks/use-match-results";

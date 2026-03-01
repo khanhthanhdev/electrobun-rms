@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMatchControlData } from "../../../features/events/hooks/use-match-control-data";
+import { useMatchControlData } from "@/features/events/control";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import type {
   ControlMatchRow,
@@ -657,28 +657,22 @@ export const EventControlPage = ({
   }, [refresh]);
 
   useEffect(() => {
-    if (activeState !== "in_progress") {
+    if (activeState !== "in_progress" || timeRemaining > 0) {
       timerCompletedRef.current = false;
       return;
     }
-    if (timeRemaining <= 0) {
-      if (!timerCompletedRef.current) {
-        timerCompletedRef.current = true;
-        setActiveState("completed");
-      }
+    if (!timerCompletedRef.current) {
+      timerCompletedRef.current = true;
+      setActiveState("completed");
+    }
+  }, [activeState, timeRemaining]);
+
+  useEffect(() => {
+    if (activeState !== "in_progress" || timeRemaining <= 0) {
       return;
     }
     const id = setInterval(() => {
-      setTimeRemaining((t) => {
-        if (t <= 1) {
-          if (!timerCompletedRef.current) {
-            timerCompletedRef.current = true;
-            setActiveState("completed");
-          }
-          return 0;
-        }
-        return t - 1;
-      });
+      setTimeRemaining((t) => (t <= 1 ? 0 : t - 1));
     }, 1000);
     return () => clearInterval(id);
   }, [activeState, timeRemaining]);

@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, useState } from "react";
 import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
 import type { ControlMatchRow } from "../../../shared/types/match-control";
 import { MatchHistoryEmbed } from "./match-history-embed";
@@ -48,6 +48,8 @@ export const ControlActiveMatchPanel = ({
   timeRemaining,
   token,
 }: ControlActiveMatchPanelProps): JSX.Element => {
+  const [activeTab, setActiveTab] = useState(0);
+
   if (rows.length === 0) {
     return (
       <p className="empty-state">No matches available for this schedule.</p>
@@ -129,17 +131,36 @@ export const ControlActiveMatchPanel = ({
         "ot-tabs",
         { className: "match-control-active-tabs" },
         <div role="tablist">
-          <button role="tab" type="button">
+          <button
+            aria-selected={activeTab === 0}
+            onClick={() => setActiveTab(0)}
+            role="tab"
+            type="button"
+          >
             Scoresheet
           </button>
-          <button role="tab" type="button">
+          <button
+            aria-selected={activeTab === 1}
+            onClick={() => setActiveTab(1)}
+            role="tab"
+            type="button"
+          >
             History
           </button>
-          <button role="tab" type="button">
+          <button
+            aria-selected={activeTab === 2}
+            onClick={() => setActiveTab(2)}
+            role="tab"
+            type="button"
+          >
             Score Entry
           </button>
         </div>,
-        <div role="tabpanel">
+        <div
+          aria-hidden={activeTab !== 0}
+          hidden={activeTab !== 0}
+          role="tabpanel"
+        >
           <MatchScoresheetEmbed
             eventCode={eventCode}
             matchNumber={selectedMatch.matchNumber}
@@ -147,7 +168,11 @@ export const ControlActiveMatchPanel = ({
             token={token}
           />
         </div>,
-        <div role="tabpanel">
+        <div
+          aria-hidden={activeTab !== 1}
+          hidden={activeTab !== 1}
+          role="tabpanel"
+        >
           <MatchHistoryEmbed
             eventCode={eventCode}
             matchName={selectedMatch.matchName}
@@ -156,7 +181,11 @@ export const ControlActiveMatchPanel = ({
             token={token}
           />
         </div>,
-        <div role="tabpanel">
+        <div
+          aria-hidden={activeTab !== 2}
+          hidden={activeTab !== 2}
+          role="tabpanel"
+        >
           <div className="match-control-score-entry-inline scoresheet-grid-container">
             <ScoringEntryForm
               alliance="red"

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { LoadingIndicator } from "../../../../shared/components/loading-indicator";
-import "../../../../app/styles/components/schedule.css";
+import { LoadingIndicator } from "@/shared/components/loading-indicator";
+import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import { MatchBlockEditor } from "./match-block-editor";
-import type { MatchBlockState } from "./schedule-utils";
 
 interface SchedulePageLayoutProps {
   alerts?: ReactNode;

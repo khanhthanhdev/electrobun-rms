@@ -8,13 +8,12 @@ import {
   fetchEventTeams,
   importTeamsCsv,
   updateEventTeam,
-} from "../../features/events/services/event-teams-service";
+} from "@/features/events/teams";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 import {
   type PrintDestination,
   printTable,
 } from "../../shared/services/print-service";
-import "../../app/styles/components/teams.css";
 
 interface TeamsPageProps {
   eventCode: string;

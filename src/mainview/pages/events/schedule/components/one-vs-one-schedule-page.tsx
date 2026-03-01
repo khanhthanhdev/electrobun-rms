@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import { SchedulePageLayout } from "./schedule-page-layout";
-import type { MatchBlockState } from "./schedule-utils";
 
 interface OneVsOneSchedulePageProps {
   alerts?: ReactNode;

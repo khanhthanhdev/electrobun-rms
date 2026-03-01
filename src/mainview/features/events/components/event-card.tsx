@@ -1,5 +1,5 @@
-import type { EventItem } from "../../../shared/types/event";
-import { formatDate } from "../../../shared/utils/date";
+import { formatDate } from "@/shared/lib/date";
+import type { EventItem } from "@/shared/types/event";
 import { EVENT_STATUS_LABELS } from "../constants/status-labels";
 
 interface EventCardProps {

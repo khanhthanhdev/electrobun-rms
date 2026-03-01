@@ -1,7 +1,6 @@
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 import type { AuthUser } from "../../shared/types/auth";
 import type { EventItem } from "../../shared/types/event";
-import "../../app/styles/components/event-directory.css";
 
 interface EventPageProps {
   eventCode: string;

@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useReducer } from "react";
-import type { UpdateEventPayload } from "../../features/events/services/manual-event-service";
 import {
   fetchEvent,
+  type UpdateEventPayload,
   updateEvent,
-} from "../../features/events/services/manual-event-service";
+} from "@/features/events/event-admin";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 
 interface EditEventPageProps {

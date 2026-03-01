@@ -1,4 +1,3 @@
-import "./match-results.css";
 import type React from "react";
 import { useState } from "react";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";

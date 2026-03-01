@@ -14,7 +14,16 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/mainview/*"],
+      "@/app/*": ["src/mainview/app/*"],
+      "@/features/*": ["src/mainview/features/*"],
+      "@/pages/*": ["src/mainview/pages/*"],
+      "@/shared/*": ["src/mainview/shared/*"],
+      "@/widgets/*": ["src/mainview/widgets/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "build", "../../package/dist"]

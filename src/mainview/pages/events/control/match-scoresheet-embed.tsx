@@ -1,4 +1,3 @@
-import "../results/match-results.css";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import type { MatchType } from "../../../shared/types/scoring";

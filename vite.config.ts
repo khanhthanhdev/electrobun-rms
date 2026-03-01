@@ -1,8 +1,19 @@
+import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src/mainview"),
+      "@/app": path.resolve(import.meta.dirname, "src/mainview/app"),
+      "@/features": path.resolve(import.meta.dirname, "src/mainview/features"),
+      "@/pages": path.resolve(import.meta.dirname, "src/mainview/pages"),
+      "@/shared": path.resolve(import.meta.dirname, "src/mainview/shared"),
+      "@/widgets": path.resolve(import.meta.dirname, "src/mainview/widgets"),
+    },
+  },
   css: {
     transformer: "lightningcss",
     lightningcss: {

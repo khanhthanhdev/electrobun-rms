@@ -1,4 +1,3 @@
-import "../results/match-results.css";
 import { useMatchHistory } from "../../../features/scoring/hooks/use-match-results";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import type {
@@ -74,7 +73,7 @@ export const MatchHistoryEmbed = ({
                 </td>
               </tr>
             ) : (
-              history.map((entry: MatchHistoryEventItem, idx: number) => {
+              history.map((entry: MatchHistoryEventItem) => {
                 const redWon =
                   entry.redScore !== null &&
                   entry.blueScore !== null &&
@@ -85,7 +84,9 @@ export const MatchHistoryEmbed = ({
                   entry.blueScore > entry.redScore;
 
                 return (
-                  <tr key={`${entry.ts}-${entry.type}-${idx}`}>
+                  <tr
+                    key={`${matchName}-${entry.type}-${entry.ts}-${entry.redScore ?? "na"}-${entry.blueScore ?? "na"}`}
+                  >
                     <td>{entry.type}</td>
                     <td>{formatDate(entry.ts)}</td>
                     <td

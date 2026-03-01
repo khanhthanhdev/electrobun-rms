@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchPracticeSchedule } from "../../../features/events/services/schedule/practice-schedule-service";
-import { fetchQualificationSchedule } from "../../../features/events/services/schedule/qualification-schedule-service";
-import type { OneVsOneScheduleMatch } from "../../../features/events/services/schedule/shared-schedule-types";
+import { useEffect, useReducer } from "react";
+import {
+  fetchPracticeSchedule,
+  fetchQualificationSchedule,
+  type OneVsOneScheduleMatch,
+} from "@/features/events/schedule";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 
 interface MatchSelectionPageProps {
@@ -73,54 +75,86 @@ const loadScheduleMatches = async (
   return combined;
 };
 
+interface MatchScheduleState {
+  error: string | null;
+  isLoading: boolean;
+  matches: MatchBlock[];
+}
+
+type MatchScheduleAction =
+  | { type: "start" }
+  | { type: "success"; matches: MatchBlock[] }
+  | { type: "error"; error: string }
+  | { type: "no_token" };
+
+const matchScheduleReducer = (
+  _state: MatchScheduleState,
+  action: MatchScheduleAction
+): MatchScheduleState => {
+  switch (action.type) {
+    case "start":
+      return { matches: [], isLoading: true, error: null };
+    case "success":
+      return { matches: action.matches, isLoading: false, error: null };
+    case "error":
+      return { matches: [], isLoading: false, error: action.error };
+    case "no_token":
+      return {
+        matches: [],
+        isLoading: false,
+        error: "User must be authenticated to load schedule.",
+      };
+    default:
+      return _state;
+  }
+};
+
 const useMatchSchedule = (
   eventCode: string,
   fieldNumber: string,
   token: string | null
 ): { matches: MatchBlock[]; isLoading: boolean; error: string | null } => {
-  const [matches, setMatches] = useState<MatchBlock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const onSuccess = useCallback((result: MatchBlock[]) => {
-    setMatches(result);
-    setIsLoading(false);
-  }, []);
-
-  const onError = useCallback((err: unknown) => {
-    setError(err instanceof Error ? err.message : "Failed to load matches.");
-    setIsLoading(false);
-  }, []);
+  const [state, dispatch] = useReducer(matchScheduleReducer, {
+    matches: [],
+    isLoading: true,
+    error: null,
+  });
 
   useEffect(() => {
     if (!token) {
-      setError("User must be authenticated to load schedule.");
-      setIsLoading(false);
+      dispatch({ type: "no_token" });
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+    dispatch({ type: "start" });
 
     loadScheduleMatches(eventCode, token, fieldNumber)
       .then((result) => {
         if (!cancelled) {
-          onSuccess(result);
+          dispatch({ type: "success", matches: result });
         }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          onError(err);
+          dispatch({
+            type: "error",
+            error:
+              err instanceof Error ? err.message : "Failed to load matches.",
+          });
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [eventCode, fieldNumber, token, onSuccess, onError]);
+  }, [eventCode, fieldNumber, token]);
 
-  return { matches, isLoading, error };
+  return {
+    matches: state.matches,
+    isLoading: state.isLoading,
+    error: state.error,
+  };
 };
 
 export const MatchSelectionPage = ({
@@ -239,9 +273,9 @@ export const MatchSelectionPage = ({
               No matches found for this selection.
             </div>
           ) : null}
-          {matches.map((mb, idx) => (
+          {matches.map((mb) => (
             <button
-              key={`${mb.type}-${mb.match.matchNumber}-${idx}`}
+              key={`${mb.type}-${mb.match.matchNumber}`}
               onClick={() => {
                 const matchPath =
                   refereeRole === "hr"

@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import {
   fetchQualificationSchedule,
   printQualificationScheduleResults,
-} from "../../../features/events/services/schedule/qualification-schedule-service";
-import { LoadingIndicator } from "../../../shared/components/loading-indicator";
-import "../../../app/styles/components/schedule.css";
+} from "@/features/events/schedule";
+import { LoadingIndicator } from "@/shared/components/loading-indicator";
 import {
   type ScheduleMatchRow,
   ScheduleMatchTable,
-} from "./components/schedule-match-table";
+} from "@/widgets/schedule/schedule-match-table";
 
 interface QualificationScheduleViewPageProps {
   eventCode: string;
@@ -44,19 +43,54 @@ const mapQualificationMatchesToRows = ({
     blueSurrogate: match.blueSurrogate,
   }));
 
+interface QualificationScheduleState {
+  errorMessage: string | null;
+  isLoading: boolean;
+  tableRows: ScheduleMatchRow[];
+}
+
+type QualificationScheduleAction =
+  | { type: "start" }
+  | { type: "success"; tableRows: ScheduleMatchRow[] }
+  | { type: "error"; errorMessage: string }
+  | { type: "print_error"; errorMessage: string };
+
+const qualificationScheduleReducer = (
+  state: QualificationScheduleState,
+  action: QualificationScheduleAction
+): QualificationScheduleState => {
+  switch (action.type) {
+    case "start":
+      return { ...state, isLoading: true, errorMessage: null };
+    case "success":
+      return {
+        isLoading: false,
+        errorMessage: null,
+        tableRows: action.tableRows,
+      };
+    case "error":
+      return { ...state, isLoading: false, errorMessage: action.errorMessage };
+    case "print_error":
+      return { ...state, errorMessage: action.errorMessage };
+    default:
+      return state;
+  }
+};
+
 export const QualificationScheduleViewPage = ({
   eventCode,
   token,
 }: QualificationScheduleViewPageProps): JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [tableRows, setTableRows] = useState<ScheduleMatchRow[]>([]);
+  const [state, dispatch] = useReducer(qualificationScheduleReducer, {
+    isLoading: true,
+    errorMessage: null,
+    tableRows: [],
+  });
 
   useEffect(() => {
     let isCancelled = false;
 
-    setIsLoading(true);
-    setErrorMessage(null);
+    dispatch({ type: "start" });
 
     fetchQualificationSchedule(eventCode, token ?? "")
       .then((schedule) => {
@@ -64,28 +98,26 @@ export const QualificationScheduleViewPage = ({
           return;
         }
 
-        setTableRows(
-          mapQualificationMatchesToRows({
+        dispatch({
+          type: "success",
+          tableRows: mapQualificationMatchesToRows({
             fieldCount: schedule.config.fieldCount,
             matches: schedule.matches,
-          })
-        );
+          }),
+        });
       })
       .catch((error) => {
         if (isCancelled) {
           return;
         }
 
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to load qualification schedule."
-        );
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        dispatch({
+          type: "error",
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to load qualification schedule.",
+        });
       });
 
     return () => {
@@ -95,7 +127,7 @@ export const QualificationScheduleViewPage = ({
 
   const printRows = useMemo(
     () =>
-      tableRows.map((row) => ({
+      state.tableRows.map((row) => ({
         matchNumber: row.matchNumber,
         matchLabel: row.matchLabel,
         fieldNumber: row.fieldNumber,
@@ -105,7 +137,7 @@ export const QualificationScheduleViewPage = ({
         blueTeam: row.blueTeam,
         blueSurrogate: row.blueSurrogate,
       })),
-    [tableRows]
+    [state.tableRows]
   );
 
   const handlePrintClick = useCallback((): void => {
@@ -116,13 +148,17 @@ export const QualificationScheduleViewPage = ({
         rows: printRows,
       });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to open print dialog."
-      );
+      dispatch({
+        type: "print_error",
+        errorMessage:
+          error instanceof Error
+            ? error.message
+            : "Failed to open print dialog.",
+      });
     }
   }, [eventCode, printRows]);
 
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <main className="page-shell page-shell--center schedule-page">
         <LoadingIndicator />
@@ -159,16 +195,16 @@ export const QualificationScheduleViewPage = ({
           </h2>
         </header>
 
-        {errorMessage ? (
+        {state.errorMessage ? (
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
+            {state.errorMessage}
           </p>
         ) : null}
 
         <div className="schedule-public-view__table-wrap">
           <ScheduleMatchTable
             emptyMessage="No qualification matches available."
-            matches={tableRows}
+            matches={state.tableRows}
           />
         </div>
       </div>

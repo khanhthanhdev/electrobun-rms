@@ -1,9 +1,9 @@
 import { useEffect, useReducer } from "react";
-import type { DefaultAccountInfo } from "../../features/events/services/manual-event-service";
+import type { DefaultAccountInfo } from "@/features/events/event-admin";
 import {
   fetchDefaultAccounts,
   regenerateDefaultAccounts,
-} from "../../features/events/services/manual-event-service";
+} from "@/features/events/event-admin";
 import { LoadingIndicator } from "../../shared/components/loading-indicator";
 
 interface DefaultAccountsPageProps {

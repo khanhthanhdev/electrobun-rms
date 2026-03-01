@@ -1,7 +1,24 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/biome/core", "ultracite/biome/react"],
-  "javascript": {
-    "globals": ["Bun"]
-  }
+  "javascript": { "globals": ["Bun"] },
+  "overrides": [
+    {
+      "includes": [
+        "src/mainview/features/events/index.ts",
+        "src/mainview/features/events/**/index.ts",
+        "src/mainview/features/events/hooks/*.ts",
+        "src/mainview/features/events/services/*.ts",
+        "src/mainview/features/events/services/schedule/*.ts",
+        "src/mainview/features/events/state/*.ts"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ]
 }

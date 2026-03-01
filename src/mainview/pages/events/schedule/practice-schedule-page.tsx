@@ -6,10 +6,6 @@ import {
   useState,
 } from "react";
 import {
-  type EventTeamItem,
-  fetchEventTeams,
-} from "../../../features/events/services/event-teams-service";
-import {
   clearPracticeSchedule,
   fetchPracticeSchedule,
   type GeneratePracticeSchedulePayload,
@@ -19,26 +15,27 @@ import {
   type SavePracticeSchedulePayload,
   savePracticeSchedule,
   setPracticeScheduleActivation,
-} from "../../../features/events/services/schedule/practice-schedule-service";
-import type { PrintDestination } from "../../../shared/services/print-service";
-import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
+} from "@/features/events/schedule";
+import { type EventTeamItem, fetchEventTeams } from "@/features/events/teams";
+import type { PrintDestination } from "@/shared/services/print-service";
 import {
   buildMatchesCsvFileContent,
   type OneVsOneCsvMatch,
   parseMatchesFromCsvText,
-} from "./components/schedule-csv";
-import { ScheduleCsvSection } from "./components/schedule-csv-section";
-import { ScheduleManagementToolbar } from "./components/schedule-management-toolbar";
-import type { ScheduleMatchRow } from "./components/schedule-match-table";
-import { computeOneVsOneScheduleMetrics } from "./components/schedule-metrics";
-import { OneVsOneScheduleOverview } from "./components/schedule-overview-section";
-import type { MatchBlockState } from "./components/schedule-utils";
+} from "@/widgets/schedule/schedule-csv";
+import { ScheduleCsvSection } from "@/widgets/schedule/schedule-csv-section";
+import { ScheduleManagementToolbar } from "@/widgets/schedule/schedule-management-toolbar";
+import type { ScheduleMatchRow } from "@/widgets/schedule/schedule-match-table";
+import { computeOneVsOneScheduleMetrics } from "@/widgets/schedule/schedule-metrics";
+import { OneVsOneScheduleOverview } from "@/widgets/schedule/schedule-overview-section";
+import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import {
   getFirstBlockStartTime,
   type OneVsOneGenerateResult,
   type OneVsOneLoadResult,
   useOneVsOneScheduleController,
-} from "./components/use-one-vs-one-schedule-controller";
+} from "@/widgets/schedule/use-one-vs-one-schedule-controller";
+import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
 
 interface PracticeSchedulePageProps {
   eventCode: string;

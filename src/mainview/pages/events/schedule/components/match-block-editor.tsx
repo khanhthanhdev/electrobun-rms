@@ -4,7 +4,7 @@ import {
   computeMinimumBlockDurationMinutesForMatchCount,
   formatTimeForInput,
   type MatchBlockState,
-} from "./schedule-utils";
+} from "@/widgets/schedule/schedule-utils";
 
 interface MatchBlockEditorProps {
   defaultCycleTimeMinutes: number;

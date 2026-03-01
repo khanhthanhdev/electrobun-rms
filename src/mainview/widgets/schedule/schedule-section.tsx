@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { PrintDestination } from "../../../../shared/services/print-service";
+import type { PrintDestination } from "@/shared/services/print-service";
 import { ScheduleActionButton } from "./schedule-action-button";
 
 interface ScheduleSectionProps {

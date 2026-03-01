@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from "react";
-import type { CreateManualEventPayload } from "../../features/events/services/manual-event-service";
-import { createManualEvent } from "../../features/events/services/manual-event-service";
+import {
+  type CreateManualEventPayload,
+  createManualEvent,
+} from "@/features/events/event-admin";
 
 interface CreateEventPageProps {
   token: string | null;

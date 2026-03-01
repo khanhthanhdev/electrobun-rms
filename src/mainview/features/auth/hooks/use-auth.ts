@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TOKEN_STORAGE_KEY } from "../../../shared/constants/storage";
+import { TOKEN_STORAGE_KEY } from "@/shared/config/storage";
 import type {
   AuthRoutePath,
   AuthUser,
