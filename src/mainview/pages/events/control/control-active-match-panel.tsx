@@ -1,5 +1,8 @@
-import { createElement, useState } from "react";
+import { useState } from "react";
+import { scoresheetToScoringState } from "@/shared/api/scoring";
 import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
+import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
+import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
 import type { ControlMatchRow } from "../../../shared/types/match-control";
 import { MatchHistoryEmbed } from "./match-history-embed";
 import { MatchScoresheetEmbed } from "./match-scoresheet-embed";
@@ -50,14 +53,50 @@ export const ControlActiveMatchPanel = ({
 }: ControlActiveMatchPanelProps): JSX.Element => {
   const [activeTab, setActiveTab] = useState(0);
 
+  const selectedMatch =
+    rows.find((row) => row.matchNumber === selectedMatchNumber) ?? rows[0];
+  const apiMatchType: "quals" | "elims" =
+    selectedMatch.matchType === "elims" ? "elims" : "quals";
+
+  const { scoresheet } = useMatchScoresheet(
+    eventCode,
+    apiMatchType,
+    selectedMatch.matchNumber,
+    token,
+    rows.length > 0
+  );
+
+  const redAutoSave = useAutoSaveScoring({
+    alliance: "red",
+    eventCode,
+    matchNumber: selectedMatch.matchNumber,
+    matchType: apiMatchType,
+    token,
+  });
+
+  const blueAutoSave = useAutoSaveScoring({
+    alliance: "blue",
+    eventCode,
+    matchNumber: selectedMatch.matchNumber,
+    matchType: apiMatchType,
+    token,
+  });
+
+  const redScore = scoresheet?.red?.scoreTotal ?? selectedMatch.redScore ?? 0;
+  const blueScore =
+    scoresheet?.blue?.scoreTotal ?? selectedMatch.blueScore ?? 0;
+  const isLiveScoring =
+    redAutoSave.isAutoSaving ||
+    redAutoSave.isSubmitting ||
+    blueAutoSave.isAutoSaving ||
+    blueAutoSave.isSubmitting;
+
   if (rows.length === 0) {
     return (
       <p className="empty-state">No matches available for this schedule.</p>
     );
   }
 
-  const selectedMatch =
-    rows.find((row) => row.matchNumber === selectedMatchNumber) ?? rows[0];
   const isActiveMatch =
     activeState === "in_progress" &&
     selectedMatchNumber !== null &&
@@ -119,17 +158,33 @@ export const ControlActiveMatchPanel = ({
           <p>
             #{selectedMatch.redTeam} {selectedMatch.redTeamName}
           </p>
+          <p className="match-control-active-score-value">
+            {redScore}
+            {isLiveScoring ? (
+              <span aria-hidden className="match-control-live-badge">
+                {" "}
+                LIVE
+              </span>
+            ) : null}
+          </p>
         </div>
         <div className="match-control-active-alliance match-control-blue-team">
           <p>
             #{selectedMatch.blueTeam} {selectedMatch.blueTeamName}
           </p>
+          <p className="match-control-active-score-value">
+            {blueScore}
+            {isLiveScoring ? (
+              <span aria-hidden className="match-control-live-badge">
+                {" "}
+                LIVE
+              </span>
+            ) : null}
+          </p>
         </div>
       </div>
 
-      {createElement(
-        "ot-tabs",
-        { className: "match-control-active-tabs" },
+      <div className="match-control-active-tabs">
         <div role="tablist">
           <button
             aria-selected={activeTab === 0}
@@ -155,7 +210,7 @@ export const ControlActiveMatchPanel = ({
           >
             Score Entry
           </button>
-        </div>,
+        </div>
         <div
           aria-hidden={activeTab !== 0}
           hidden={activeTab !== 0}
@@ -167,7 +222,7 @@ export const ControlActiveMatchPanel = ({
             matchType={selectedMatch.matchType}
             token={token}
           />
-        </div>,
+        </div>
         <div
           aria-hidden={activeTab !== 1}
           hidden={activeTab !== 1}
@@ -180,34 +235,49 @@ export const ControlActiveMatchPanel = ({
             matchType={selectedMatch.matchType}
             token={token}
           />
-        </div>,
+        </div>
         <div
           aria-hidden={activeTab !== 2}
           hidden={activeTab !== 2}
           role="tabpanel"
         >
+          {redAutoSave.lastSaveError || blueAutoSave.lastSaveError ? (
+            <p className="message-block" data-variant="danger" role="alert">
+              {redAutoSave.lastSaveError ?? blueAutoSave.lastSaveError}
+            </p>
+          ) : null}
           <div className="match-control-score-entry-inline scoresheet-grid-container">
             <ScoringEntryForm
               alliance="red"
               embedded
               fieldLabel={fieldLabel}
+              initialScore={
+                scoresheet?.red
+                  ? scoresheetToScoringState(scoresheet.red)
+                  : undefined
+              }
+              key={`red-${selectedMatch.matchNumber}`}
               matchLabel={matchLabel}
-              onSubmit={() => {
-                /* TODO: API integration */
-              }}
+              onChange={redAutoSave.onScoreChange}
+              onSubmit={redAutoSave.submitScore}
             />
             <ScoringEntryForm
               alliance="blue"
               embedded
               fieldLabel={fieldLabel}
+              initialScore={
+                scoresheet?.blue
+                  ? scoresheetToScoringState(scoresheet.blue)
+                  : undefined
+              }
+              key={`blue-${selectedMatch.matchNumber}`}
               matchLabel={matchLabel}
-              onSubmit={() => {
-                /* TODO: API integration */
-              }}
+              onChange={blueAutoSave.onScoreChange}
+              onSubmit={blueAutoSave.submitScore}
             />
           </div>
         </div>
-      )}
+      </div>
     </section>
   );
 };

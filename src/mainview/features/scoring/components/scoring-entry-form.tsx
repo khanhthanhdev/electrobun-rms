@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Parking states: 0=none, 1=partial(10pts), 2=full(15pts)
 export type ParkingState = 0 | 1 | 2;
@@ -202,6 +202,7 @@ interface ScoringEntryFormProps {
   initialScore?: Partial<ScoringState>;
   matchLabel?: string;
   onBackClick?: () => void;
+  onChange?: (score: ScoringState) => void;
   onSubmit?: (score: ScoringState) => void;
 }
 
@@ -211,6 +212,7 @@ export const ScoringEntryForm = ({
   fieldLabel,
   initialScore,
   matchLabel,
+  onChange,
   onBackClick,
   onSubmit,
 }: ScoringEntryFormProps): JSX.Element => {
@@ -219,7 +221,16 @@ export const ScoringEntryForm = ({
     ...initialScore,
   });
   const accent = ALLIANCE_COLOR[alliance];
-  const allianceLabel = alliance === "red" ? "Red Alliance" : "Blue Alliance";
+  const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    onChange?.(score);
+  }, [score, onChange]);
 
   const dec = (key: keyof ScoringState) =>
     setScore((s) => ({ ...s, [key]: Math.max(0, (s[key] as number) - 1) }));

@@ -10,6 +10,9 @@ export default {
     bun: {
       entrypoint: "src/bun/index.ts",
     },
+    // Electrobun's packager expects `views` to be an object even when
+    // frontend assets are produced separately with Vite and copied in.
+    views: {},
     copy: {
       "dist/index.html": "views/mainview/index.html",
       "dist/assets": "views/mainview/assets",

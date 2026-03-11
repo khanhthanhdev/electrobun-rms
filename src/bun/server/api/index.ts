@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { authRoutes } from "./auth/auth.routes";
 import type { AppEnv } from "./common/app-env";
+import { displayRoutes } from "./display/display.routes";
 import { eventsRoutes } from "./events/events.routes";
 import { inspectionRoutes } from "./inspection/inspection.routes";
 import { scheduleRoutes } from "./schedule/schedule.routes";
@@ -16,6 +17,7 @@ api.route("/events", inspectionRoutes);
 api.route("/events", scoringRoutes);
 api.route("/events", scheduleRoutes);
 api.route("/events", teamsRoutes);
+api.route("/events", displayRoutes);
 api.route("/users", usersRoutes);
 
 export { api };

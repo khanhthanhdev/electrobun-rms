@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { publishDisplayCommand } from "@/features/display/display-command-channel";
 import { useMatchControlData } from "@/features/events/control";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import type {
@@ -7,6 +8,7 @@ import type {
 } from "../../../shared/types/match-control";
 import { ControlActiveMatchPanel } from "./control-active-match-panel";
 import { ControlScheduleTable } from "./control-schedule-table";
+import { getSceneForAction } from "./display-action-to-scene-map";
 
 interface EventControlPageProps {
   eventCode: string;
@@ -318,7 +320,13 @@ const saveMatchControlSettings = (s: MatchControlSettings): void => {
   }
 };
 
-const SettingsPanel = (): JSX.Element => {
+const SettingsPanel = ({
+  eventCode,
+  token,
+}: {
+  eventCode: string;
+  token: string | null;
+}): JSX.Element => {
   const [settings, setSettings] = useState<MatchControlSettings>(
     loadMatchControlSettings
   );
@@ -401,6 +409,85 @@ const SettingsPanel = (): JSX.Element => {
             onChange={(e) => update("flipAlliances", e.target.checked)}
             type="checkbox"
           />
+        </div>
+      </div>
+
+      <div className="match-control-settings-group">
+        <h3 className="match-control-settings-group-title">
+          Set Audience Display
+        </h3>
+        <p className="match-control-setting-hint">
+          Switch the audience display to these modes (same browser/device).
+        </p>
+        <div className="match-control-display-buttons">
+          <button
+            className="button"
+            onClick={() =>
+              publishDisplayCommand(
+                eventCode,
+                { mode: getSceneForAction("show-blank") },
+                token
+              )
+            }
+            type="button"
+          >
+            Show Blank Screen
+          </button>
+          <button
+            className="button"
+            onClick={() =>
+              publishDisplayCommand(
+                eventCode,
+                { mode: getSceneForAction("show-ranking") },
+                token
+              )
+            }
+            type="button"
+          >
+            Show Ranks &amp; Results
+          </button>
+          <button
+            className="button"
+            onClick={() =>
+              publishDisplayCommand(
+                eventCode,
+                { mode: getSceneForAction("show-inspection") },
+                token
+              )
+            }
+            type="button"
+          >
+            Show Inspection Status
+          </button>
+          <button
+            className="button"
+            onClick={() =>
+              publishDisplayCommand(
+                eventCode,
+                {
+                  mode: getSceneForAction("show-message"),
+                  message: "Wait for next match",
+                },
+                token
+              )
+            }
+            type="button"
+          >
+            Show Message
+          </button>
+          <button
+            className="button"
+            onClick={() =>
+              publishDisplayCommand(
+                eventCode,
+                { mode: getSceneForAction("show-sponsors") },
+                token
+              )
+            }
+            type="button"
+          >
+            Show Sponsors
+          </button>
         </div>
       </div>
     </div>
@@ -614,16 +701,31 @@ export const EventControlPage = ({
 
   const handleShowPreview = useCallback(() => {
     setLoadedState("preview");
-  }, []);
+    publishDisplayCommand(
+      eventCode,
+      { mode: getSceneForAction("show-preview") },
+      token
+    );
+  }, [eventCode, token]);
 
   const handleShowMatch = useCallback(() => {
     setLoadedState("ready");
-  }, []);
+    publishDisplayCommand(
+      eventCode,
+      { mode: getSceneForAction("show-match") },
+      token
+    );
+  }, [eventCode, token]);
 
   const handleStartMatch = useCallback(() => {
     if (loadedMatchNumber === null) {
       return;
     }
+    publishDisplayCommand(
+      eventCode,
+      { mode: getSceneForAction("start-match"), startedAtMs: Date.now() },
+      token
+    );
     setActiveMatchNumber(loadedMatchNumber);
     setActiveState("in_progress");
     setTimeRemaining(MATCH_DURATION_SECONDS);
@@ -639,22 +741,32 @@ export const EventControlPage = ({
       setLoadedMatchNumber(null);
       setLoadedState("idle");
     }
-  }, [loadedMatchNumber, selectedRows]);
+  }, [eventCode, loadedMatchNumber, selectedRows, token]);
 
   const handleAbortMatch = useCallback(() => {
+    publishDisplayCommand(
+      eventCode,
+      { mode: getSceneForAction("show-blank") },
+      token
+    );
     setLoadedMatchNumber(activeMatchNumber);
     setLoadedState("loaded");
     setActiveMatchNumber(null);
     setActiveState("idle");
     setTimeRemaining(MATCH_DURATION_SECONDS);
     refresh();
-  }, [activeMatchNumber, refresh]);
+  }, [activeMatchNumber, eventCode, refresh, token]);
 
   const handleCommitMatch = useCallback(() => {
+    publishDisplayCommand(
+      eventCode,
+      { mode: getSceneForAction("commit-winner") },
+      token
+    );
     setActiveMatchNumber(null);
     setActiveState("idle");
     refresh();
-  }, [refresh]);
+  }, [eventCode, refresh, token]);
 
   useEffect(() => {
     if (activeState !== "in_progress" || timeRemaining > 0) {
@@ -809,7 +921,9 @@ export const EventControlPage = ({
               />
             ) : null}
 
-            {selectedTab === "settings" ? <SettingsPanel /> : null}
+            {selectedTab === "settings" ? (
+              <SettingsPanel eventCode={eventCode} token={token} />
+            ) : null}
           </>
         )}
       </div>

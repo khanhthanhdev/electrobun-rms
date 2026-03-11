@@ -1,8 +1,12 @@
 import { useState } from "react";
+import { scoresheetToScoringState } from "@/shared/api/scoring";
 import {
   calcScoringTotal,
   ScoringEntryForm,
 } from "../../../features/scoring/components/scoring-entry-form";
+import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
+import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 
 const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
   red: "#dc2626",
@@ -14,7 +18,9 @@ interface ScoringEntryPageProps {
   eventCode: string;
   fieldNumber: string;
   matchNumber: number;
+  matchType?: "quals" | "elims";
   onNavigate: (path: string) => void;
+  token: string | null;
 }
 
 export const ScoringEntryPage = ({
@@ -22,25 +28,48 @@ export const ScoringEntryPage = ({
   eventCode,
   fieldNumber,
   matchNumber,
+  matchType = "quals",
   onNavigate,
+  token,
 }: ScoringEntryPageProps): JSX.Element => {
-  const [submitted, setSubmitted] = useState(false);
   const [lastTotal, setLastTotal] = useState(0);
+
+  const { scoresheet, isLoading } = useMatchScoresheet(
+    eventCode,
+    matchType,
+    matchNumber,
+    token,
+    true
+  );
+
+  const {
+    isAutoSaving,
+    isSubmitting,
+    lastSaveError,
+    onScoreChange,
+    submitted,
+    submitScore,
+  } = useAutoSaveScoring({
+    alliance,
+    eventCode,
+    matchNumber,
+    matchType,
+    token,
+  });
 
   const fieldLabel =
     fieldNumber === "all" ? "All Fields" : `Field ${fieldNumber}`;
   const matchLabel = `Match M${matchNumber}`;
-  const allianceLabel = alliance === "red" ? "Red Alliance" : "Blue Alliance";
+  const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
   const accent = ALLIANCE_COLOR[alliance];
   const selectionPath =
     alliance === "red"
       ? `/event/${eventCode}/ref/red/scoring`
       : `/event/${eventCode}/ref/blue/scoring`;
 
-  const handleSubmit = (total: number): void => {
-    // TODO: POST score to API — placeholder logs for now
-    setLastTotal(total);
-    setSubmitted(true);
+  const handleSubmit = (score: Parameters<typeof submitScore>[0]): void => {
+    setLastTotal(calcScoringTotal(score));
+    submitScore(score);
   };
 
   if (submitted) {
@@ -115,15 +144,41 @@ export const ScoringEntryPage = ({
     );
   }
 
+  if (isLoading) {
+    return (
+      <main className="page-shell page-shell--center">
+        <LoadingIndicator />
+      </main>
+    );
+  }
+
+  const allianceData = scoresheet?.[alliance];
+  const initialScore = allianceData
+    ? scoresheetToScoringState(allianceData)
+    : undefined;
+
   return (
     <main className="page-shell page-shell--top">
+      {lastSaveError ? (
+        <p className="message-block" data-variant="danger" role="alert">
+          {lastSaveError}
+        </p>
+      ) : null}
+      {isAutoSaving || isSubmitting ? (
+        <p className="message-block" data-variant="info">
+          {isSubmitting ? "Submitting score…" : "Saving…"}
+        </p>
+      ) : null}
       <ScoringEntryForm
         alliance={alliance}
         embedded={false}
         fieldLabel={fieldLabel}
+        initialScore={initialScore}
+        key={`${matchNumber}-${alliance}`}
         matchLabel={matchLabel}
         onBackClick={() => onNavigate(selectionPath)}
-        onSubmit={(score) => handleSubmit(calcScoringTotal(score))}
+        onChange={onScoreChange}
+        onSubmit={handleSubmit}
       />
     </main>
   );

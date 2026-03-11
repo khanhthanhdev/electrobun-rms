@@ -48,3 +48,4 @@ export const MATCH_HISTORY_PATTERN =
 export const MATCH_SCORESHEET_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/?$/;
 export const MATCH_ALLIANCE_SCORESHEET_PATTERN =
   /^\/event\/([^/]+)\/match\/([^/]+)\/(red|blue)\/?$/;
+export const AUDIENCE_DISPLAY_PATTERN = /^\/event\/([^/]+)\/display\/?$/;

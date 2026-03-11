@@ -18,6 +18,7 @@ export const useMatchControlData = (
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentRequestId = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadData = useCallback(async () => {
     const requestId = ++currentRequestId.current;
@@ -29,7 +30,9 @@ export const useMatchControlData = (
       return;
     }
 
-    setIsLoading(true);
+    if (!hasLoadedOnceRef.current) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -39,6 +42,7 @@ export const useMatchControlData = (
       }
 
       setData(response);
+      hasLoadedOnceRef.current = true;
     } catch (loadError) {
       if (requestId !== currentRequestId.current) {
         return;
@@ -50,6 +54,7 @@ export const useMatchControlData = (
           ? loadError.message
           : "Failed to load match control data."
       );
+      hasLoadedOnceRef.current = true;
     } finally {
       if (requestId === currentRequestId.current) {
         setIsLoading(false);

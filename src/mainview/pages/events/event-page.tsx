@@ -75,6 +75,7 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
     {
       title: "Displays",
       items: [
+        { type: "item", label: "Audience Display", path: "/display" },
         {
           type: "item",
           label: "Scoring/Timing Displays",
@@ -136,6 +137,11 @@ const EVENT_DIRECTORY: Record<string, DirectorySection[]> = {
           type: "category",
           label: "Displays",
           items: [
+            {
+              type: "item",
+              label: "Audience Display",
+              path: "/display",
+            },
             {
               type: "item",
               label: "Scoring/Timing Displays",

@@ -758,6 +758,9 @@ const ActiveMatchTab = ({
   const blueData = scoresheet?.blue ?? createDefaultScoresheetData("blue");
   const redData = scoresheet?.red ?? createDefaultScoresheetData("red");
 
+  const redTotal = redData.scoreTotal;
+  const blueTotal = blueData.scoreTotal;
+
   return (
     <div className="hr-content">
       {/* Match info */}
@@ -765,6 +768,19 @@ const ActiveMatchTab = ({
         <h2 className="hr-match-name">{matchLabel}</h2>
         <p className="hr-match-detail">{fieldLabel}</p>
         <p className="hr-match-detail">Match Status: Unplayed</p>
+      </div>
+
+      {/* Live score totals */}
+      <div className="hr-live-scores">
+        <div className="hr-live-score hr-live-score--red">
+          <span className="hr-live-score-label">Red</span>
+          <span className="hr-live-score-value">{redTotal}</span>
+        </div>
+        <div className="hr-live-score hr-live-score-vs">VS</div>
+        <div className="hr-live-score hr-live-score--blue">
+          <span className="hr-live-score-label">Blue</span>
+          <span className="hr-live-score-value">{blueTotal}</span>
+        </div>
       </div>
 
       {/* Controls */}
@@ -980,7 +996,7 @@ const AllianceScoresheetCard = ({
   data: MatchHistoryItem;
 }): JSX.Element => {
   const accent = alliance === "red" ? "#dc2626" : "#0284c7";
-  const allianceLabel = alliance === "red" ? "Red Alliance" : "Blue Alliance";
+  const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
 
   return (
     <div className="surface-card surface-card--small">

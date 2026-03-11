@@ -123,7 +123,7 @@ const AlliancePanel = ({
   onFoulChange: (field: keyof AllianceFouls, delta: 1 | -1) => void;
 }): JSX.Element => {
   const headerBg = color === "red" ? "#dc2626" : "#0284c7";
-  const label = color === "red" ? "Red Alliance" : "Blue Alliance";
+  const label = color === "red" ? "Red Team" : "Blue Team";
 
   return (
     <div

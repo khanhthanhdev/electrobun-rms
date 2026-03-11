@@ -47,6 +47,13 @@ const MATCH_HISTORY_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/history\/?$/;
 const MATCH_SCORESHEET_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/?$/;
 const MATCH_ALLIANCE_SCORESHEET_PATTERN =
   /^\/event\/([^/]+)\/match\/([^/]+)\/(red|blue)\/?$/;
+const AUDIENCE_DISPLAY_PATTERN = /^\/event\/([^/]+)\/display\/?$/;
+
+const AudienceDisplayPage = lazy(() =>
+  import("../pages/events/display/audience-display-page").then((module) => ({
+    default: module.AudienceDisplayPage,
+  }))
+);
 
 const LoginForm = lazy(() =>
   import("../features/auth/components/login-dialog").then((module) => ({
@@ -888,7 +895,8 @@ interface RefereeRoutePageArgs {
 const renderScoringEntryPage = (
   match: RegExpExecArray,
   alliance: "blue" | "red",
-  onNavigate: (path: string) => void
+  onNavigate: (path: string) => void,
+  token: string | null
 ): JSX.Element | null => {
   const eventCode = decodePathSegment(match[1]);
   const fieldNumber = match[2] ? decodePathSegment(match[2]) : null;
@@ -907,6 +915,7 @@ const renderScoringEntryPage = (
       fieldNumber={fieldNumber}
       matchNumber={matchNumber}
       onNavigate={onNavigate}
+      token={token}
     />
   );
 };
@@ -948,14 +957,20 @@ const renderRefereeRoutePage = ({
   token,
 }: RefereeRoutePageArgs): JSX.Element | null => {
   if (refereeRedScoreEntryMatch) {
-    return renderScoringEntryPage(refereeRedScoreEntryMatch, "red", onNavigate);
+    return renderScoringEntryPage(
+      refereeRedScoreEntryMatch,
+      "red",
+      onNavigate,
+      token
+    );
   }
 
   if (refereeBlueScoreEntryMatch) {
     return renderScoringEntryPage(
       refereeBlueScoreEntryMatch,
       "blue",
-      onNavigate
+      onNavigate,
+      token
     );
   }
 
@@ -1282,6 +1297,15 @@ export const PageRenderer = ({
   });
   if (matchResultsRoutePage) {
     return matchResultsRoutePage;
+  }
+
+  const audienceDisplayMatch = AUDIENCE_DISPLAY_PATTERN.exec(currentPath);
+  if (audienceDisplayMatch) {
+    const displayEventCode = decodePathSegment(audienceDisplayMatch[1]);
+    if (displayEventCode === null) {
+      return <RouteErrorPage message="Invalid event code in URL." />;
+    }
+    return <AudienceDisplayPage eventCode={displayEventCode} token={token} />;
   }
 
   if (eventDetailMatch) {

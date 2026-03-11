@@ -22,7 +22,8 @@
       "@/features/*": ["src/mainview/features/*"],
       "@/pages/*": ["src/mainview/pages/*"],
       "@/shared/*": ["src/mainview/shared/*"],
-      "@/widgets/*": ["src/mainview/widgets/*"]
+      "@/widgets/*": ["src/mainview/widgets/*"],
+      "@shared/*": ["src/shared/*"]
     }
   },
   "include": ["src"],

@@ -97,6 +97,54 @@
   color: var(--muted-foreground);
 }
 
+/* Live score totals */
+.hr-live-scores {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+}
+
+.hr-live-score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.hr-live-score-label {
+  font-size: 0.8rem;
+  font-weight: var(--font-semibold);
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hr-live-score-value {
+  font-size: 2rem;
+  font-weight: var(--font-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.hr-live-score--red .hr-live-score-value {
+  color: #dc2626;
+}
+
+.hr-live-score--blue .hr-live-score-value {
+  color: #0284c7;
+}
+
+.hr-live-score-vs {
+  font-size: 0.9rem;
+  font-weight: var(--font-semibold);
+  color: var(--muted-foreground);
+}
+
 /* Controls row */
 .hr-controls {
   display: flex;
