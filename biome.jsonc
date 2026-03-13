@@ -19,6 +19,46 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/bun/server/api/sync/sync.event-db.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 32
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/bun/server/api/sync/sync.service.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 25
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/bun/server/api/sync/sync.schema.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -56,7 +56,7 @@ export const ControlActiveMatchPanel = ({
   const selectedMatch =
     rows.find((row) => row.matchNumber === selectedMatchNumber) ?? rows[0];
   const apiMatchType: "quals" | "elims" =
-    selectedMatch.matchType === "elims" ? "elims" : "quals";
+    selectedMatch.matchType === "quals" ? "quals" : "elims";
 
   const { scoresheet } = useMatchScoresheet(
     eventCode,
