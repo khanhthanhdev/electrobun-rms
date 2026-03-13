@@ -29,3 +29,9 @@ export {
   regenerateDefaultAccounts,
   updateEvent,
 } from "./manual-event-service";
+export type {
+  BootstrapSyncEventPayload,
+  BootstrapSyncEventResponse,
+  NrcWebConfigResponse,
+} from "./sync-event-service";
+export { bootstrapSyncEvent, fetchNrcWebBaseUrl } from "./sync-event-service";

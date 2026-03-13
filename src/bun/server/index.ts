@@ -27,6 +27,10 @@ function getMimeType(filePath: string): string {
   );
 }
 
+function getCacheControl(filePath: string): string | undefined {
+  return extname(filePath).toLowerCase() === ".html" ? "no-store" : undefined;
+}
+
 export function createServer(staticDir: string) {
   const app = new Hono();
 
@@ -54,16 +58,27 @@ export function createServer(staticDir: string) {
 
     const file = Bun.file(filePath);
     if (await file.exists()) {
+      const cacheControl = getCacheControl(filePath);
       return new Response(file.stream(), {
-        headers: { "Content-Type": getMimeType(filePath) },
+        headers: {
+          "Content-Type": getMimeType(filePath),
+          ...(cacheControl ? { "Cache-Control": cacheControl } : {}),
+        },
       });
+    }
+
+    if (pathname.startsWith("/assets/")) {
+      return c.text("Not Found", 404);
     }
 
     // SPA fallback
     const indexFile = Bun.file(join(absStaticDir, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile.stream(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+        headers: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/html; charset=utf-8",
+        },
       });
     }
 

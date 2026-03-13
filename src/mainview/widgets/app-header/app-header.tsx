@@ -120,6 +120,12 @@ export const AppHeader = ({
                     Setup Event
                   </a>
                   <a
+                    href="/sync/event"
+                    onClick={handleNavigation("/sync/event")}
+                  >
+                    Sync Event
+                  </a>
+                  <a
                     href="/create/account"
                     onClick={handleNavigation("/create/account")}
                   >

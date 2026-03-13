@@ -75,3 +75,86 @@ CREATE TABLE IF NOT EXISTS account_secrets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_account_secrets_event ON account_secrets(event);
+
+-- sync_clients
+CREATE TABLE IF NOT EXISTS sync_clients (
+  id TEXT PRIMARY KEY,
+  event_code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  secret_hash TEXT NOT NULL,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  is_revoked INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  last_used_at INTEGER,
+  allowed_resources TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_clients_event_code ON sync_clients(event_code);
+CREATE INDEX IF NOT EXISTS idx_sync_clients_active ON sync_clients(is_active);
+
+-- sync_batches
+CREATE TABLE IF NOT EXISTS sync_batches (
+  id TEXT PRIMARY KEY,
+  push_batch_id TEXT NOT NULL,
+  change_set_id TEXT UNIQUE,
+  client_id TEXT NOT NULL,
+  event_code TEXT NOT NULL,
+  status TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  raw_payload TEXT,
+  warnings TEXT,
+  created_at INTEGER NOT NULL,
+  reviewed_at INTEGER,
+  reviewer_id TEXT,
+  review_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_batches_client ON sync_batches(client_id);
+CREATE INDEX IF NOT EXISTS idx_sync_batches_event ON sync_batches(event_code);
+CREATE INDEX IF NOT EXISTS idx_sync_batches_status ON sync_batches(status);
+CREATE INDEX IF NOT EXISTS idx_sync_batches_idempotency ON sync_batches(client_id, batch_id, payload_hash);
+
+-- sync_change_sets
+CREATE TABLE IF NOT EXISTS sync_change_sets (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL,
+  resource_type TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  record_count INTEGER NOT NULL,
+  record_key TEXT NOT NULL,
+  staged_data TEXT,
+  applied_data TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_change_sets_batch ON sync_change_sets(batch_id);
+CREATE INDEX IF NOT EXISTS idx_sync_change_sets_resource ON sync_change_sets(resource_type);
+
+-- sync_policies
+CREATE TABLE IF NOT EXISTS sync_policies (
+  event_code TEXT PRIMARY KEY,
+  is_sync_enabled INTEGER NOT NULL DEFAULT 0,
+  review_mode TEXT NOT NULL DEFAULT 'AUTO_ACCEPT',
+  schedule_owner TEXT NOT NULL DEFAULT 'WEB',
+  allowed_push_resources TEXT,
+  updated_at INTEGER NOT NULL,
+  updated_by TEXT
+);
+
+-- sync_outbound_links
+CREATE TABLE IF NOT EXISTS sync_outbound_links (
+  event_code TEXT PRIMARY KEY,
+  base_url TEXT NOT NULL,
+  bearer_secret TEXT NOT NULL,
+  remote_event_key TEXT NOT NULL,
+  definition_version TEXT NOT NULL,
+  allowed_push_resources TEXT,
+  allowed_pull_resources TEXT,
+  schedule_owner TEXT NOT NULL DEFAULT 'WEB',
+  review_mode TEXT NOT NULL DEFAULT 'AUTO_ACCEPT',
+  bootstrapped_at INTEGER,
+  updated_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_outbound_links_event_code ON sync_outbound_links(event_code);

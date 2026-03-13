@@ -4,7 +4,7 @@ import { initializeDatabase } from "./db/migrate";
 import { createServer } from "./server";
 
 // --- Configuration ---
-const SERVER_PORT = 3000;
+const SERVER_PORT = 3002;
 const SERVER_HOST = "0.0.0.0"; // Bind to all interfaces for LAN access
 const VITE_DEV_PORT = 5173;
 

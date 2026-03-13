@@ -4,6 +4,9 @@ import {
   createManualEvent,
 } from "@/features/events/event-admin";
 
+const MAX_EVENT_CODE_LENGTH = 8;
+const EVENT_CODE_INPUT_TITLE = "Event code must be 1-8 letters or digits.";
+
 interface CreateEventPageProps {
   token: string | null;
 }
@@ -87,22 +90,23 @@ export const CreateEventPage = ({
             <label htmlFor="eventCode">Event Code</label>
             <input
               id="eventCode"
-              maxLength={4}
+              maxLength={MAX_EVENT_CODE_LENGTH}
+              minLength={1}
               onChange={(e) => {
                 updateField(
                   "eventCode",
-                  e.target.value.toLowerCase().slice(0, 4)
+                  e.target.value.slice(0, MAX_EVENT_CODE_LENGTH)
                 );
               }}
-              pattern="[a-z0-9_]+"
-              placeholder="e.g. nrc1"
+              pattern="[A-Za-z0-9]+"
+              placeholder="e.g. nrc2026"
               required
+              title={EVENT_CODE_INPUT_TITLE}
               type="text"
               value={form.eventCode}
             />
             <p className="form-help" data-hint>
-              Up to 4 characters: lowercase letters, digits, and underscores
-              only.
+              1-8 characters: letters and digits only.
             </p>
           </div>
 

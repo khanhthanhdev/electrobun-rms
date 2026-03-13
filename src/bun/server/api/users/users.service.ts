@@ -19,10 +19,7 @@ interface NormalizedUserRole {
 
 function normalizeUserRoles(roles: CreateUserRole[]): NormalizedUserRole[] {
   return roles.map((assignment) => ({
-    event:
-      assignment.event === "*"
-        ? assignment.event
-        : assignment.event.toLowerCase(),
+    event: assignment.event,
     role: assignment.role,
   }));
 }

@@ -2,14 +2,16 @@
 
 ## Document Status
 
-- Status: Draft for implementation use
+- Status: Implemented (2026-03-11)
 - Audience: local event-control app developers and admin tooling developers
 - API namespace: `/sync/v1`
 - HTTP base path: `/api`
+- Current local NRC Web base URL: `http://localhost:3001`
 - OpenAPI document: `/openapi.json`
 - Current schema version: `2026-03-08`
 - Current supported season definition version: `2025.1`
 - Current supported season registry: `2025` only
+- Implementation: All 7 phases complete - Machine API (bootstrap, push), Admin API (clients, policy, batch review)
 
 ## 1. Purpose
 
@@ -25,6 +27,8 @@ This document is intentionally implementation-aligned. Where the current impleme
 ## 2. API Surfaces
 
 The sync feature exposes two API surfaces.
+
+In the current local setup, NRC Web frontend and backend are both served from `http://localhost:3001`, so all paths in this document resolve against that base URL.
 
 ### 2.1. Machine API
 
@@ -1281,7 +1285,7 @@ Bootstrap:
 curl \
   -H "Authorization: Bearer $NRC_SYNC_SECRET" \
   -H "Accept: application/json" \
-  https://your-host.example.com/api/sync/v1/machine/bootstrap
+  http://localhost:3001/api/sync/v1/machine/bootstrap
 ```
 
 Push:
@@ -1292,14 +1296,14 @@ curl \
   -H "Authorization: Bearer $NRC_SYNC_SECRET" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  https://your-host.example.com/api/sync/v1/machine/push \
+  http://localhost:3001/api/sync/v1/machine/push \
   -d @batch.json
 ```
 
 OpenAPI:
 
 ```bash
-curl https://your-host.example.com/openapi.json
+curl http://localhost:3001/openapi.json
 ```
 
 ## 15. Source of Truth in This Repo

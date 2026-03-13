@@ -19,6 +19,7 @@ const PUBLIC_QUALIFICATION_RANKINGS_PATTERN =
 const DEFAULT_ACCOUNTS_PATTERN =
   /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
 const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
+const SYNC_EVENT_PATTERN = /^\/sync\/event\/?$/;
 const CREATE_ACCOUNT_PATTERN = /^\/create\/account\/?$/;
 const EVENT_DETAIL_PATTERN = /^\/event\/([^/]+)\/?$/;
 const MANAGE_USERS_PATTERN =
@@ -68,6 +69,11 @@ const AdminPlaceholderPage = lazy(() =>
 const CreateEventPage = lazy(() =>
   import("../pages/events/create-event-page").then((module) => ({
     default: module.CreateEventPage,
+  }))
+);
+const SyncEventPage = lazy(() =>
+  import("../pages/events/sync-event-page").then((module) => ({
+    default: module.SyncEventPage,
   }))
 );
 const DefaultAccountsPage = lazy(() =>
@@ -635,6 +641,7 @@ interface AdminRoutesPageProps {
   isEventsLoading: boolean;
   isManageServerPage: boolean;
   isManageUsersPage: boolean;
+  isSyncEventPage: boolean;
   manageUserDetailMatch: RegExpExecArray | null;
   onNavigate: (path: string) => void;
   practiceScheduleMatch: RegExpExecArray | null;
@@ -657,6 +664,7 @@ const AdminRoutesPage = ({
   isAuthLoading,
   isCreateAccountPage,
   isCreateEventPage,
+  isSyncEventPage,
   isEventsLoading,
   isManageServerPage,
   isManageUsersPage,
@@ -669,6 +677,14 @@ const AdminRoutesPage = ({
     return (
       <AdminGuard isAdminUser={isAdminUser} isAuthLoading={isAuthLoading}>
         <CreateEventPage token={token} />
+      </AdminGuard>
+    );
+  }
+
+  if (isSyncEventPage) {
+    return (
+      <AdminGuard isAdminUser={isAdminUser} isAuthLoading={isAuthLoading}>
+        <SyncEventPage token={token} />
       </AdminGuard>
     );
   }
@@ -1155,6 +1171,7 @@ export const PageRenderer = ({
   }
 
   const isCreateEventPage = CREATE_EVENT_PATTERN.test(currentPath);
+  const isSyncEventPage = SYNC_EVENT_PATTERN.test(currentPath);
   const isCreateAccountPage = CREATE_ACCOUNT_PATTERN.test(currentPath);
   const isManageUsersPage = MANAGE_USERS_PATTERN.test(currentPath);
   const isManageServerPage = MANAGE_SERVER_PATTERN.test(currentPath);
@@ -1195,6 +1212,7 @@ export const PageRenderer = ({
 
   const hasAdminRoute =
     isCreateEventPage ||
+    isSyncEventPage ||
     isCreateAccountPage ||
     isManageUsersPage ||
     Boolean(manageUserDetailMatch) ||
@@ -1225,6 +1243,7 @@ export const PageRenderer = ({
         isEventsLoading={isEventsLoading}
         isManageServerPage={isManageServerPage}
         isManageUsersPage={isManageUsersPage}
+        isSyncEventPage={isSyncEventPage}
         manageUserDetailMatch={manageUserDetailMatch}
         onNavigate={onNavigate}
         practiceScheduleMatch={practiceScheduleMatch}

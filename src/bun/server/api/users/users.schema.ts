@@ -12,7 +12,7 @@ import {
 import { schema } from "../../../db";
 import { MAX_EVENT_CODE_LENGTH, USERNAME_REGEX } from "../common/patterns";
 
-const EVENT_SCOPE_REGEX = /^(\*|[a-z0-9_]+)$/;
+const EVENT_SCOPE_REGEX = /^(\*|[A-Za-z0-9]{1,8}|[a-z0-9_]{1,4})$/;
 
 export const createUserRoleSchema = object({
   role: picklist(schema.ROLE_VALUES),

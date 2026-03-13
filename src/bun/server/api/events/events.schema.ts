@@ -8,15 +8,19 @@ import {
   pipe,
   regex,
   string,
+  transform,
 } from "valibot";
-import { EVENT_CODE_REGEX, MAX_EVENT_CODE_LENGTH } from "../common/patterns";
+import {
+  EVENT_CODE_REGEX,
+  EVENT_CODE_VALIDATION_MESSAGE,
+  normalizeEventCode,
+} from "../common/patterns";
 
 export const manualEventBodySchema = object({
   eventCode: pipe(
     string(),
-    minLength(1),
-    maxLength(MAX_EVENT_CODE_LENGTH),
-    regex(EVENT_CODE_REGEX)
+    transform(normalizeEventCode),
+    regex(EVENT_CODE_REGEX, EVENT_CODE_VALIDATION_MESSAGE)
   ),
   eventName: pipe(string(), minLength(1), maxLength(256)),
   region: pipe(string(), minLength(1), maxLength(64)),

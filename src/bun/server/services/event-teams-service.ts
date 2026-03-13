@@ -28,6 +28,8 @@ export interface AddEventTeamInput {
   teamNumber: number;
 }
 
+export interface SeedEventTeamInput extends AddEventTeamInput {}
+
 export interface UpdateEventTeamInput {
   city?: string;
   country?: string;
@@ -460,6 +462,50 @@ export function addEventTeam(
   }
 
   return team;
+}
+
+export function seedEventTeams(
+  eventCode: string,
+  inputs: SeedEventTeamInput[]
+): void {
+  withEventDb(eventCode, (eventDb) => {
+    ensureTeamsTable(eventDb);
+    ensureTeamMetadataTable(eventDb);
+
+    eventDb.exec("BEGIN TRANSACTION");
+    try {
+      for (const input of inputs) {
+        assertValidTeamNumber(input.teamNumber);
+        const teamName = input.teamName.trim();
+        if (!teamName) {
+          throw new ServiceError("Team name is required.", 400);
+        }
+
+        eventDb
+          .query(
+            "INSERT INTO teams (number, advancement, division, inspire_eligible, promote_eligible, competing) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(number) DO NOTHING"
+          )
+          .run(
+            input.teamNumber,
+            DEFAULT_TEAM_ADVANCEMENT,
+            DEFAULT_TEAM_DIVISION,
+            DEFAULT_INSPIRE_ELIGIBLE,
+            DEFAULT_PROMOTE_ELIGIBLE,
+            DEFAULT_COMPETING
+          );
+
+        upsertTeamMetadata(eventDb, {
+          ...input,
+          teamName,
+        });
+      }
+
+      eventDb.exec("COMMIT");
+    } catch (error) {
+      eventDb.exec("ROLLBACK");
+      throw error;
+    }
+  });
 }
 
 export function updateEventTeam(
