@@ -6,6 +6,7 @@ import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
+import { scoringSyncHub } from "../scoring/scoring-sync";
 import { publishDisplayCommandBodySchema } from "./display.schema";
 import {
   createDisplaySnapshotHintEvent,
@@ -18,6 +19,7 @@ export const displayRoutes = new Hono<AppEnv>();
 
 const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
+const SCORE_UPDATE_EVENT_NAME = "display.change" as const;
 
 const writeDisplaySyncEvent = async (
   stream: SSEStreamingApi,
@@ -26,6 +28,18 @@ const writeDisplaySyncEvent = async (
   await stream.writeSSE({
     data: JSON.stringify(event),
     event: DISPLAY_SYNC_EVENT_NAME,
+    id: `${event.eventCode}:${event.version}`,
+    retry: SSE_RETRY_MS,
+  });
+};
+
+const writeScoreUpdateEvent = async (
+  stream: SSEStreamingApi,
+  event: DisplaySyncEvent
+): Promise<void> => {
+  await stream.writeSSE({
+    data: JSON.stringify(event),
+    event: SCORE_UPDATE_EVENT_NAME,
     id: `${event.eventCode}:${event.version}`,
     retry: SSE_RETRY_MS,
   });
@@ -65,6 +79,29 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
       enqueueWrite((streamApi) => writeDisplaySyncEvent(streamApi, event));
     });
 
+    // Subscribe to scoring events and forward as display sync events
+    const scoringUnsubscribe = scoringSyncHub.subscribe(
+      eventCode,
+      (scoringEvent) => {
+        if (scoringEvent.kind === "SCORE_UPDATED") {
+          const displayEvent: DisplaySyncEvent = {
+            changedAt: new Date().toISOString(),
+            eventCode,
+            kind: "SCORE_UPDATE",
+            matchNumber: scoringEvent.matchNumber,
+            matchType: scoringEvent.matchType,
+            message: null,
+            mode: null,
+            startedAtMs: null,
+            version: scoringEvent.version,
+          };
+          enqueueWrite((streamApi) =>
+            writeScoreUpdateEvent(streamApi, displayEvent)
+          );
+        }
+      }
+    );
+
     const heartbeatIntervalId = setInterval(() => {
       enqueueWrite(async (streamApi) => {
         await streamApi.write(": heartbeat\n\n");
@@ -79,6 +116,7 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
       isCleanedUp = true;
       clearInterval(heartbeatIntervalId);
       unsubscribe();
+      scoringUnsubscribe();
     };
 
     stream.onAbort(() => {

@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { DisplayCommand } from "./display-command-channel";
 import { subscribeToDisplayCommand } from "./display-command-channel";
-import { connectDisplayCommandRealtime } from "./display-command-sync-service";
+import {
+  connectDisplayCommandRealtime,
+  type ScoreUpdateEvent,
+} from "./display-command-sync-service";
 import {
   DEFAULT_DISPLAY_SCENE,
   type DisplaySceneMode,
 } from "./display-scene-types";
+import { applyDisplayRealtimeEvent } from "./state/display-realtime-store";
 
 export interface DisplayCommandState {
   matchStartedAtMs: number | null;
@@ -74,6 +78,9 @@ export const useDisplayCommand = (
       eventCode,
       onCommand: (cmd) => {
         applyCommand(cmd, setState);
+      },
+      onScoreUpdate: (event: ScoreUpdateEvent) => {
+        applyDisplayRealtimeEvent(event);
       },
       onConnectionStateChange: () => {
         // Connection state changes are informational; no UI needed here.

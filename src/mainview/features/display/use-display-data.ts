@@ -10,6 +10,7 @@ import { fetchMatchScoresheet } from "@/shared/api/scoring";
 import type { EventItem } from "@/shared/types/event";
 import type { MatchControlData } from "@/shared/types/match-control";
 import type { MatchScoresheet } from "@/shared/types/scoring";
+import { useDisplayRealtimeRefresh } from "./hooks/use-display-realtime-refresh";
 
 interface FetchEventResponse {
   event: EventItem;
@@ -292,6 +293,7 @@ export const useDisplayData = (
 
   useScoringRealtime(eventCode, token);
   useScoringRealtimeRefresh(eventCode, load);
+  useDisplayRealtimeRefresh(eventCode, load);
 
   useEffect(() => {
     load();

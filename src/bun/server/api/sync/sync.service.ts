@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "../../../db";
+import { db, schema, sqlite } from "../../../db";
 import {
   applySyncChangeSetsToEventDb,
   loadEventTeamDirectory,
@@ -368,7 +368,6 @@ export function getEventBootstrap(eventCode: string): EventBootstrapResponse {
         season: SYNC_SEASON,
         startsAt: new Date(resolvedEvent?.start ?? 0).toISOString(),
         syncReviewMode: reviewMode,
-        timezone: "Asia/Ho_Chi_Minh",
         venue: undefined,
       },
       seasonDefinition: {
@@ -468,34 +467,6 @@ export function pushSyncBatch(input: PushBatchInput): PushResult {
   }
 
   const payloadHash = calculatePayloadHash(payload);
-  const existingBatch = db
-    .select()
-    .from(schema.syncBatches)
-    .where(
-      and(
-        eq(schema.syncBatches.clientId, clientId),
-        eq(schema.syncBatches.batchId, payload.batchId)
-      )
-    )
-    .get();
-
-  if (existingBatch) {
-    if (existingBatch.payloadHash === payloadHash) {
-      return {
-        batchId: payload.batchId,
-        changeSetId: existingBatch.changeSetId ?? existingBatch.id,
-        status: "duplicate",
-        warnings: [],
-      };
-    }
-
-    throwSyncError(
-      "BATCH_HASH_MISMATCH",
-      409,
-      `Batch "${payload.batchId}" was already submitted with a different payload.`
-    );
-  }
-
   const registeredTeams = new Set(
     loadTeamDirectoryOrThrow(eventCode).map((team) => team.teamNumber)
   );
@@ -562,47 +533,96 @@ export function pushSyncBatch(input: PushBatchInput): PushResult {
       ? "pending_review"
       : "applied";
 
-  db.insert(schema.syncBatches)
-    .values({
-      batchId: payload.batchId,
-      changeSetId,
-      clientId,
-      createdAt: Date.now(),
-      eventCode,
-      id: batchDbId,
-      payloadHash,
-      pushBatchId: payload.batchId,
-      rawPayload: payload,
-      status,
-      warnings,
-    })
-    .run();
+  // Lock the idempotency window so concurrent writers cannot both accept
+  // the same batchId before either insert becomes visible.
+  let transactionOpen = false;
+  let transactionClosed = false;
+  sqlite.exec("BEGIN IMMEDIATE TRANSACTION");
+  transactionOpen = true;
+  try {
+    const existingBatch = db
+      .select()
+      .from(schema.syncBatches)
+      .where(
+        and(
+          eq(schema.syncBatches.clientId, clientId),
+          eq(schema.syncBatches.batchId, payload.batchId)
+        )
+      )
+      .get();
 
-  for (const changeSet of createStagedChangeSets(payload)) {
-    db.insert(schema.syncChangeSets)
+    if (existingBatch) {
+      sqlite.exec("COMMIT");
+      transactionClosed = true;
+
+      if (existingBatch.payloadHash === payloadHash) {
+        return {
+          batchId: payload.batchId,
+          changeSetId: existingBatch.changeSetId ?? existingBatch.id,
+          status: "duplicate",
+          warnings: [],
+        };
+      }
+
+      throwSyncError(
+        "BATCH_HASH_MISMATCH",
+        409,
+        `Batch "${payload.batchId}" was already submitted with a different payload.`
+      );
+    }
+
+    db.insert(schema.syncBatches)
       .values({
-        appliedData: undefined,
-        batchId: batchDbId,
-        id: crypto.randomUUID(),
-        mode: changeSet.mode,
-        recordCount: changeSet.records.length,
-        recordKey: changeSet.resourceType,
-        resourceType: changeSet.resourceType,
-        stagedData: changeSet.records,
+        batchId: payload.batchId,
+        changeSetId,
+        clientId,
+        createdAt: Date.now(),
+        eventCode,
+        id: batchDbId,
+        payloadHash,
+        pushBatchId: payload.batchId,
+        rawPayload: payload,
+        status,
+        warnings,
       })
       .run();
-  }
 
-  if (status === "applied") {
-    try {
-      applySyncBatch(batchDbId);
-    } catch (error) {
-      db.update(schema.syncBatches)
-        .set({ status: "failed" })
-        .where(eq(schema.syncBatches.id, batchDbId))
+    for (const changeSet of createStagedChangeSets(payload)) {
+      db.insert(schema.syncChangeSets)
+        .values({
+          appliedData: undefined,
+          batchId: batchDbId,
+          id: crypto.randomUUID(),
+          mode: changeSet.mode,
+          recordCount: changeSet.records.length,
+          recordKey: changeSet.resourceType,
+          resourceType: changeSet.resourceType,
+          stagedData: changeSet.records,
+        })
         .run();
-      throw error;
     }
+
+    if (status === "applied") {
+      try {
+        applySyncBatch(batchDbId);
+      } catch (error) {
+        db.update(schema.syncBatches)
+          .set({ status: "failed" })
+          .where(eq(schema.syncBatches.id, batchDbId))
+          .run();
+        sqlite.exec("COMMIT");
+        transactionClosed = true;
+        throw error;
+      }
+    }
+
+    sqlite.exec("COMMIT");
+    transactionClosed = true;
+  } catch (error) {
+    if (transactionOpen && !transactionClosed) {
+      sqlite.exec("ROLLBACK");
+    }
+    throw error;
   }
 
   return {
