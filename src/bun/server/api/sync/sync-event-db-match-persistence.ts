@@ -6,7 +6,7 @@ import {
 } from "./sync-event-db-match-tables";
 import type { MatchType } from "./sync-event-db-types";
 
-type MatchStorage = {
+interface MatchStorage {
   blockTable?: "blocks" | "practice_blocks";
   blockType?: "practice" | "qualification";
   dataTable: "elims_data" | "practice_data" | "quals_data";
