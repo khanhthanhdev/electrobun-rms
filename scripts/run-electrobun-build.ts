@@ -13,7 +13,8 @@ import { dirname, join } from "node:path";
 
 const projectRoot = process.cwd();
 const stageRoot = mkdtempSync(join(tmpdir(), "electrobun-build-"));
-const electrobunArgs = ["build", ...process.argv.slice(2)];
+const electrobunRunner = process.execPath;
+const electrobunArgs = ["x", "electrobun", "build", ...process.argv.slice(2)];
 const directoryLinkType = process.platform === "win32" ? "junction" : "dir";
 
 const stagedDirectories = ["dist", "docs", "node_modules", "src"];
@@ -48,16 +49,18 @@ for (const relativePath of stagedFiles) {
   cpSync(sourcePath, destinationPath, { dereference: true });
 }
 
-const electrobunBin = join(
-  stageRoot,
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "electrobun.cmd" : "electrobun"
-);
-const buildResult = spawnSync(electrobunBin, electrobunArgs, {
+const buildResult = spawnSync(electrobunRunner, electrobunArgs, {
   cwd: stageRoot,
   stdio: "inherit",
 });
+
+if (buildResult.error) {
+  console.error(
+    `Staged Electrobun build failed to start in ${stageRoot}:`,
+    buildResult.error
+  );
+  process.exit(1);
+}
 
 if (buildResult.status !== 0) {
   console.error(`Staged Electrobun build failed in ${stageRoot}`);
