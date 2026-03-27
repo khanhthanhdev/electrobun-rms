@@ -2,6 +2,13 @@ import { join } from "node:path";
 import { BrowserWindow, Updater, Utils } from "electrobun/bun";
 import { initializeDatabase } from "./db/migrate";
 import { createServer } from "./server";
+import { hub as rankingHub } from "./server/api/events/rankings-sync";
+import {
+  GetQualificationRankingSourceFingerprintUseCase,
+  RebuildQualificationRankingsUseCase,
+} from "./server/application/use-cases/ranking";
+import { SQLiteRankingRepository } from "./server/infrastructure/adapters/ranking";
+import { RankingPollService } from "./server/infrastructure/services/ranking-poll-service";
 
 // --- Configuration ---
 const SERVER_PORT = 3002;
@@ -10,6 +17,18 @@ const VITE_DEV_PORT = 5173;
 
 // --- Initialize database ---
 await initializeDatabase();
+
+// --- Start ranking poll service ---
+const pollService = new RankingPollService({
+  hub: rankingHub,
+  getFingerprintUseCase: new GetQualificationRankingSourceFingerprintUseCase(
+    new SQLiteRankingRepository()
+  ),
+  rebuildUseCase: new RebuildQualificationRankingsUseCase(
+    new SQLiteRankingRepository()
+  ),
+});
+pollService.start();
 
 // Resolve static dir relative to the bundled bun entry point
 // import.meta.dir = .../Resources/app/bun → static files at .../Resources/app/views/mainview

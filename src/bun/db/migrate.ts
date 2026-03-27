@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { and, eq } from "drizzle-orm";
-import { db, schema, sqlite } from "./index";
+import { db, getSqlite, schema } from "./index";
 
 const JWT_SECRET_KEY = "jwt_secret";
 const DEFAULT_ADMIN_USERNAME = "admin";
@@ -122,6 +122,7 @@ export async function initializeDatabase(): Promise<void> {
     return;
   }
 
+  const sqlite = getSqlite();
   sqlite.exec(loadSchemaSql());
   await seedDefaults();
   initialized = true;
@@ -129,6 +130,7 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 export async function resetDatabase(): Promise<void> {
+  const sqlite = getSqlite();
   const tableRows = sqlite
     .query(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"

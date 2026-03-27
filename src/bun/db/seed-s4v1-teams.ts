@@ -1,14 +1,14 @@
-import {
-  type AddEventTeamInput,
-  addEventTeam,
-  listEventTeams,
-} from "../server/services/event-teams-service";
-import { ServiceError } from "../server/services/manual-event-service";
+import { ApplicationError } from "../server/application/common/application-error";
+import type { SeedTeamInput } from "../server/application/dtos/teams";
+import { ListTeamsUseCase } from "../server/application/use-cases/teams";
+import { SQLiteTeamRepository } from "../server/infrastructure/adapters/teams/sqlite-team-repository";
 
 const EVENT_CODE = "s4v1";
+const teamRepository = new SQLiteTeamRepository();
+const listTeamsUseCase = new ListTeamsUseCase(teamRepository);
 
 // Edit this list when you want different teams for the s4v1 event seed.
-const TEAMS_TO_SEED: AddEventTeamInput[] = [
+const TEAMS_TO_SEED: SeedTeamInput[] = [
   {
     teamNumber: 1001,
     teamName: "S4V1 Team 01",
@@ -123,7 +123,7 @@ const TEAMS_TO_SEED: AddEventTeamInput[] = [
   },
 ];
 
-const assertUniqueTeamNumbers = (teams: readonly AddEventTeamInput[]): void => {
+const assertUniqueTeamNumbers = (teams: readonly SeedTeamInput[]): void => {
   const teamNumbers = new Set<number>();
 
   for (const team of teams) {
@@ -137,17 +137,16 @@ const assertUniqueTeamNumbers = (teams: readonly AddEventTeamInput[]): void => {
   }
 };
 
-const seedS4V1Teams = (): void => {
+const seedS4V1Teams = async (): Promise<void> => {
   assertUniqueTeamNumbers(TEAMS_TO_SEED);
 
-  for (const team of TEAMS_TO_SEED) {
-    addEventTeam(EVENT_CODE, team);
-  }
+  await teamRepository.seedTeams(EVENT_CODE, TEAMS_TO_SEED);
 
   const seededTeamNumbers = new Set(
     TEAMS_TO_SEED.map((team) => team.teamNumber)
   );
-  const allTeams = listEventTeams(EVENT_CODE, undefined).teams;
+  const allTeams = (await listTeamsUseCase.execute({ eventCode: EVENT_CODE }))
+    .teams;
   const controlledTeams = allTeams.filter((team) =>
     seededTeamNumbers.has(team.teamNumber)
   );
@@ -158,9 +157,9 @@ const seedS4V1Teams = (): void => {
 };
 
 try {
-  seedS4V1Teams();
+  await seedS4V1Teams();
 } catch (error) {
-  if (error instanceof ServiceError) {
+  if (error instanceof ApplicationError) {
     console.error(`Seed failed: ${error.message}`);
     process.exit(1);
   }

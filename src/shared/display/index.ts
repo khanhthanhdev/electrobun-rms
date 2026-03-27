@@ -9,7 +9,6 @@
  * @see docs/display-control-workflow.md
  */
 
-// biome-ignore lint/performance/noBarrelFile: necessary for package exports
 export {
   DISPLAY_SCENE_IDS,
   type DisplaySceneId,
