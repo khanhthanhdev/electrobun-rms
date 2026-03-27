@@ -25,8 +25,9 @@ const syncRepository = new SQLiteSyncRepository(publishNotifications);
 const eventRepository = new SQLiteEventRepository();
 const syncBootstrapService = new NrcWebSyncBootstrapService();
 
-export const authenticateSyncClientUseCase =
-  new AuthenticateSyncClientUseCase(syncRepository);
+export const authenticateSyncClientUseCase = new AuthenticateSyncClientUseCase(
+  syncRepository
+);
 export const getEventBootstrapUseCase = new GetEventBootstrapUseCase(
   eventRepository,
   syncRepository

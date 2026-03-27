@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { and, asc, eq } from "drizzle-orm";
-import { getDataDir, db, schema } from "../../../../db";
+import { db, getDataDir, schema } from "../../../../db";
 import { ApplicationError } from "../../../application/common/application-error";
 import type {
   EventPrintListsResponse,

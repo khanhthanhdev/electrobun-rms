@@ -28,15 +28,9 @@ const syncSchemaModule = await import("./sync.schema");
 const syncCryptoModule = await import(
   "../../infrastructure/adapters/sync/sync-crypto"
 );
-const syncUseCasesModule = await import(
-  "../../application/use-cases/sync"
-);
-const syncRepoModule = await import(
-  "../../infrastructure/adapters/sync"
-);
-const eventRepoModule = await import(
-  "../../infrastructure/adapters/events"
-);
+const syncUseCasesModule = await import("../../application/use-cases/sync");
+const syncRepoModule = await import("../../infrastructure/adapters/sync");
+const eventRepoModule = await import("../../infrastructure/adapters/events");
 const notificationModule = await import(
   "../../infrastructure/services/sync-notification-publisher"
 );
@@ -62,11 +56,10 @@ const testSyncRepository = new syncRepoModule.SQLiteSyncRepository(
 const testEventRepository = new eventRepoModule.SQLiteEventRepository();
 const testAuthenticateUseCase =
   new syncUseCasesModule.AuthenticateSyncClientUseCase(testSyncRepository);
-const testGetBootstrapUseCase =
-  new syncUseCasesModule.GetEventBootstrapUseCase(
-    testEventRepository,
-    testSyncRepository
-  );
+const testGetBootstrapUseCase = new syncUseCasesModule.GetEventBootstrapUseCase(
+  testEventRepository,
+  testSyncRepository
+);
 const testPushBatchUseCase = new syncUseCasesModule.PushSyncBatchUseCase(
   testSyncRepository
 );

@@ -3,7 +3,7 @@ import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { and, eq, inArray } from "drizzle-orm";
 import { getTableConfig, type SQLiteTable } from "drizzle-orm/sqlite-core";
-import { getDataDir, db, schema } from "../../../../db";
+import { db, getDataDir, schema } from "../../../../db";
 // biome-ignore lint/performance/noNamespaceImport: required to iterate all table exports.
 import * as eventSchema from "../../../../event-db/schema";
 import {

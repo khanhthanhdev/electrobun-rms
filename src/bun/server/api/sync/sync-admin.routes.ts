@@ -35,7 +35,9 @@ syncAdminRoutes.get(
       return c.json({ error: "Unsupported season" }, 400);
     }
     const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const clients = await listSyncClientsUseCase.execute({ eventCode });
     return c.json({ clients });
@@ -52,7 +54,9 @@ syncAdminRoutes.post(
       return c.json({ error: "Unsupported season" }, 400);
     }
     const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const body = await parseJsonBody(c);
     if (body === null) {
@@ -89,7 +93,9 @@ syncAdminRoutes.post(
   async (c) => {
     const { clientId } = c.req.param();
     const forbidden = requireGlobalAdmin(c);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const revoked = await revokeSyncClientUseCase.execute({ clientId });
     if (!revoked) {
@@ -109,7 +115,9 @@ syncAdminRoutes.get(
       return c.json({ error: "Unsupported season" }, 400);
     }
     const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const policy = await getSyncPolicyUseCase.execute({ eventCode });
     return c.json(policy);
@@ -127,7 +135,9 @@ syncAdminRoutes.post(
       return c.json({ error: "Unsupported season" }, 400);
     }
     const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const body = await parseJsonBody(c);
     if (body === null) {
@@ -174,7 +184,9 @@ syncAdminRoutes.get(
       return c.json({ error: "Unsupported season" }, 400);
     }
     const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const batches = await listSyncBatchesUseCase.execute({
       eventCode,
@@ -186,22 +198,20 @@ syncAdminRoutes.get(
 );
 
 // Get Batch Detail
-syncAdminRoutes.get(
-  "/admin/batches/:pushBatchId",
-  requireAuth,
-  async (c) => {
-    const { pushBatchId } = c.req.param();
-    const batch = await getSyncBatchDetailUseCase.execute({ pushBatchId });
-    if (!batch) {
-      return c.json({ error: "Batch not found" }, 404);
-    }
-    const forbidden = requireEventAdmin(c, batch.eventCode);
-    if (forbidden) { return forbidden; }
-
-    const { eventCode: _eventCode, ...responseBody } = batch;
-    return c.json(responseBody);
+syncAdminRoutes.get("/admin/batches/:pushBatchId", requireAuth, async (c) => {
+  const { pushBatchId } = c.req.param();
+  const batch = await getSyncBatchDetailUseCase.execute({ pushBatchId });
+  if (!batch) {
+    return c.json({ error: "Batch not found" }, 404);
   }
-);
+  const forbidden = requireEventAdmin(c, batch.eventCode);
+  if (forbidden) {
+    return forbidden;
+  }
+
+  const { eventCode: _eventCode, ...responseBody } = batch;
+  return c.json(responseBody);
+});
 
 // Review Batch
 syncAdminRoutes.post(
@@ -218,7 +228,9 @@ syncAdminRoutes.post(
       return c.json({ error: "Batch not found" }, 404);
     }
     const forbidden = requireEventAdmin(c, batch.eventCode);
-    if (forbidden) { return forbidden; }
+    if (forbidden) {
+      return forbidden;
+    }
 
     const body = await parseJsonBody(c);
     if (body === null) {
