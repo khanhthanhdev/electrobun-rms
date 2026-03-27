@@ -1,16 +1,15 @@
 import {
-  EventStreamContentType,
-  fetchEventSource,
-} from "@microsoft/fetch-event-source";
+  connectRealtimeStream,
+  type RealtimeConnectionState,
+} from "../../../shared/services/realtime-stream-service";
 import type {
   ScoringRealtimeChangeEvent,
   ScoringRealtimeChangeKind,
 } from "../../../shared/types/scoring";
-import type { ScoringRealtimeConnectionState } from "../state/scoring-sync-store";
 
-const API_BASE_URL = "/api" as const;
+export type ScoringRealtimeConnectionState = RealtimeConnectionState;
+
 const SCORING_CHANGE_EVENT_NAME = "scoring.change" as const;
-const RECONNECT_DELAY_MS = 2000;
 
 const VALID_CHANGE_KINDS = new Set<ScoringRealtimeChangeKind>([
   "SCORE_UPDATED",
@@ -91,77 +90,17 @@ export const connectScoringRealtime = async ({
   onError,
   signal,
   token,
-}: ConnectScoringRealtimeOptions): Promise<void> => {
-  onConnectionStateChange("connecting");
-
-  const headers: Record<string, string> = {
-    Accept: EventStreamContentType,
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  await fetchEventSource(
-    `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}/scoring/stream`,
-    {
-      headers,
-      method: "GET",
-      onclose: () => {
-        onConnectionStateChange("reconnecting");
-        throw new Error("Scoring realtime stream closed.");
-      },
-      onerror: (error: unknown) => {
-        if (error instanceof ScoringRealtimeFatalError) {
-          onConnectionStateChange("stopped");
-          onError(error.message);
-          throw error;
-        }
-
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Scoring realtime temporarily unavailable.";
-        onConnectionStateChange("reconnecting");
-        onError(message);
-        return RECONNECT_DELAY_MS;
-      },
-      onmessage: (message) => {
-        if (message.event !== SCORING_CHANGE_EVENT_NAME) {
-          return;
-        }
-
-        const parsed = parseScoringRealtimeChangeEvent(message.data);
-        if (!parsed) {
-          return;
-        }
-
-        onChangeEvent(parsed);
-        onError("");
-      },
-      onopen: (response) => {
-        if (response.ok) {
-          const contentType = response.headers.get("content-type");
-          if (!contentType?.startsWith(EventStreamContentType)) {
-            throw new Error(
-              `Expected ${EventStreamContentType} but received ${contentType ?? "unknown"}.`
-            );
-          }
-          onConnectionStateChange("connected");
-          return Promise.resolve();
-        }
-
-        if (response.status === 401 || response.status === 403) {
-          throw new ScoringRealtimeFatalError(
-            "Realtime access denied for scoring stream."
-          );
-        }
-
-        throw new Error(
-          `Scoring realtime connection failed with status ${response.status}.`
-        );
-      },
-      openWhenHidden: true,
-      signal,
-    }
-  );
-};
+}: ConnectScoringRealtimeOptions): Promise<void> =>
+  connectRealtimeStream({
+    eventCode,
+    eventName: SCORING_CHANGE_EVENT_NAME,
+    fatalErrorMessage: "Realtime access denied for scoring stream.",
+    onChangeEvent,
+    onConnectionStateChange,
+    onError,
+    parseEvent: parseScoringRealtimeChangeEvent,
+    signal,
+    streamLabel: "Scoring",
+    streamPath: "scoring/stream",
+    token,
+  });
