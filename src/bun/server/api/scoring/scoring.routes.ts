@@ -1,19 +1,20 @@
 import { Hono } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
-import { ServiceError } from "../../services/manual-event-service";
+import { ApplicationError } from "../../application/common/application-error";
+import {
+  GetMatchHistoryUseCase,
+  GetMatchResultsUseCase,
+  GetMatchScoresheetUseCase,
+  SubmitAllianceScoreUseCase,
+} from "../../application/use-cases/scoring";
+import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
 import { saveMatchAllianceScoreBodySchema } from "./scoring.schema";
-import {
-  getEventMatchHistory,
-  getEventMatchResults,
-  getEventMatchScoresheet,
-  saveEventMatchAllianceScore,
-} from "./scoring.service";
 import {
   createScoringSnapshotHintEvent,
   SCORING_SYNC_EVENT_NAME,
@@ -27,6 +28,15 @@ const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
 const POSITIVE_INTEGER_PARAM_PATTERN = /^[1-9]\d*$/;
 const READ_MATCH_TYPES = new Set(["practice", "quals", "elims"]);
+const scoringRepository = new SQLiteScoringRepository();
+const submitAllianceScoreUseCase = new SubmitAllianceScoreUseCase(
+  scoringRepository
+);
+const getMatchResultsUseCase = new GetMatchResultsUseCase(scoringRepository);
+const getMatchHistoryUseCase = new GetMatchHistoryUseCase(scoringRepository);
+const getMatchScoresheetUseCase = new GetMatchScoresheetUseCase(
+  scoringRepository
+);
 
 const isReadMatchType = (
   value: string
@@ -44,6 +54,9 @@ const parsePositiveIntegerParam = (value: string): number | null => {
 
   return parsed;
 };
+
+const isApplicationError = (error: unknown): error is ApplicationError =>
+  error instanceof ApplicationError;
 
 const writeScoringSyncEvent = async (
   stream: SSEStreamingApi,
@@ -145,7 +158,10 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
   }
 
   try {
-    const result = saveEventMatchAllianceScore(eventCode, bodyResult.output);
+    const result = await submitAllianceScoreUseCase.execute({
+      eventCode,
+      payload: bodyResult.output,
+    });
     scoringSyncHub.publish({
       eventCode,
       kind: "SCORE_UPDATED",
@@ -154,7 +170,7 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
     });
     return c.json(result);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to save match score", message: error.message },
         error.status as 400 | 404 | 500
@@ -164,7 +180,7 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
   }
 });
 
-scoringRoutes.get("/:eventCode/scoring/:matchType/results", (c) => {
+scoringRoutes.get("/:eventCode/scoring/:matchType/results", async (c) => {
   const eventCode = c.req.param("eventCode");
 
   const matchType = c.req.param("matchType");
@@ -173,10 +189,13 @@ scoringRoutes.get("/:eventCode/scoring/:matchType/results", (c) => {
   }
 
   try {
-    const results = getEventMatchResults(eventCode, matchType);
+    const results = await getMatchResultsUseCase.execute({
+      eventCode,
+      matchType,
+    });
     return c.json(results);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to load match results", message: error.message },
         error.status as 400 | 404 | 500
@@ -188,7 +207,7 @@ scoringRoutes.get("/:eventCode/scoring/:matchType/results", (c) => {
 
 scoringRoutes.get(
   "/:eventCode/scoring/:matchType/:matchNumber/history",
-  (c) => {
+  async (c) => {
     const eventCode = c.req.param("eventCode");
 
     const matchType = c.req.param("matchType");
@@ -202,10 +221,14 @@ scoringRoutes.get(
     }
 
     try {
-      const history = getEventMatchHistory(eventCode, matchType, matchNumber);
+      const history = await getMatchHistoryUseCase.execute({
+        eventCode,
+        matchType,
+        matchNumber,
+      });
       return c.json(history);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           { error: "Failed to load match history", message: error.message },
           error.status as 400 | 404 | 500
@@ -216,7 +239,7 @@ scoringRoutes.get(
   }
 );
 
-scoringRoutes.get("/:eventCode/scoring/:matchType/:matchNumber", (c) => {
+scoringRoutes.get("/:eventCode/scoring/:matchType/:matchNumber", async (c) => {
   const eventCode = c.req.param("eventCode");
 
   const matchType = c.req.param("matchType");
@@ -230,14 +253,14 @@ scoringRoutes.get("/:eventCode/scoring/:matchType/:matchNumber", (c) => {
   }
 
   try {
-    const scoresheet = getEventMatchScoresheet(
+    const scoresheet = await getMatchScoresheetUseCase.execute({
       eventCode,
       matchType,
-      matchNumber
-    );
+      matchNumber,
+    });
     return c.json(scoresheet);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to load match scoresheet", message: error.message },
         error.status as 400 | 404 | 500

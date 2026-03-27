@@ -4,6 +4,7 @@ import type { AppEnv } from "./common/app-env";
 import { displayRoutes } from "./display/display.routes";
 import { eventsRoutes } from "./events/events.routes";
 import { inspectionRoutes } from "./inspection/inspection.routes";
+import { rankingRoutes } from "./ranking/ranking.routes";
 import { scheduleRoutes } from "./schedule/schedule.routes";
 import { scoringRoutes } from "./scoring/scoring.routes";
 import { syncRoutes } from "./sync/sync.routes";
@@ -22,5 +23,6 @@ api.route("/events", displayRoutes);
 api.route("/users", usersRoutes);
 api.route("/sync", syncRoutes);
 api.route("/sync/v1", syncRoutes);
+api.route("/events", rankingRoutes);
 
 export { api };

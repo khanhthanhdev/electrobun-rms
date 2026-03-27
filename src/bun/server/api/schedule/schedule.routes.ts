@@ -1,6 +1,18 @@
 import { Hono } from "hono";
 import { safeParse } from "valibot";
-import { ServiceError } from "../../services/manual-event-service";
+import { ApplicationError } from "../../application/common/application-error";
+import {
+  ActivateScheduleUseCase,
+  ClearQualificationScheduleUseCase,
+  CreatePracticeMatchUseCase,
+  DeletePracticeMatchUseCase,
+  GeneratePracticeScheduleUseCase,
+  GenerateQualificationScheduleUseCase,
+  ListPracticeMatchesUseCase,
+  ListQualificationMatchesUseCase,
+  SaveQualificationScheduleUseCase,
+} from "../../application/use-cases/schedule";
+import { SQLiteScheduleRepository } from "../../infrastructure/adapters/schedule/sqlite-schedule-repository";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
@@ -13,29 +25,46 @@ import {
   saveQualificationScheduleBodySchema,
   setScheduleActivationBodySchema,
 } from "./schedule.schema";
-import {
-  deletePracticeSchedule,
-  deleteQualificationSchedule,
-  editPracticeSchedule,
-  editQualificationSchedule,
-  listPracticeSchedule,
-  listQualificationSchedule,
-  regeneratePracticeSchedule,
-  regenerateQualificationSchedule,
-  updatePracticeScheduleActivation,
-  updateQualificationScheduleActivation,
-} from "./schedule.service";
 
 export const scheduleRoutes = new Hono<AppEnv>();
 
-scheduleRoutes.get("/:eventCode/schedule/practice", (c) => {
+const scheduleRepository = new SQLiteScheduleRepository();
+const listPracticeMatchesUseCase = new ListPracticeMatchesUseCase(
+  scheduleRepository
+);
+const createPracticeMatchUseCase = new CreatePracticeMatchUseCase(
+  scheduleRepository
+);
+const generatePracticeScheduleUseCase = new GeneratePracticeScheduleUseCase(
+  scheduleRepository
+);
+const deletePracticeMatchUseCase = new DeletePracticeMatchUseCase(
+  scheduleRepository
+);
+const listQualificationMatchesUseCase = new ListQualificationMatchesUseCase(
+  scheduleRepository
+);
+const saveQualificationScheduleUseCase = new SaveQualificationScheduleUseCase(
+  scheduleRepository
+);
+const generateQualificationScheduleUseCase =
+  new GenerateQualificationScheduleUseCase(scheduleRepository);
+const clearQualificationScheduleUseCase = new ClearQualificationScheduleUseCase(
+  scheduleRepository
+);
+const activateScheduleUseCase = new ActivateScheduleUseCase(scheduleRepository);
+
+const isApplicationError = (error: unknown): error is ApplicationError =>
+  error instanceof ApplicationError;
+
+scheduleRoutes.get("/:eventCode/schedule/practice", async (c) => {
   const eventCode = c.req.param("eventCode");
 
   try {
-    const schedule = listPracticeSchedule(eventCode);
+    const schedule = await listPracticeMatchesUseCase.execute({ eventCode });
     return c.json(schedule);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to load practice schedule", message: error.message },
         error.status as 400 | 404 | 500
@@ -69,10 +98,13 @@ scheduleRoutes.put("/:eventCode/schedule/practice", requireAuth, async (c) => {
   }
 
   try {
-    const schedule = editPracticeSchedule(eventCode, bodyResult.output);
+    const schedule = await createPracticeMatchUseCase.execute({
+      eventCode,
+      payload: bodyResult.output,
+    });
     return c.json(schedule);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to save practice schedule", message: error.message },
         error.status as 400 | 404 | 500
@@ -109,10 +141,13 @@ scheduleRoutes.post(
     }
 
     try {
-      const schedule = regeneratePracticeSchedule(eventCode, bodyResult.output);
+      const schedule = await generatePracticeScheduleUseCase.execute({
+        eventCode,
+        payload: bodyResult.output,
+      });
       return c.json(schedule, 201);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to generate practice schedule",
@@ -126,35 +161,44 @@ scheduleRoutes.post(
   }
 );
 
-scheduleRoutes.delete("/:eventCode/schedule/practice", requireAuth, (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
-  }
-
-  try {
-    const schedule = deletePracticeSchedule(eventCode);
-    return c.json(schedule);
-  } catch (error) {
-    if (error instanceof ServiceError) {
-      return c.json(
-        { error: "Failed to clear practice schedule", message: error.message },
-        error.status as 400 | 404 | 500
-      );
+scheduleRoutes.delete(
+  "/:eventCode/schedule/practice",
+  requireAuth,
+  async (c) => {
+    const eventCode = c.req.param("eventCode");
+    const forbiddenResponse = requireEventAdmin(c, eventCode);
+    if (forbiddenResponse) {
+      return forbiddenResponse;
     }
-    throw error;
-  }
-});
 
-scheduleRoutes.get("/:eventCode/schedule/quals", (c) => {
+    try {
+      const schedule = await deletePracticeMatchUseCase.execute({ eventCode });
+      return c.json(schedule);
+    } catch (error) {
+      if (isApplicationError(error)) {
+        return c.json(
+          {
+            error: "Failed to clear practice schedule",
+            message: error.message,
+          },
+          error.status as 400 | 404 | 500
+        );
+      }
+      throw error;
+    }
+  }
+);
+
+scheduleRoutes.get("/:eventCode/schedule/quals", async (c) => {
   const eventCode = c.req.param("eventCode");
 
   try {
-    const schedule = listQualificationSchedule(eventCode);
+    const schedule = await listQualificationMatchesUseCase.execute({
+      eventCode,
+    });
     return c.json(schedule);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         {
           error: "Failed to load qualification schedule",
@@ -191,10 +235,13 @@ scheduleRoutes.put("/:eventCode/schedule/quals", requireAuth, async (c) => {
   }
 
   try {
-    const schedule = editQualificationSchedule(eventCode, bodyResult.output);
+    const schedule = await saveQualificationScheduleUseCase.execute({
+      eventCode,
+      payload: bodyResult.output,
+    });
     return c.json(schedule);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         {
           error: "Failed to save qualification schedule",
@@ -231,13 +278,13 @@ scheduleRoutes.post(
     }
 
     try {
-      const schedule = regenerateQualificationSchedule(
+      const schedule = await generateQualificationScheduleUseCase.execute({
         eventCode,
-        bodyResult.output
-      );
+        payload: bodyResult.output,
+      });
       return c.json(schedule, 201);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to generate qualification schedule",
@@ -251,7 +298,7 @@ scheduleRoutes.post(
   }
 );
 
-scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, (c) => {
+scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, async (c) => {
   const eventCode = c.req.param("eventCode");
   const forbiddenResponse = requireEventAdmin(c, eventCode);
   if (forbiddenResponse) {
@@ -259,10 +306,12 @@ scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, (c) => {
   }
 
   try {
-    const schedule = deleteQualificationSchedule(eventCode);
+    const schedule = await clearQualificationScheduleUseCase.execute({
+      eventCode,
+    });
     return c.json(schedule);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         {
           error: "Failed to clear qualification schedule",
@@ -302,13 +351,14 @@ scheduleRoutes.put(
     }
 
     try {
-      const schedule = updatePracticeScheduleActivation(
+      const schedule = await activateScheduleUseCase.execute({
         eventCode,
-        bodyResult.output.active
-      );
+        scheduleType: "practice",
+        active: bodyResult.output.active,
+      });
       return c.json(schedule);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to update practice schedule activation",
@@ -349,13 +399,14 @@ scheduleRoutes.put(
     }
 
     try {
-      const schedule = updateQualificationScheduleActivation(
+      const schedule = await activateScheduleUseCase.execute({
         eventCode,
-        bodyResult.output.active
-      );
+        scheduleType: "quals",
+        active: bodyResult.output.active,
+      });
       return c.json(schedule);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to update qualification schedule activation",

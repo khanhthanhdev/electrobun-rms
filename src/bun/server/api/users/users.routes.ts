@@ -1,5 +1,14 @@
 import { Hono } from "hono";
 import { safeParse } from "valibot";
+import { ApplicationError } from "../../application/common/application-error";
+import {
+  CreateUserAccountUseCase,
+  DeleteUserAccountUseCase,
+  GetUserWithRolesUseCase,
+  ListUsersUseCase,
+  UpdateUserAccountUseCase,
+} from "../../application/use-cases/users";
+import { SQLiteUserRepository } from "../../infrastructure/adapters/users/sqlite-user-repository";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireGlobalAdmin } from "../common/guards";
@@ -10,23 +19,31 @@ import {
   parseUsernameParam,
   updateUserBodySchema,
 } from "./users.schema";
-import {
-  createUserAccount,
-  deleteUserAccount,
-  getUserWithRoles,
-  listUsers,
-  UserServiceError,
-  updateUserAccount,
-} from "./users.service";
 
 export const usersRoutes = new Hono<AppEnv>();
+const userRepository = new SQLiteUserRepository();
+const listUsersUseCase = new ListUsersUseCase(userRepository);
+const getUserWithRolesUseCase = new GetUserWithRolesUseCase(userRepository);
+const createUserAccountUseCase = new CreateUserAccountUseCase(userRepository);
+const updateUserAccountUseCase = new UpdateUserAccountUseCase(userRepository);
+const deleteUserAccountUseCase = new DeleteUserAccountUseCase(userRepository);
 
-function toUserServiceErrorResponse(
+const isApplicationError = (error: unknown): error is ApplicationError =>
+  error instanceof ApplicationError;
+
+function toUserApplicationErrorResponse(
   c: { json: (payload: unknown, status?: number) => Response },
-  error: UserServiceError
+  error: ApplicationError
 ): Response {
   if (error.status === 404) {
     return c.json({ error: "Not found", message: error.message }, 404);
+  }
+
+  if (error.status === 409) {
+    return c.json(
+      { error: "User creation failed", message: error.message },
+      409
+    );
   }
 
   return c.json({ error: "Validation failed", message: error.message }, 400);
@@ -38,7 +55,7 @@ usersRoutes.get("/", requireAuth, async (c) => {
     return forbiddenResponse;
   }
 
-  const users = await listUsers();
+  const users = await listUsersUseCase.execute();
   return c.json({ users });
 });
 
@@ -59,7 +76,7 @@ usersRoutes.get("/:username", requireAuth, async (c) => {
     );
   }
 
-  const user = await getUserWithRoles(username);
+  const user = await getUserWithRolesUseCase.execute({ username });
   if (!user) {
     return c.json(
       {
@@ -106,7 +123,7 @@ usersRoutes.post("/", requireAuth, async (c) => {
   }
 
   try {
-    const user = await createUserAccount({
+    const user = await createUserAccountUseCase.execute({
       username: bodyResult.output.username,
       password: bodyResult.output.password,
       roles: bodyResult.output.roles,
@@ -114,15 +131,8 @@ usersRoutes.post("/", requireAuth, async (c) => {
 
     return c.json({ user }, 201);
   } catch (error) {
-    if (error instanceof UserServiceError) {
-      if (error.status === 409) {
-        return c.json(
-          { error: "User creation failed", message: error.message },
-          409
-        );
-      }
-
-      return toUserServiceErrorResponse(c, error);
+    if (isApplicationError(error)) {
+      return toUserApplicationErrorResponse(c, error);
     }
 
     throw error;
@@ -180,7 +190,7 @@ usersRoutes.put("/:username", requireAuth, async (c) => {
   }
 
   try {
-    const user = await updateUserAccount({
+    const user = await updateUserAccountUseCase.execute({
       username,
       password: hasPassword ? bodyResult.output.password : "",
       roles: bodyResult.output.roles,
@@ -188,8 +198,8 @@ usersRoutes.put("/:username", requireAuth, async (c) => {
 
     return c.json({ user });
   } catch (error) {
-    if (error instanceof UserServiceError) {
-      return toUserServiceErrorResponse(c, error);
+    if (isApplicationError(error)) {
+      return toUserApplicationErrorResponse(c, error);
     }
 
     throw error;
@@ -214,15 +224,15 @@ usersRoutes.delete("/:username", requireAuth, async (c) => {
   }
 
   try {
-    await deleteUserAccount({
+    await deleteUserAccountUseCase.execute({
       username,
       currentUsername: c.get("auth").sub,
     });
 
     return c.json({ ok: true });
   } catch (error) {
-    if (error instanceof UserServiceError) {
-      return toUserServiceErrorResponse(c, error);
+    if (isApplicationError(error)) {
+      return toUserApplicationErrorResponse(c, error);
     }
 
     throw error;

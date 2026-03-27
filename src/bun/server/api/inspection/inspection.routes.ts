@@ -1,7 +1,19 @@
 import { Hono } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
-import { ServiceError } from "../../services/manual-event-service";
+import { ApplicationError } from "../../application/common/application-error";
+import {
+  ApplyOverrideUseCase,
+  GetChecklistUseCase,
+  GetInspectionHistoryUseCase,
+  GetPublicStatusUseCase,
+  GetTeamDetailUseCase,
+  GetTeamListUseCase,
+  SaveInspectionCommentUseCase,
+  UpdateInspectionItemsUseCase,
+  UpdateInspectionStatusUseCase,
+} from "../../application/use-cases/inspection";
+import { SQLiteInspectionRepository } from "../../infrastructure/adapters/inspection";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireInspector, requireLeadInspector } from "../common/guards";
@@ -14,17 +26,6 @@ import {
   updateStatusBodySchema,
 } from "./inspection.schema";
 import {
-  getChecklist,
-  getInspectionDetail,
-  getInspectionHistory,
-  getPublicInspectionStatus,
-  listInspectionTeams,
-  overrideInspectionStatus,
-  saveInspectionComment,
-  updateInspectionItems,
-  updateInspectionStatus,
-} from "./inspection.service";
-import {
   createInspectionSnapshotHintEvent,
   INSPECTION_SYNC_EVENT_NAME,
   type InspectionSyncEvent,
@@ -32,6 +33,28 @@ import {
 } from "./inspection-sync";
 
 export const inspectionRoutes = new Hono<AppEnv>();
+
+const inspectionRepository = new SQLiteInspectionRepository();
+const getChecklistUseCase = new GetChecklistUseCase(inspectionRepository);
+const getTeamListUseCase = new GetTeamListUseCase(inspectionRepository);
+const getTeamDetailUseCase = new GetTeamDetailUseCase(inspectionRepository);
+const updateInspectionItemsUseCase = new UpdateInspectionItemsUseCase(
+  inspectionRepository
+);
+const updateInspectionStatusUseCase = new UpdateInspectionStatusUseCase(
+  inspectionRepository
+);
+const saveInspectionCommentUseCase = new SaveInspectionCommentUseCase(
+  inspectionRepository
+);
+const getInspectionHistoryUseCase = new GetInspectionHistoryUseCase(
+  inspectionRepository
+);
+const applyOverrideUseCase = new ApplyOverrideUseCase(inspectionRepository);
+const getPublicStatusUseCase = new GetPublicStatusUseCase(inspectionRepository);
+
+const isApplicationError = (error: unknown): error is ApplicationError =>
+  error instanceof ApplicationError;
 
 const parseTeamNumberParam = (
   value: string
@@ -65,7 +88,7 @@ inspectionRoutes.get("/:eventCode/inspection/checklist", requireAuth, (c) => {
     return forbiddenResponse;
   }
 
-  return c.json(getChecklist());
+  return c.json(getChecklistUseCase.execute());
 });
 
 inspectionRoutes.get("/:eventCode/inspection/stream", requireAuth, (c) => {
@@ -146,10 +169,10 @@ inspectionRoutes.get("/:eventCode/inspection/teams", requireAuth, (c) => {
   const search = c.req.query("search");
 
   try {
-    const result = listInspectionTeams(eventCode, search);
+    const result = getTeamListUseCase.execute({ eventCode, search });
     return c.json(result);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to load inspection teams", message: error.message },
         error.status as 400 | 404 | 500
@@ -178,13 +201,13 @@ inspectionRoutes.get(
     }
 
     try {
-      const detail = getInspectionDetail(
+      const detail = getTeamDetailUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber
-      );
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json(detail);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to load inspection detail",
@@ -233,11 +256,11 @@ inspectionRoutes.patch(
     }
 
     try {
-      const detail = updateInspectionItems(
+      const detail = updateInspectionItemsUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber,
-        bodyResult.output.items
-      );
+        teamNumber: teamNumberResult.teamNumber,
+        items: bodyResult.output.items,
+      });
       inspectionSyncHub.publish({
         eventCode,
         kind: "ITEMS_UPDATED",
@@ -245,7 +268,7 @@ inspectionRoutes.patch(
       });
       return c.json(detail);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to update inspection items",
@@ -295,12 +318,12 @@ inspectionRoutes.patch(
 
     try {
       const auth = c.get("auth");
-      const detail = updateInspectionStatus(
+      const detail = updateInspectionStatusUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber,
-        bodyResult.output.status,
-        auth.sub
-      );
+        teamNumber: teamNumberResult.teamNumber,
+        status: bodyResult.output.status,
+        changedBy: auth.sub,
+      });
       inspectionSyncHub.publish({
         eventCode,
         kind: "STATUS_UPDATED",
@@ -308,7 +331,7 @@ inspectionRoutes.patch(
       });
       return c.json(detail);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to update inspection status",
@@ -357,11 +380,11 @@ inspectionRoutes.post(
     }
 
     try {
-      saveInspectionComment(
+      saveInspectionCommentUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber,
-        bodyResult.output.comment
-      );
+        teamNumber: teamNumberResult.teamNumber,
+        comment: bodyResult.output.comment,
+      });
       inspectionSyncHub.publish({
         eventCode,
         kind: "COMMENT_UPDATED",
@@ -369,7 +392,7 @@ inspectionRoutes.post(
       });
       return c.json({ success: true });
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to save inspection comment",
@@ -402,13 +425,13 @@ inspectionRoutes.get(
     }
 
     try {
-      const result = getInspectionHistory(
+      const result = getInspectionHistoryUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber
-      );
+        teamNumber: teamNumberResult.teamNumber,
+      });
       return c.json(result);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to load inspection history",
@@ -458,12 +481,12 @@ inspectionRoutes.post(
 
     try {
       const auth = c.get("auth");
-      const detail = overrideInspectionStatus(
+      const detail = applyOverrideUseCase.execute({
         eventCode,
-        teamNumberResult.teamNumber,
-        bodyResult.output.comment,
-        auth.sub
-      );
+        teamNumber: teamNumberResult.teamNumber,
+        comment: bodyResult.output.comment,
+        changedBy: auth.sub,
+      });
       inspectionSyncHub.publish({
         eventCode,
         kind: "OVERRIDE_APPLIED",
@@ -471,7 +494,7 @@ inspectionRoutes.post(
       });
       return c.json(detail);
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (isApplicationError(error)) {
         return c.json(
           {
             error: "Failed to override inspection status",
@@ -489,10 +512,10 @@ inspectionRoutes.get("/:eventCode/inspection/public-status", (c) => {
   const eventCode = c.req.param("eventCode");
 
   try {
-    const result = getPublicInspectionStatus(eventCode);
+    const result = getPublicStatusUseCase.execute({ eventCode });
     return c.json(result);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         {
           error: "Failed to load public inspection status",

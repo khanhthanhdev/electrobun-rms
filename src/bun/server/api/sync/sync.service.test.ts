@@ -83,17 +83,17 @@ describe("sync service", () => {
     expect((error as { code?: string }).code).toBe("CLIENT_REVOKED");
   });
 
-  it("omits a hardcoded timezone from bootstrap responses", () => {
+  it("omits a hardcoded timezone from bootstrap responses", async () => {
     createEventDb(EVENT_CODE, ["123"]);
     insertEvent(EVENT_CODE);
     insertSyncPolicy(EVENT_CODE);
 
-    const bootstrap = getEventBootstrap(EVENT_CODE);
+    const bootstrap = await getEventBootstrap(EVENT_CODE);
 
     expect("timezone" in bootstrap.resources.eventManifest).toBe(false);
   });
 
-  it("applies inspection batches and deduplicates identical retries", () => {
+  it("applies inspection batches and deduplicates identical retries", async () => {
     createEventDb(EVENT_CODE, ["123"]);
     insertSyncPolicy(EVENT_CODE, {
       allowedPushResources: ["inspection_results"],
@@ -101,13 +101,13 @@ describe("sync service", () => {
 
     const payload = createInspectionResultPayload({ batchId: "batch-1" });
 
-    const result = pushSyncBatch({
+    const result = await pushSyncBatch({
       allowedResources: ["inspection_results"],
       clientId: "client-1",
       eventCode: EVENT_CODE,
       payload,
     });
-    const duplicate = pushSyncBatch({
+    const duplicate = await pushSyncBatch({
       allowedResources: ["inspection_results"],
       clientId: "client-1",
       eventCode: EVENT_CODE,
@@ -150,12 +150,12 @@ while (!existsSync(join(barrierDir, "release"))) {
 }
 
 const { pushSyncBatch } = await import(${JSON.stringify(
-        join(process.cwd(), "src/bun/server/api/sync/sync.service.ts")
+        join(process.cwd(), "src/bun/server/api/sync/sync.test-support.ts")
       )});
 const payload = JSON.parse(process.env.WORKER_PAYLOAD ?? "{}");
 
 try {
-  const result = pushSyncBatch({
+  const result = await pushSyncBatch({
     allowedResources: ["inspection_results"],
     clientId: "client-1",
     eventCode: ${JSON.stringify(EVENT_CODE)},
@@ -252,13 +252,13 @@ try {
     }
   }, 15_000);
 
-  it("rejects a reused batchId when the payload changes", () => {
+  it("rejects a reused batchId when the payload changes", async () => {
     createEventDb(EVENT_CODE, ["123"]);
     insertSyncPolicy(EVENT_CODE, {
       allowedPushResources: ["inspection_results"],
     });
 
-    pushSyncBatch({
+    await pushSyncBatch({
       allowedResources: ["inspection_results"],
       clientId: "client-1",
       eventCode: EVENT_CODE,
@@ -267,7 +267,7 @@ try {
 
     let error: unknown;
     try {
-      pushSyncBatch({
+      await pushSyncBatch({
         allowedResources: ["inspection_results"],
         clientId: "client-1",
         eventCode: EVENT_CODE,

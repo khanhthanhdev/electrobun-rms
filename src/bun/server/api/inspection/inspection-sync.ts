@@ -1,3 +1,5 @@
+import { InMemorySyncHub } from "../../infrastructure/services/in-memory-sync-hub";
+
 export const INSPECTION_SYNC_EVENT_NAME = "inspection.change" as const;
 
 export type InspectionSyncChangeKind =
@@ -35,74 +37,22 @@ export interface InspectionSyncPublisher {
   ) => () => void;
 }
 
-class InMemoryInspectionSyncHub implements InspectionSyncPublisher {
-  private readonly subscribersByEventCode = new Map<
-    string,
-    Set<InspectionSyncSubscriber>
-  >();
+const hub = new InMemorySyncHub<InspectionSyncEvent>();
 
-  private readonly versionByEventCode = new Map<string, number>();
+export const inspectionSyncHub: InspectionSyncPublisher = {
+  getCurrentVersion: (eventCode) => hub.getCurrentVersion(eventCode),
 
-  getCurrentVersion(eventCode: string): number {
-    return this.versionByEventCode.get(eventCode) ?? 0;
-  }
-
-  publish(input: PublishInspectionSyncEventInput): InspectionSyncEvent {
-    const previousVersion = this.getCurrentVersion(input.eventCode);
-    const nextVersion = Math.max(Date.now(), previousVersion + 1);
-    this.versionByEventCode.set(input.eventCode, nextVersion);
-
-    const event: InspectionSyncEvent = {
+  publish: (input) =>
+    hub.publish(input.eventCode, (version) => ({
       changedAt: new Date().toISOString(),
       eventCode: input.eventCode,
       kind: input.kind,
       teamNumber: input.teamNumber ?? null,
-      version: nextVersion,
-    };
+      version,
+    })),
 
-    const subscribers = this.subscribersByEventCode.get(input.eventCode);
-    if (!subscribers || subscribers.size === 0) {
-      return event;
-    }
-
-    for (const subscriber of subscribers) {
-      try {
-        subscriber(event);
-      } catch {
-        // Ignore subscriber failures so one broken client does not block others.
-      }
-    }
-
-    return event;
-  }
-
-  subscribe(
-    eventCode: string,
-    subscriber: InspectionSyncSubscriber
-  ): () => void {
-    const existingSubscribers = this.subscribersByEventCode.get(eventCode);
-    if (existingSubscribers) {
-      existingSubscribers.add(subscriber);
-    } else {
-      this.subscribersByEventCode.set(eventCode, new Set([subscriber]));
-    }
-
-    return () => {
-      const subscribers = this.subscribersByEventCode.get(eventCode);
-      if (!subscribers) {
-        return;
-      }
-
-      subscribers.delete(subscriber);
-      if (subscribers.size === 0) {
-        this.subscribersByEventCode.delete(eventCode);
-      }
-    };
-  }
-}
-
-export const inspectionSyncHub: InspectionSyncPublisher =
-  new InMemoryInspectionSyncHub();
+  subscribe: (eventCode, subscriber) => hub.subscribe(eventCode, subscriber),
+};
 
 export const createInspectionSnapshotHintEvent = (
   eventCode: string,

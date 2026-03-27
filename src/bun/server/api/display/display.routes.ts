@@ -9,6 +9,7 @@ import { formatValidationIssues } from "../common/validation";
 import { scoringSyncHub } from "../scoring/scoring-sync";
 import { publishDisplayCommandBodySchema } from "./display.schema";
 import {
+  createDisplayScoreUpdateEvent,
   createDisplaySnapshotHintEvent,
   DISPLAY_SYNC_EVENT_NAME,
   type DisplaySyncEvent,
@@ -84,17 +85,10 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
       eventCode,
       (scoringEvent) => {
         if (scoringEvent.kind === "SCORE_UPDATED") {
-          const displayEvent: DisplaySyncEvent = {
-            changedAt: new Date().toISOString(),
+          const displayEvent = createDisplayScoreUpdateEvent(
             eventCode,
-            kind: "SCORE_UPDATE",
-            matchNumber: scoringEvent.matchNumber,
-            matchType: scoringEvent.matchType,
-            message: null,
-            mode: null,
-            startedAtMs: null,
-            version: scoringEvent.version,
-          };
+            scoringEvent
+          );
           enqueueWrite((streamApi) =>
             writeScoreUpdateEvent(streamApi, displayEvent)
           );

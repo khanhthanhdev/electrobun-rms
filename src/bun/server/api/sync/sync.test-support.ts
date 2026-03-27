@@ -2,6 +2,8 @@ import { Database } from "bun:sqlite";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Hono } from "hono";
+import { getDataDir, resetForTest } from "../../../db";
 
 const syncTestRunId = process.env.SYNC_TEST_RUN_ID ?? `${process.pid}`;
 process.env.SYNC_TEST_RUN_ID = syncTestRunId;
@@ -14,28 +16,77 @@ export const TEST_DATA_DIR = join(
 mkdirSync(TEST_DATA_DIR, { recursive: true });
 process.env.ELECTROBUN_DATA_DIR = TEST_DATA_DIR;
 
+// Reset database connection to pick up new ELECTROBUN_DATA_DIR
+resetForTest();
+
 const dbModule = await import("../../../db");
 const migrateModule = await import("../../../db/migrate");
+const authServiceModule = await import("../auth/auth.service");
 const syncEventDbModule = await import("./sync.event-db");
+const syncRoutesModule = await import("./sync.routes");
 const syncSchemaModule = await import("./sync.schema");
-const syncServiceModule = await import("./sync.service");
-const syncUtilsModule = await import("./sync.utils");
+const syncCryptoModule = await import(
+  "../../infrastructure/adapters/sync/sync-crypto"
+);
+const syncUseCasesModule = await import(
+  "../../application/use-cases/sync"
+);
+const syncRepoModule = await import(
+  "../../infrastructure/adapters/sync"
+);
+const eventRepoModule = await import(
+  "../../infrastructure/adapters/events"
+);
+const notificationModule = await import(
+  "../../infrastructure/services/sync-notification-publisher"
+);
 
 export const { DATA_DIR, db, schema } = dbModule;
 export const { resetDatabase } = migrateModule;
+export const { issueAccessToken } = authServiceModule;
 export const { applySyncChangeSetsToEventDb } = syncEventDbModule;
+export const { syncRoutes } = syncRoutesModule;
 export const {
   DEFAULT_ALLOWED_PUSH_RESOURCES,
   SYNC_DEFINITION_VERSION,
   SYNC_SCHEMA_VERSION,
 } = syncSchemaModule;
-export const {
-  authenticateSyncClient,
-  getEventBootstrap,
-  pushSyncBatch,
-  SyncError,
-} = syncServiceModule;
-export const { hashSync } = syncUtilsModule;
+export const { hashSyncSecret: hashSync } = syncCryptoModule;
+
+// Test-only use-case wrappers (previously in sync.service.ts)
+export const { SyncError } = syncUseCasesModule;
+
+const testSyncRepository = new syncRepoModule.SQLiteSyncRepository(
+  notificationModule.publishNotifications
+);
+const testEventRepository = new eventRepoModule.SQLiteEventRepository();
+const testAuthenticateUseCase =
+  new syncUseCasesModule.AuthenticateSyncClientUseCase(testSyncRepository);
+const testGetBootstrapUseCase =
+  new syncUseCasesModule.GetEventBootstrapUseCase(
+    testEventRepository,
+    testSyncRepository
+  );
+const testPushBatchUseCase = new syncUseCasesModule.PushSyncBatchUseCase(
+  testSyncRepository
+);
+
+export const authenticateSyncClient = (bearerToken: string) =>
+  testAuthenticateUseCase.execute({ bearerToken });
+
+export const getEventBootstrap = (eventCode: string) =>
+  testGetBootstrapUseCase.execute({ eventCode });
+
+export const pushSyncBatch = (
+  input: Parameters<
+    typeof syncUseCasesModule.PushSyncBatchUseCase.prototype.execute
+  >[0]
+) => testPushBatchUseCase.execute(input);
+
+interface TestRoleAssignment {
+  event: string;
+  role: (typeof schema.ROLE_VALUES)[number];
+}
 
 export async function resetSyncTestDatabase(): Promise<void> {
   await resetDatabase();
@@ -47,11 +98,29 @@ export async function resetSyncTestDatabase(): Promise<void> {
   }
 }
 
+export function createSyncTestApp(): Hono {
+  const app = new Hono();
+  app.route("/", syncRoutes);
+  return app;
+}
+
+export function createToken(input: {
+  roles: TestRoleAssignment[];
+  type?: number;
+  username?: string;
+}): Promise<string> {
+  return issueAccessToken({
+    username: input.username ?? "admin",
+    type: input.type ?? 0,
+    roles: input.roles,
+  });
+}
+
 export function createEventDb(
   eventCode: string,
   teamNumbers: string[] = []
 ): string {
-  const eventDbPath = join(DATA_DIR, `${eventCode}.db`);
+  const eventDbPath = join(getDataDir(), `${eventCode}.db`);
   rmSync(eventDbPath, { force: true });
 
   const eventDb = new Database(eventDbPath);
@@ -93,7 +162,7 @@ export function createEventDb(
 }
 
 export function openEventDb(eventCode: string): Database {
-  return new Database(join(DATA_DIR, `${eventCode}.db`));
+  return new Database(join(getDataDir(), `${eventCode}.db`));
 }
 
 export function insertEvent(eventCode: string): void {

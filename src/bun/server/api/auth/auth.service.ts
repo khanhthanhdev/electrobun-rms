@@ -45,9 +45,7 @@ export async function getJwtSecret(): Promise<string> {
   return secretRow.value;
 }
 
-export async function getUserRoles(
-  username: string
-): Promise<RoleAssignment[]> {
+async function getUserRoles(username: string): Promise<RoleAssignment[]> {
   const rows = await db
     .select({ role: schema.roles.role, event: schema.roles.event })
     .from(schema.roles)

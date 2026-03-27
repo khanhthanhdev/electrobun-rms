@@ -1,15 +1,29 @@
 import { Hono } from "hono";
 import { safeParse } from "valibot";
-import { ServiceError } from "../../services/manual-event-service";
+import { ApplicationError } from "../../application/common/application-error";
+import {
+  CreateTeamUseCase,
+  DeleteTeamUseCase,
+  ListTeamsUseCase,
+  UpdateTeamUseCase,
+} from "../../application/use-cases/teams";
+import { SQLiteTeamRepository } from "../../infrastructure/adapters/teams/sqlite-team-repository";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
 import { addTeamBodySchema, updateTeamBodySchema } from "./teams.schema";
-import { createTeam, editTeam, listTeams, removeTeam } from "./teams.service";
 
 export const teamsRoutes = new Hono<AppEnv>();
+const teamRepository = new SQLiteTeamRepository();
+const listTeamsUseCase = new ListTeamsUseCase(teamRepository);
+const createTeamUseCase = new CreateTeamUseCase(teamRepository);
+const updateTeamUseCase = new UpdateTeamUseCase(teamRepository);
+const deleteTeamUseCase = new DeleteTeamUseCase(teamRepository);
+
+const isApplicationError = (error: unknown): error is ApplicationError =>
+  error instanceof ApplicationError;
 
 const parseTeamNumberParam = (
   value: string
@@ -22,15 +36,15 @@ const parseTeamNumberParam = (
   return { teamNumber: parsedTeamNumber };
 };
 
-teamsRoutes.get("/:eventCode/teams", (c) => {
+teamsRoutes.get("/:eventCode/teams", async (c) => {
   const eventCode = c.req.param("eventCode");
   const search = c.req.query("search");
 
   try {
-    const teams = listTeams(eventCode, search);
+    const teams = await listTeamsUseCase.execute({ eventCode, search });
     return c.json(teams);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to load teams", message: error.message },
         error.status as 400 | 404 | 500
@@ -64,10 +78,13 @@ teamsRoutes.post("/:eventCode/teams", requireAuth, async (c) => {
   }
 
   try {
-    const team = createTeam(eventCode, bodyResult.output);
+    const team = await createTeamUseCase.execute({
+      eventCode,
+      payload: bodyResult.output,
+    });
     return c.json({ team }, 201);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to add team", message: error.message },
         error.status as 400 | 404 | 500
@@ -109,14 +126,14 @@ teamsRoutes.put("/:eventCode/teams/:teamNumber", requireAuth, async (c) => {
   }
 
   try {
-    const team = editTeam(
+    const team = await updateTeamUseCase.execute({
       eventCode,
-      teamNumberResult.teamNumber,
-      bodyResult.output
-    );
+      teamNumber: teamNumberResult.teamNumber,
+      payload: bodyResult.output,
+    });
     return c.json({ team });
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to edit team", message: error.message },
         error.status as 400 | 404 | 500
@@ -126,7 +143,7 @@ teamsRoutes.put("/:eventCode/teams/:teamNumber", requireAuth, async (c) => {
   }
 });
 
-teamsRoutes.delete("/:eventCode/teams/:teamNumber", requireAuth, (c) => {
+teamsRoutes.delete("/:eventCode/teams/:teamNumber", requireAuth, async (c) => {
   const eventCode = c.req.param("eventCode");
   const forbiddenResponse = requireEventAdmin(c, eventCode);
   if (forbiddenResponse) {
@@ -142,10 +159,13 @@ teamsRoutes.delete("/:eventCode/teams/:teamNumber", requireAuth, (c) => {
   }
 
   try {
-    removeTeam(eventCode, teamNumberResult.teamNumber);
-    return c.json({ deletedTeamNumber: teamNumberResult.teamNumber });
+    const result = await deleteTeamUseCase.execute({
+      eventCode,
+      teamNumber: teamNumberResult.teamNumber,
+    });
+    return c.json(result);
   } catch (error) {
-    if (error instanceof ServiceError) {
+    if (isApplicationError(error)) {
       return c.json(
         { error: "Failed to delete team", message: error.message },
         error.status as 400 | 404 | 500
