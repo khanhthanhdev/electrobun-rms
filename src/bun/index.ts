@@ -64,7 +64,7 @@ if (channel === "dev") {
 }
 
 const mainWindow = new BrowserWindow({
-  title: "ElectroBun App",
+  title: "STEAM For Vietnam - Robotics Team",
   url: windowUrl,
   frame: {
     width: 1200,

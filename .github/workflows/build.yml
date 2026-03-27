@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Build ElectroBun app
-        run: bunx electrobun build --env=${{ steps.channel.outputs.channel }}
+        run: bun scripts/run-electrobun-build.ts --env=${{ steps.channel.outputs.channel }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

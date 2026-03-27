@@ -2,8 +2,8 @@ import type { ElectrobunConfig } from "electrobun";
 
 export default {
   app: {
-    name: "S4V-RMS",
-    identifier: "com.electrobun.app",
+    name: "S4V-NRC",
+    identifier: "com.steamforvn.robotics-team",
     version: "1.0.0",
   },
   build: {
