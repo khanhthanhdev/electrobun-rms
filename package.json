@@ -14,6 +14,7 @@
     "start": "bun run dev",
     "check": "ultracite check",
     "fix": "ultracite fix",
+    "postinstall": "bun scripts/patch-electrobun.ts",
     "prepare": "husky"
   },
   "dependencies": {

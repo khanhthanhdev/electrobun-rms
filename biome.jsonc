@@ -2,6 +2,16 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/biome/core", "ultracite/biome/react"],
   "javascript": { "globals": ["Bun"] },
+  "linter": {
+    "rules": {
+      "performance": {
+        "noBarrelFile": "off"
+      },
+      "style": {
+        "noParameterProperties": "off"
+      }
+    }
+  },
   "overrides": [
     {
       "includes": [
@@ -14,9 +24,7 @@
       ],
       "linter": {
         "rules": {
-          "performance": {
-            "noBarrelFile": "off"
-          }
+          "performance": { "noBarrelFile": "off" }
         }
       }
     },
@@ -54,9 +62,7 @@
       "includes": ["src/bun/server/api/sync/sync.schema.ts"],
       "linter": {
         "rules": {
-          "performance": {
-            "noBarrelFile": "off"
-          }
+          "performance": { "noBarrelFile": "off" }
         }
       }
     }
