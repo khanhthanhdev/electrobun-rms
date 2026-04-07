@@ -21,6 +21,7 @@ export interface ConnectRealtimeStreamOptions<TEvent> {
   onChangeEvent: (event: TEvent) => void;
   onConnectionStateChange: (state: RealtimeConnectionState) => void;
   onError: (message: string) => void;
+  onReconnected?: () => void;
   parseEvent: (rawData: string) => TEvent | null;
   signal: AbortSignal;
   streamLabel: string;
@@ -35,6 +36,7 @@ export const connectRealtimeStream = async <TEvent>({
   onChangeEvent,
   onConnectionStateChange,
   onError,
+  onReconnected,
   parseEvent,
   signal,
   streamPath,
@@ -42,6 +44,7 @@ export const connectRealtimeStream = async <TEvent>({
   token,
 }: ConnectRealtimeStreamOptions<TEvent>): Promise<void> => {
   onConnectionStateChange("connecting");
+  let hasConnectedBefore = false;
 
   const headers: Record<string, string> = {
     Accept: EventStreamContentType,
@@ -95,6 +98,12 @@ export const connectRealtimeStream = async <TEvent>({
               `Expected ${EventStreamContentType} but received ${contentType ?? "unknown"}.`
             );
           }
+
+          if (hasConnectedBefore) {
+            onReconnected?.();
+          }
+          hasConnectedBefore = true;
+
           onConnectionStateChange("connected");
           return Promise.resolve();
         }

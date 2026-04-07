@@ -5,6 +5,7 @@ import {
 } from "../services/scoring-sync-service";
 import {
   applyScoringRealtimeEvent,
+  resetScoringRealtimeVersion,
   setScoringRealtimeConnectionState,
   setScoringRealtimeError,
 } from "../state/scoring-sync-store";
@@ -27,6 +28,9 @@ export const useScoringRealtime = (
       },
       onError: (message) => {
         setScoringRealtimeError(eventCode, message);
+      },
+      onReconnected: () => {
+        resetScoringRealtimeVersion(eventCode);
       },
       signal: abortController.signal,
       token,

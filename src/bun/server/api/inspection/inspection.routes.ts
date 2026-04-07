@@ -16,6 +16,7 @@ import {
 import { SQLiteInspectionRepository } from "../../infrastructure/adapters/inspection";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
+import { awaitStreamClose } from "../common/sse";
 import { requireInspector, requireLeadInspector } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
@@ -149,9 +150,7 @@ inspectionRoutes.get("/:eventCode/inspection/stream", requireAuth, (c) => {
     });
 
     try {
-      while (!stream.aborted) {
-        await stream.sleep(1000);
-      }
+      await awaitStreamClose(stream);
     } finally {
       cleanup();
       await queuedWrite;

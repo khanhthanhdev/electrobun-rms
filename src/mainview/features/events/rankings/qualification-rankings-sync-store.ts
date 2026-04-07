@@ -123,6 +123,18 @@ export const applyQualificationRankingsRealtimeEvent = (
   });
 };
 
+export const resetQualificationRankingsRealtimeVersion = (
+  eventCode: string
+): void => {
+  ensureQualificationRankingsRealtimeRow(eventCode);
+  qualificationRankingsRealtimeStore.setCell(
+    QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
+    eventCode,
+    LATEST_VERSION_CELL_ID,
+    0
+  );
+};
+
 export const subscribeToQualificationRankingsRealtimeVersion = (
   eventCode: string,
   listener: () => void

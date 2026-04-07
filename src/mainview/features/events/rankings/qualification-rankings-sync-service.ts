@@ -23,6 +23,7 @@ interface ConnectQualificationRankingsRealtimeOptions {
     state: QualificationRankingsRealtimeConnectionState
   ) => void;
   onError: (message: string) => void;
+  onReconnected?: () => void;
   signal: AbortSignal;
   token: string | null;
 }
@@ -70,10 +71,12 @@ export const connectQualificationRankingsRealtime = async ({
   onChangeEvent,
   onConnectionStateChange,
   onError,
+  onReconnected,
   signal,
   token,
 }: ConnectQualificationRankingsRealtimeOptions): Promise<void> => {
   onConnectionStateChange("connecting");
+  let hasConnectedBefore = false;
 
   const headers: Record<string, string> = {
     Accept: EventStreamContentType,
@@ -129,6 +132,12 @@ export const connectQualificationRankingsRealtime = async ({
               `Expected ${EventStreamContentType} but received ${contentType ?? "unknown"}.`
             );
           }
+
+          if (hasConnectedBefore) {
+            onReconnected?.();
+          }
+          hasConnectedBefore = true;
+
           onConnectionStateChange("connected");
           return Promise.resolve();
         }

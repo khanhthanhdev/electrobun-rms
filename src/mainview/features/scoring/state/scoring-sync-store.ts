@@ -111,6 +111,16 @@ export const applyScoringRealtimeEvent = (
   });
 };
 
+export const resetScoringRealtimeVersion = (eventCode: string): void => {
+  ensureScoringRealtimeRow(eventCode);
+  scoringRealtimeStore.setCell(
+    SCORING_REALTIME_TABLE_ID,
+    eventCode,
+    LATEST_VERSION_CELL_ID,
+    0
+  );
+};
+
 export const subscribeToScoringRealtimeVersion = (
   eventCode: string,
   listener: () => void

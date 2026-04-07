@@ -5,6 +5,7 @@ import {
 } from "./qualification-rankings-sync-service";
 import {
   applyQualificationRankingsRealtimeEvent,
+  resetQualificationRankingsRealtimeVersion,
   setQualificationRankingsRealtimeConnectionState,
   setQualificationRankingsRealtimeError,
 } from "./qualification-rankings-sync-store";
@@ -27,6 +28,9 @@ export const useQualificationRankingsRealtime = (
       },
       onError: (message) => {
         setQualificationRankingsRealtimeError(eventCode, message);
+      },
+      onReconnected: () => {
+        resetQualificationRankingsRealtimeVersion(eventCode);
       },
       signal: abortController.signal,
       token,

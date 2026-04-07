@@ -107,6 +107,16 @@ export const applyInspectionRealtimeEvent = (
   });
 };
 
+export const resetInspectionRealtimeVersion = (eventCode: string): void => {
+  ensureInspectionRealtimeRow(eventCode);
+  inspectionRealtimeStore.setCell(
+    INSPECTION_REALTIME_TABLE_ID,
+    eventCode,
+    LATEST_VERSION_CELL_ID,
+    0
+  );
+};
+
 export const subscribeToInspectionRealtimeVersion = (
   eventCode: string,
   listener: () => void

@@ -25,6 +25,7 @@ import {
 import { SQLiteRankingRepository } from "../../infrastructure/adapters/ranking";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
+import { awaitStreamClose } from "../common/sse";
 import { requireEventAdmin, requireGlobalAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
@@ -321,9 +322,7 @@ eventsRoutes.get("/:eventCode/qualification-rankings/stream", (c) => {
     });
 
     try {
-      while (!stream.aborted) {
-        await stream.sleep(1000);
-      }
+      await awaitStreamClose(stream);
     } finally {
       cleanup();
       await queuedWrite;

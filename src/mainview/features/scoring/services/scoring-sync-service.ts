@@ -23,6 +23,7 @@ interface ConnectScoringRealtimeOptions {
   onChangeEvent: (event: ScoringRealtimeChangeEvent) => void;
   onConnectionStateChange: (state: ScoringRealtimeConnectionState) => void;
   onError: (message: string) => void;
+  onReconnected?: () => void;
   signal: AbortSignal;
   token: string | null;
 }
@@ -88,6 +89,7 @@ export const connectScoringRealtime = async ({
   onChangeEvent,
   onConnectionStateChange,
   onError,
+  onReconnected,
   signal,
   token,
 }: ConnectScoringRealtimeOptions): Promise<void> =>
@@ -98,6 +100,7 @@ export const connectScoringRealtime = async ({
     onChangeEvent,
     onConnectionStateChange,
     onError,
+    onReconnected,
     parseEvent: parseScoringRealtimeChangeEvent,
     signal,
     streamLabel: "Scoring",

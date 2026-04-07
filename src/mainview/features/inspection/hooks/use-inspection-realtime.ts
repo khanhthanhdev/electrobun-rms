@@ -5,6 +5,7 @@ import {
 } from "../services/inspection-sync-service";
 import {
   applyInspectionRealtimeEvent,
+  resetInspectionRealtimeVersion,
   setInspectionRealtimeConnectionState,
   setInspectionRealtimeError,
 } from "../state/inspection-sync-store";
@@ -33,6 +34,9 @@ export const useInspectionRealtime = (
       },
       onError: (message) => {
         setInspectionRealtimeError(eventCode, message);
+      },
+      onReconnected: () => {
+        resetInspectionRealtimeVersion(eventCode);
       },
       signal: abortController.signal,
       token,

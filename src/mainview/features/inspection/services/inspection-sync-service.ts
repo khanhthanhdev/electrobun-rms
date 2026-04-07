@@ -26,6 +26,7 @@ interface ConnectInspectionRealtimeOptions {
   onChangeEvent: (event: InspectionRealtimeChangeEvent) => void;
   onConnectionStateChange: (state: InspectionRealtimeConnectionState) => void;
   onError: (message: string) => void;
+  onReconnected?: () => void;
   signal: AbortSignal;
   token: string;
 }
@@ -85,6 +86,7 @@ export const connectInspectionRealtime = async ({
   onChangeEvent,
   onConnectionStateChange,
   onError,
+  onReconnected,
   signal,
   token,
 }: ConnectInspectionRealtimeOptions): Promise<void> =>
@@ -95,6 +97,7 @@ export const connectInspectionRealtime = async ({
     onChangeEvent,
     onConnectionStateChange,
     onError,
+    onReconnected,
     parseEvent: parseInspectionRealtimeChangeEvent,
     signal,
     streamLabel: "Inspection",
