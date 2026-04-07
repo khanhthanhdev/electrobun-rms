@@ -7,8 +7,8 @@ import {
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
 import {
-  normalizeDisplayCommand,
   type DisplayCommand,
+  normalizeDisplayCommand,
 } from "./display-command-channel";
 import type { DisplaySceneMode } from "./display-scene-types";
 
@@ -46,7 +46,9 @@ interface DisplaySyncEventPayload {
   version: number;
 }
 
-export const parseDisplaySyncEvent = (rawData: string): DisplayCommand | null => {
+export const parseDisplaySyncEvent = (
+  rawData: string
+): DisplayCommand | null => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawData);

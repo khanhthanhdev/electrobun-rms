@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { DisplayMatchRef } from "@shared/display";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMatchControlData } from "@/features/events/control";
 import { fetchQualificationRankings } from "@/features/events/rankings";
 import type { EventQualificationRankingsResponse } from "@/features/events/rankings/qualification-rankings-service";
@@ -194,7 +194,9 @@ const toMatchesPlayed = (
     return "";
   }
 
-  const maxPlayed = Math.max(...data.rankings.map((ranking) => ranking.played ?? 0));
+  const maxPlayed = Math.max(
+    ...data.rankings.map((ranking) => ranking.played ?? 0)
+  );
   return `${maxPlayed} matches played`;
 };
 
@@ -240,7 +242,7 @@ const fetchAllDisplaySources = (
         teamNumber: number;
         status?: string;
       }>;
-    }>
+    }>,
   ]
 > =>
   Promise.allSettled([
@@ -258,9 +260,7 @@ const unwrapSettled = <T>(result: PromiseSettledResult<T>): T | null =>
   result.status === "fulfilled" ? result.value : null;
 
 const toMatchType = (value: string): MatchType | null =>
-  value === "practice" || value === "quals" || value === "elims"
-    ? value
-    : null;
+  value === "practice" || value === "quals" || value === "elims" ? value : null;
 
 const resolveDisplaySceneMatch = (
   control: MatchControlData | null,
@@ -318,6 +318,7 @@ export const useDisplayData = (
 ): DisplayData => {
   const [data, setData] = useState<DisplayData>(emptyDisplayData);
   const requestIdRef = useRef(0);
+  const { activeMatch, loadedMatch, sceneMode } = selection;
 
   const load = useCallback(async () => {
     const rid = ++requestIdRef.current;
@@ -333,8 +334,15 @@ export const useDisplayData = (
     const control = unwrapSettled(controlRes);
     const rankingsData = unwrapSettled(rankingsRes);
     const inspectionData = unwrapSettled(inspectionRes);
-    const sceneMatch = resolveDisplaySceneMatch(control, selection);
-    const loadedMatch = await loadMatchWithScoresheet(eventCode, sceneMatch);
+    const sceneMatch = resolveDisplaySceneMatch(control, {
+      activeMatch,
+      loadedMatch,
+      sceneMode,
+    });
+    const loadedSceneMatch = await loadMatchWithScoresheet(
+      eventCode,
+      sceneMatch
+    );
 
     if (rid !== requestIdRef.current) {
       return;
@@ -343,18 +351,12 @@ export const useDisplayData = (
     setData({
       eventName: event?.name ?? eventCode,
       inspectionTeams: toInspectionTeams(inspectionData),
-      loadedMatch,
+      loadedMatch: loadedSceneMatch,
       matchesPlayed: toMatchesPlayed(rankingsData),
       nextMatchStartTime: toNextMatchStartTime(control),
       rankings: toRankings(rankingsData),
     });
-  }, [
-    eventCode,
-    selection.activeMatch,
-    selection.loadedMatch,
-    selection.sceneMode,
-    token,
-  ]);
+  }, [eventCode, activeMatch, loadedMatch, sceneMode, token]);
 
   useScoringRealtime(eventCode, token);
   useScoringRealtimeRefresh(eventCode, load);

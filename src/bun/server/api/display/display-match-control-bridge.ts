@@ -85,5 +85,8 @@ export const publishDisplayFromMatchControl = (
         activeMatch: context?.committedMatch ?? state.activeMatch,
       });
       break;
+
+    default:
+      return;
   }
 };

@@ -22,9 +22,7 @@ export class MatchControlRealtimeFatalError extends Error {}
 interface ConnectMatchControlRealtimeOptions {
   eventCode: string;
   onChangeEvent: (event: MatchControlRealtimeChangeEvent) => void;
-  onConnectionStateChange: (
-    state: MatchControlRealtimeConnectionState
-  ) => void;
+  onConnectionStateChange: (state: MatchControlRealtimeConnectionState) => void;
   onError: (message: string) => void;
   onReconnected?: () => void;
   signal: AbortSignal;

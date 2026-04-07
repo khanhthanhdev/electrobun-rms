@@ -1,7 +1,7 @@
+import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import hourglassLine from "@/assets/display-sponsors/hourglass-line.svg";
 import hourglassOutline from "@/assets/display-sponsors/hourglass-outline.svg";
 import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
-import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 
 import { DisplaySceneFooter } from "../components/display-scene-footer";
 import { formatTimer } from "../display-helpers";

@@ -1192,9 +1192,7 @@ export class SQLiteScoringRepository implements ScoringRepository {
         try {
           if (tableExists(eventDb, tables.gameSpecificTable)) {
             eventDb
-              .query(
-                `DELETE FROM ${tables.gameSpecificTable} WHERE match = ?`
-              )
+              .query(`DELETE FROM ${tables.gameSpecificTable} WHERE match = ?`)
               .run(matchNumber);
           }
           if (tableExists(eventDb, tables.resultsTable)) {

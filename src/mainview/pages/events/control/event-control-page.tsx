@@ -1,17 +1,18 @@
 import type { DisplayMatchRef } from "@shared/display";
+import type { MatchControlState } from "@shared/match-control";
+import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publishDisplayCommand } from "@/features/display/display-command-channel";
 import {
-  useMatchControlData,
   fetchMatchControlState,
+  getMatchControlRealtimeState,
+  MatchControlTransitionError,
   postMatchControlLoad,
   postMatchControlTransition,
-  getMatchControlRealtimeState,
   subscribeToMatchControlRealtimeState,
-  MatchControlTransitionError,
+  useMatchControlData,
 } from "@/features/events/control";
 import { useMatchControlRealtime } from "@/features/events/control/hooks/use-match-control-realtime";
-import { useScoringRealtime } from "@/features/scoring/hooks/use-scoring-realtime";
 import {
   computeTimeRemaining,
   type MatchRef,
@@ -19,9 +20,8 @@ import {
   resolveMatchRow,
   toMatchRef,
 } from "@/features/events/control/match-control-session";
+import { useScoringRealtime } from "@/features/scoring/hooks/use-scoring-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
-import type { MatchControlState } from "@shared/match-control";
-import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import type {
   ControlMatchRow,
   ControlMatchType,
@@ -45,8 +45,6 @@ type ControlTab =
 
 type LoadedMatchState = "idle" | "loaded" | "preview" | "ready";
 type ActiveMatchState = "idle" | "in_progress" | "completed";
-
-
 
 const MATCH_TYPE_LABELS: Record<ControlMatchType, string> = {
   practice: "Practice",
@@ -654,7 +652,9 @@ export const EventControlPage = ({
   // Transition error handling
   // ---------------------------------------------------------------------------
   const [transitionError, setTransitionError] = useState<string | null>(null);
-  const transitionErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const showTransitionError = useCallback((message: string) => {
     if (transitionErrorTimerRef.current) {
@@ -672,7 +672,9 @@ export const EventControlPage = ({
       if (err instanceof MatchControlTransitionError) {
         if (err.body.error === "STATE_CONFLICT" && err.body.currentState) {
           applyServerState(err.body.currentState);
-          showTransitionError("State was out of sync — refreshed. Please retry.");
+          showTransitionError(
+            "State was out of sync — refreshed. Please retry."
+          );
         } else {
           showTransitionError(err.body.message);
         }
@@ -702,7 +704,9 @@ export const EventControlPage = ({
       .then((res) => {
         applyServerState(res.state);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Keep the page interactive even if the initial state fetch fails.
+      });
   }, [eventCode, token, applyServerState]);
 
   // Subscribe to SSE state updates via the sync store
@@ -827,7 +831,14 @@ export const EventControlPage = ({
         .then((res) => applyServerState(res.state))
         .catch(handleTransitionError);
     }
-  }, [selectedRows, activeMatchRef, eventCode, token, applyServerState, handleTransitionError]);
+  }, [
+    selectedRows,
+    activeMatchRef,
+    eventCode,
+    token,
+    applyServerState,
+    handleTransitionError,
+  ]);
 
   const handleLoadMatch = useCallback(
     (matchNumber: number) => {
@@ -851,14 +862,27 @@ export const EventControlPage = ({
         .then((res) => applyServerState(res.state))
         .catch(handleTransitionError);
     },
-    [activeMatchRef, selectedMatchType, selectedRows, eventCode, token, applyServerState, handleTransitionError]
+    [
+      activeMatchRef,
+      selectedMatchType,
+      selectedRows,
+      eventCode,
+      token,
+      applyServerState,
+      handleTransitionError,
+    ]
   );
 
   const handleShowPreview = useCallback(() => {
     if (!token) {
       return;
     }
-    postMatchControlTransition(eventCode, token, "show-preview", versionRef.current)
+    postMatchControlTransition(
+      eventCode,
+      token,
+      "show-preview",
+      versionRef.current
+    )
       .then((res) => applyServerState(res.state))
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, handleTransitionError]);
@@ -867,7 +891,12 @@ export const EventControlPage = ({
     if (!token) {
       return;
     }
-    postMatchControlTransition(eventCode, token, "show-match", versionRef.current)
+    postMatchControlTransition(
+      eventCode,
+      token,
+      "show-match",
+      versionRef.current
+    )
       .then((res) => applyServerState(res.state))
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, handleTransitionError]);

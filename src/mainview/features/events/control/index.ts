@@ -2,13 +2,14 @@
  * Control subfeature public API.
  */
 
-export { fetchMatchControlData } from "./match-control-service";
+export { useMatchControlRealtime } from "./hooks/use-match-control-realtime";
 export {
   fetchMatchControlState,
+  MatchControlTransitionError,
   postMatchControlLoad,
   postMatchControlTransition,
-  MatchControlTransitionError,
 } from "./match-control-api";
+export { fetchMatchControlData } from "./match-control-service";
 export type { MatchRef } from "./match-control-session";
 export {
   computeTimeRemaining,
@@ -16,9 +17,8 @@ export {
   resolveMatchRow,
   toMatchRef,
 } from "./match-control-session";
-export { useMatchControlRealtime } from "./hooks/use-match-control-realtime";
-export { useMatchControlData } from "./use-match-control-data";
 export {
   getMatchControlRealtimeState,
   subscribeToMatchControlRealtimeState,
 } from "./state/match-control-sync-store";
+export { useMatchControlData } from "./use-match-control-data";

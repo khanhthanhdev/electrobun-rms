@@ -19,10 +19,7 @@ const matchControlRealtimeStore = createStore();
 
 const ensureMatchControlRealtimeRow = (eventCode: string): void => {
   if (
-    matchControlRealtimeStore.hasRow(
-      MATCH_CONTROL_REALTIME_TABLE_ID,
-      eventCode
-    )
+    matchControlRealtimeStore.hasRow(MATCH_CONTROL_REALTIME_TABLE_ID, eventCode)
   ) {
     return;
   }
@@ -104,11 +101,7 @@ export const applyMatchControlRealtimeEvent = (
 ): void => {
   ensureMatchControlRealtimeRow(eventCode);
 
-  const currentVersion = readNumberCell(
-    eventCode,
-    LATEST_VERSION_CELL_ID,
-    0
-  );
+  const currentVersion = readNumberCell(eventCode, LATEST_VERSION_CELL_ID, 0);
 
   if (version > currentVersion) {
     matchControlRealtimeStore.setCell(
@@ -127,11 +120,7 @@ export const applyMatchControlRealtimeState = (
 ): void => {
   ensureMatchControlRealtimeRow(eventCode);
 
-  const currentVersion = readNumberCell(
-    eventCode,
-    LATEST_VERSION_CELL_ID,
-    0
-  );
+  const currentVersion = readNumberCell(eventCode, LATEST_VERSION_CELL_ID, 0);
 
   if (version > currentVersion) {
     matchControlRealtimeStore.setPartialRow(
@@ -145,9 +134,7 @@ export const applyMatchControlRealtimeState = (
   }
 };
 
-export const resetMatchControlRealtimeVersion = (
-  eventCode: string
-): void => {
+export const resetMatchControlRealtimeVersion = (eventCode: string): void => {
   ensureMatchControlRealtimeRow(eventCode);
   matchControlRealtimeStore.setCell(
     MATCH_CONTROL_REALTIME_TABLE_ID,

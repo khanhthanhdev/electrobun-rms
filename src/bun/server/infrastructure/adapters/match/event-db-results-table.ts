@@ -5,11 +5,12 @@ export type EventDbResultsTableName =
   | "practice_results"
   | "quals_results";
 
-const VALID_RESULTS_TABLES: ReadonlySet<string> = new Set<EventDbResultsTableName>([
-  "elims_results",
-  "practice_results",
-  "quals_results",
-]);
+const VALID_RESULTS_TABLES: ReadonlySet<string> =
+  new Set<EventDbResultsTableName>([
+    "elims_results",
+    "practice_results",
+    "quals_results",
+  ]);
 
 export const ensureResultsTable = (
   eventDb: Database,

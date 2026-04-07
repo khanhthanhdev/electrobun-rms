@@ -54,28 +54,23 @@ export const ControlActiveMatchPanel = ({
   token,
 }: ControlActiveMatchPanelProps): JSX.Element => {
   const [activeTab, setActiveTab] = useState(0);
-
-  if (!activeMatch) {
-    return (
-      <p className="empty-state">No active match.</p>
-    );
-  }
-
   const selectedMatch = activeMatch;
-  const matchType = selectedMatch.matchType;
+  const matchType = selectedMatch?.matchType ?? "quals";
+  const matchNumber = selectedMatch?.matchNumber ?? 0;
+  const hasActiveMatch = selectedMatch !== null;
 
   const { scoresheet } = useMatchScoresheet(
     eventCode,
     matchType,
-    selectedMatch.matchNumber,
+    matchNumber,
     token,
-    true
+    hasActiveMatch
   );
 
   const redAutoSave = useAutoSaveScoring({
     alliance: "red",
     eventCode,
-    matchNumber: selectedMatch.matchNumber,
+    matchNumber,
     matchType,
     token,
   });
@@ -83,10 +78,14 @@ export const ControlActiveMatchPanel = ({
   const blueAutoSave = useAutoSaveScoring({
     alliance: "blue",
     eventCode,
-    matchNumber: selectedMatch.matchNumber,
+    matchNumber,
     matchType,
     token,
   });
+
+  if (!selectedMatch) {
+    return <p className="empty-state">No active match.</p>;
+  }
 
   const redScore = scoresheet?.red?.scoreTotal ?? selectedMatch.redScore ?? 0;
   const blueScore =
@@ -169,99 +168,99 @@ export const ControlActiveMatchPanel = ({
       </div>
 
       <div className="match-control-active-tabs">
-         <div role="tablist">
-           <button
-             aria-selected={activeTab === 0}
-             onClick={() => setActiveTab(0)}
-             role="tab"
-             type="button"
-           >
-             Score Entry
-           </button>
-           <button
-             aria-selected={activeTab === 1}
-             onClick={() => setActiveTab(1)}
-             role="tab"
-             type="button"
-           >
-             Scoresheet
-           </button>
-           <button
-             aria-selected={activeTab === 2}
-             onClick={() => setActiveTab(2)}
-             role="tab"
-             type="button"
-           >
-             History
-           </button>
-         </div>
-         <div
-           aria-hidden={activeTab !== 0}
-           hidden={activeTab !== 0}
-           role="tabpanel"
-         >
-           {redAutoSave.lastSaveError || blueAutoSave.lastSaveError ? (
-             <p className="message-block" data-variant="danger" role="alert">
-               {redAutoSave.lastSaveError ?? blueAutoSave.lastSaveError}
-             </p>
-           ) : null}
-           <div className="match-control-score-entry-inline scoresheet-grid-container">
-             <ScoringEntryForm
-               alliance="red"
-               embedded
-               fieldLabel={fieldLabel}
-               initialScore={
-                 scoresheet?.red
-                   ? scoresheetToScoringState(scoresheet.red)
-                   : undefined
-               }
-               key={`red-${selectedMatch.matchNumber}`}
-               matchLabel={matchLabel}
-               onChange={redAutoSave.onScoreChange}
-               onSubmit={redAutoSave.submitScore}
-             />
-             <ScoringEntryForm
-               alliance="blue"
-               embedded
-               fieldLabel={fieldLabel}
-               initialScore={
-                 scoresheet?.blue
-                   ? scoresheetToScoringState(scoresheet.blue)
-                   : undefined
-               }
-               key={`blue-${selectedMatch.matchNumber}`}
-               matchLabel={matchLabel}
-               onChange={blueAutoSave.onScoreChange}
-               onSubmit={blueAutoSave.submitScore}
-             />
-           </div>
-         </div>
-         <div
-           aria-hidden={activeTab !== 1}
-           hidden={activeTab !== 1}
-           role="tabpanel"
-         >
-           <MatchScoresheetEmbed
-             eventCode={eventCode}
-             matchNumber={selectedMatch.matchNumber}
-             matchType={selectedMatch.matchType}
-             token={token}
-           />
-         </div>
-         <div
-           aria-hidden={activeTab !== 2}
-           hidden={activeTab !== 2}
-           role="tabpanel"
-         >
-           <MatchHistoryEmbed
-             eventCode={eventCode}
-             matchName={selectedMatch.matchName}
-             matchNumber={selectedMatch.matchNumber}
-             matchType={selectedMatch.matchType}
-             token={token}
-           />
-         </div>
-       </div>
+        <div role="tablist">
+          <button
+            aria-selected={activeTab === 0}
+            onClick={() => setActiveTab(0)}
+            role="tab"
+            type="button"
+          >
+            Score Entry
+          </button>
+          <button
+            aria-selected={activeTab === 1}
+            onClick={() => setActiveTab(1)}
+            role="tab"
+            type="button"
+          >
+            Scoresheet
+          </button>
+          <button
+            aria-selected={activeTab === 2}
+            onClick={() => setActiveTab(2)}
+            role="tab"
+            type="button"
+          >
+            History
+          </button>
+        </div>
+        <div
+          aria-hidden={activeTab !== 0}
+          hidden={activeTab !== 0}
+          role="tabpanel"
+        >
+          {redAutoSave.lastSaveError || blueAutoSave.lastSaveError ? (
+            <p className="message-block" data-variant="danger" role="alert">
+              {redAutoSave.lastSaveError ?? blueAutoSave.lastSaveError}
+            </p>
+          ) : null}
+          <div className="match-control-score-entry-inline scoresheet-grid-container">
+            <ScoringEntryForm
+              alliance="red"
+              embedded
+              fieldLabel={fieldLabel}
+              initialScore={
+                scoresheet?.red
+                  ? scoresheetToScoringState(scoresheet.red)
+                  : undefined
+              }
+              key={`red-${selectedMatch.matchNumber}`}
+              matchLabel={matchLabel}
+              onChange={redAutoSave.onScoreChange}
+              onSubmit={redAutoSave.submitScore}
+            />
+            <ScoringEntryForm
+              alliance="blue"
+              embedded
+              fieldLabel={fieldLabel}
+              initialScore={
+                scoresheet?.blue
+                  ? scoresheetToScoringState(scoresheet.blue)
+                  : undefined
+              }
+              key={`blue-${selectedMatch.matchNumber}`}
+              matchLabel={matchLabel}
+              onChange={blueAutoSave.onScoreChange}
+              onSubmit={blueAutoSave.submitScore}
+            />
+          </div>
+        </div>
+        <div
+          aria-hidden={activeTab !== 1}
+          hidden={activeTab !== 1}
+          role="tabpanel"
+        >
+          <MatchScoresheetEmbed
+            eventCode={eventCode}
+            matchNumber={selectedMatch.matchNumber}
+            matchType={selectedMatch.matchType}
+            token={token}
+          />
+        </div>
+        <div
+          aria-hidden={activeTab !== 2}
+          hidden={activeTab !== 2}
+          role="tabpanel"
+        >
+          <MatchHistoryEmbed
+            eventCode={eventCode}
+            matchName={selectedMatch.matchName}
+            matchNumber={selectedMatch.matchNumber}
+            matchType={selectedMatch.matchType}
+            token={token}
+          />
+        </div>
+      </div>
     </section>
   );
 };

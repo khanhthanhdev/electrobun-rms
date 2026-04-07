@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import type { DisplayMatchRef } from "@shared/display";
+import { useEffect, useRef, useState } from "react";
 import type { DisplayCommand } from "./display-command-channel";
 import { subscribeToDisplayCommand } from "./display-command-channel";
 import {

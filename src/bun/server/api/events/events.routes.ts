@@ -25,9 +25,9 @@ import {
 import { SQLiteRankingRepository } from "../../infrastructure/adapters/ranking";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
-import { awaitStreamClose } from "../common/sse";
 import { requireEventAdmin, requireGlobalAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
+import { awaitStreamClose } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import { manualEventBodySchema, updateEventBodySchema } from "./events.schema";
 import {

@@ -1,5 +1,8 @@
 import type { DisplayMatchRef } from "@shared/display";
-import { MATCH_DURATION_SECONDS, type MatchControlState } from "@shared/match-control";
+import {
+  MATCH_DURATION_SECONDS,
+  type MatchControlState,
+} from "@shared/match-control";
 
 // ---------------------------------------------------------------------------
 // Command types
@@ -24,9 +27,9 @@ export interface TransitionResult {
 }
 
 export interface TransitionError {
+  currentState: MatchControlState;
   error: "STATE_CONFLICT" | "INVALID_TRANSITION";
   message: string;
-  currentState: MatchControlState;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,14 +138,15 @@ export const applyTransition = (
   const state = getMatchControlState(eventCode);
 
   // Version check for client-initiated commands
-  if (command.type !== "AUTO_COMPLETE") {
-    if (command.expectedVersion !== currentVersion) {
-      return {
-        error: "STATE_CONFLICT",
-        message: `Expected version ${command.expectedVersion} but current is ${currentVersion}. Refresh state.`,
-        currentState: state,
-      };
-    }
+  if (
+    command.type !== "AUTO_COMPLETE" &&
+    command.expectedVersion !== currentVersion
+  ) {
+    return {
+      error: "STATE_CONFLICT",
+      message: `Expected version ${command.expectedVersion} but current is ${currentVersion}. Refresh state.`,
+      currentState: state,
+    };
   }
 
   switch (command.type) {
@@ -277,5 +281,12 @@ export const applyTransition = (
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
+
+    default:
+      return {
+        error: "INVALID_TRANSITION",
+        message: `Unknown transition command: ${command.type}`,
+        currentState: state,
+      };
   }
 };

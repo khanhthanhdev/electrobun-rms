@@ -31,14 +31,14 @@ describe("display command sync service", () => {
         activeMatch,
         loadedMatch,
         mode: "match-start",
-        startedAtMs: 12345,
+        startedAtMs: 12_345,
       })
     ).toEqual({
       activeMatch,
       loadedMatch,
       message: null,
       mode: "match-start",
-      startedAtMs: 12345,
+      startedAtMs: 12_345,
     });
   });
 

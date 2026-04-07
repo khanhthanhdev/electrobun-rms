@@ -12,9 +12,9 @@ interface MatchControlTransitionResponse {
 }
 
 export interface MatchControlErrorBody {
+  currentState?: MatchControlState;
   error: "STATE_CONFLICT" | "INVALID_TRANSITION" | string;
   message: string;
-  currentState?: MatchControlState;
 }
 
 export class MatchControlTransitionError extends Error {
@@ -29,10 +29,7 @@ export class MatchControlTransitionError extends Error {
 
 const API_BASE_URL = "/api" as const;
 
-const buildHeaders = (
-  token?: string | null,
-  extra?: HeadersInit
-): Headers => {
+const buildHeaders = (token?: string | null, extra?: HeadersInit): Headers => {
   const headers = new Headers(extra);
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -42,7 +39,12 @@ const buildHeaders = (
 
 const matchControlRequest = async <T>(
   path: string,
-  options: { token?: string | null; method?: string; body?: string; headers?: HeadersInit } = {}
+  options: {
+    token?: string | null;
+    method?: string;
+    body?: string;
+    headers?: HeadersInit;
+  } = {}
 ): Promise<T> => {
   const { token, ...rest } = options;
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,7 +57,9 @@ const matchControlRequest = async <T>(
       const errorBody = (await response.json()) as MatchControlErrorBody;
       throw new MatchControlTransitionError(errorBody);
     } catch (err) {
-      if (err instanceof MatchControlTransitionError) throw err;
+      if (err instanceof MatchControlTransitionError) {
+        throw err;
+      }
       throw new Error(`Request failed with status ${response.status}`);
     }
   }
@@ -70,9 +74,12 @@ export const fetchMatchControlState = (
   eventCode: string,
   token: string
 ): Promise<MatchControlStateResponse> =>
-  matchControlRequest<MatchControlStateResponse>(matchControlPath(eventCode, "state"), {
-    token,
-  });
+  matchControlRequest<MatchControlStateResponse>(
+    matchControlPath(eventCode, "state"),
+    {
+      token,
+    }
+  );
 
 export const postMatchControlLoad = (
   eventCode: string,

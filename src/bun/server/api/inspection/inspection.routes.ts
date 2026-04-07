@@ -16,9 +16,9 @@ import {
 import { SQLiteInspectionRepository } from "../../infrastructure/adapters/inspection";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
-import { awaitStreamClose } from "../common/sse";
 import { requireInspector, requireLeadInspector } from "../common/guards";
 import { parseJsonBody } from "../common/http";
+import { awaitStreamClose } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import {
   overrideStatusBodySchema,

@@ -1,24 +1,24 @@
+import {
+  type MatchControlState,
+  matchControlLoadBodySchema,
+  matchControlTransitionBodySchema,
+} from "@shared/match-control";
 import { Hono } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
-import {
-  matchControlLoadBodySchema,
-  matchControlTransitionBodySchema,
-  type MatchControlState,
-} from "@shared/match-control";
+import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
-import { awaitStreamClose } from "../common/sse";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
+import { awaitStreamClose } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import { publishDisplayFromMatchControl } from "../display/display-match-control-bridge";
-import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
 import {
   applyTransition,
   getMatchControlState,
-  scheduleAutoComplete,
   type MatchControlCommand,
+  scheduleAutoComplete,
   type TransitionError,
   type TransitionResult,
 } from "./match-control-state";
@@ -63,7 +63,9 @@ const handleTransition = (
     const { matchType, matchNumber } = preTransitionState.activeMatch;
     scoringRepository
       .clearMatchScores(eventCode, matchType, matchNumber)
-      .catch(() => {});
+      .catch(() => {
+        // Ignore cleanup failures; the match state transition still succeeds.
+      });
   }
 
   // Publish assigns the real version via the sync hub's single counter.
@@ -121,7 +123,9 @@ matchControlRoutes.get("/:eventCode/match-control/stream", (c) => {
           }
           await writeOperation(stream);
         })
-        .catch(() => {});
+        .catch(() => {
+          // Ignore write failures after disconnect.
+        });
     };
 
     const snapshotEvent = createMatchControlSnapshotHintEvent(
@@ -134,9 +138,7 @@ matchControlRoutes.get("/:eventCode/match-control/stream", (c) => {
     );
 
     const unsubscribe = matchControlSyncHub.subscribe(eventCode, (event) => {
-      enqueueWrite((streamApi) =>
-        writeMatchControlSyncEvent(streamApi, event)
-      );
+      enqueueWrite((streamApi) => writeMatchControlSyncEvent(streamApi, event));
     });
 
     const heartbeatIntervalId = setInterval(() => {
@@ -226,10 +228,7 @@ matchControlRoutes.post(
 
 const createTransitionRoute = (
   path: string,
-  commandType: Exclude<
-    MatchControlCommand["type"],
-    "LOAD" | "AUTO_COMPLETE"
-  >
+  commandType: Exclude<MatchControlCommand["type"], "LOAD" | "AUTO_COMPLETE">
 ) => {
   matchControlRoutes.post(
     `/:eventCode/match-control/${path}`,

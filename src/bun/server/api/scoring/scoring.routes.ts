@@ -11,9 +11,9 @@ import {
 import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
-import { awaitStreamClose } from "../common/sse";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
+import { awaitStreamClose } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import { saveMatchAllianceScoreBodySchema } from "./scoring.schema";
 import {
