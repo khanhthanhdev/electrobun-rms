@@ -11,6 +11,8 @@ export const AudienceDisplayPage = ({
   token,
 }: AudienceDisplayPageProps): JSX.Element => {
   const {
+    activeMatch,
+    loadedMatch,
     mode: sceneMode,
     matchStartedAtMs,
     message,
@@ -19,7 +21,9 @@ export const AudienceDisplayPage = ({
   return (
     <main aria-label="Audience display" className="audience-display-page">
       <DisplaySceneRenderer
+        activeMatch={activeMatch}
         eventCode={eventCode}
+        loadedMatch={loadedMatch}
         matchStartedAtMs={matchStartedAtMs}
         message={message}
         sceneMode={sceneMode}

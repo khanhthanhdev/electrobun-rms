@@ -8,21 +8,99 @@
  * updates instantly while cross-device displays update via SSE.
  */
 
-import type { DisplaySceneMode } from "@shared/display";
+import type { DisplayIntent, DisplayMatchRef } from "@shared/display";
 
 const CHANNEL_NAME = "audience-display-command";
 const STORAGE_KEY_PREFIX = "audience-display:";
 const API_BASE_URL = "/api" as const;
 
-export type DisplayCommand =
-  | { mode: DisplaySceneMode }
-  | { mode: "match-start"; startedAtMs: number }
-  | { mode: "text-notification"; message: string };
+export type DisplayCommand = DisplayIntent;
 
 export type DisplayCommandPayload = DisplayCommand & { eventCode: string };
 
+interface NormalizableDisplayCommand {
+  activeMatch?: unknown;
+  loadedMatch?: unknown;
+  message?: unknown;
+  mode: DisplayCommand["mode"];
+  startedAtMs?: unknown;
+}
+
 const toStorageKey = (eventCode: string): string =>
   `${STORAGE_KEY_PREFIX}${eventCode}`;
+
+const isDisplayMatchType = (
+  value: unknown
+): value is DisplayMatchRef["matchType"] =>
+  value === "practice" || value === "quals" || value === "elims";
+
+const parseDisplayMatchRef = (value: unknown): DisplayMatchRef | null => {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const match = value as Record<string, unknown>;
+  const {
+    blueTeam,
+    blueTeamName,
+    fieldNumber,
+    matchName,
+    matchNumber,
+    matchType,
+    redTeam,
+    redTeamName,
+  } = match;
+
+  if (
+    typeof matchName !== "string" ||
+    !Number.isInteger(matchNumber) ||
+    (matchNumber as number) <= 0 ||
+    !isDisplayMatchType(matchType) ||
+    !Number.isInteger(fieldNumber) ||
+    (fieldNumber as number) <= 0 ||
+    !Number.isInteger(redTeam) ||
+    (redTeam as number) <= 0 ||
+    !Number.isInteger(blueTeam) ||
+    (blueTeam as number) <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    blueTeam: blueTeam as number,
+    blueTeamName: typeof blueTeamName === "string" ? blueTeamName : undefined,
+    fieldNumber: fieldNumber as number,
+    matchName,
+    matchNumber: matchNumber as number,
+    matchType,
+    redTeam: redTeam as number,
+    redTeamName: typeof redTeamName === "string" ? redTeamName : undefined,
+  };
+};
+
+export const normalizeDisplayCommand = (
+  command: NormalizableDisplayCommand
+): DisplayCommand => ({
+  activeMatch: parseDisplayMatchRef(command.activeMatch) ?? null,
+  loadedMatch: parseDisplayMatchRef(command.loadedMatch) ?? null,
+  message: typeof command.message === "string" ? command.message : null,
+  mode: command.mode,
+  startedAtMs:
+    typeof command.startedAtMs === "number" ? command.startedAtMs : null,
+});
+
+export const createDisplayCommandRequestBody = (
+  command: DisplayCommand
+): Record<string, unknown> => {
+  const normalized = normalizeDisplayCommand(command);
+  return {
+    activeMatch: normalized.activeMatch,
+    loadedMatch: normalized.loadedMatch,
+    message: normalized.message,
+    mode: normalized.mode,
+    startedAtMs: normalized.startedAtMs,
+  };
+};
 
 let publishChannel: BroadcastChannel | null = null;
 
@@ -42,7 +120,10 @@ const publishLocalCommand = (
   eventCode: string,
   command: DisplayCommand
 ): void => {
-  const payload: DisplayCommandPayload = { ...command, eventCode };
+  const payload: DisplayCommandPayload = {
+    ...normalizeDisplayCommand(command),
+    eventCode,
+  };
   const serialized = JSON.stringify(payload);
 
   getPublishChannel()?.postMessage(payload);
@@ -64,18 +145,10 @@ const publishDisplayCommandViaApi = (
   command: DisplayCommand,
   token: string
 ): void => {
-  const body: Record<string, unknown> = { mode: command.mode };
-  if (command.mode === "text-notification" && "message" in command) {
-    body.message = command.message;
-  }
-  if (command.mode === "match-start" && "startedAtMs" in command) {
-    body.startedAtMs = command.startedAtMs;
-  }
-
   fetch(
     `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}/display/command`,
     {
-      body: JSON.stringify(body),
+      body: JSON.stringify(createDisplayCommandRequestBody(command)),
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -117,18 +190,7 @@ export const subscribeToDisplayCommand = (
     if (payload.eventCode !== eventCode) {
       return;
     }
-    let cmd: DisplayCommand;
-    if (payload.mode === "text-notification" && "message" in payload) {
-      cmd = { mode: "text-notification", message: payload.message ?? "" };
-    } else if (payload.mode === "match-start" && "startedAtMs" in payload) {
-      cmd = {
-        mode: "match-start",
-        startedAtMs: (payload as { startedAtMs: number }).startedAtMs,
-      };
-    } else {
-      cmd = { mode: payload.mode };
-    }
-    onCommand(cmd);
+    onCommand(normalizeDisplayCommand(payload));
   };
 
   const handleMessage = (event: MessageEvent<DisplayCommandPayload>): void => {
@@ -142,7 +204,12 @@ export const subscribeToDisplayCommand = (
     if (e.key === toStorageKey(eventCode) && e.newValue) {
       try {
         const payload = JSON.parse(e.newValue) as DisplayCommandPayload;
-        dispatchCommand(payload);
+        if (
+          typeof payload?.eventCode === "string" &&
+          typeof payload?.mode === "string"
+        ) {
+          dispatchCommand(payload);
+        }
       } catch {
         // Ignore parse errors
       }
@@ -164,7 +231,12 @@ export const subscribeToDisplayCommand = (
     const stored = localStorage.getItem(toStorageKey(eventCode));
     if (stored) {
       const payload = JSON.parse(stored) as DisplayCommandPayload;
-      dispatchCommand(payload);
+      if (
+        typeof payload?.eventCode === "string" &&
+        typeof payload?.mode === "string"
+      ) {
+        dispatchCommand(payload);
+      }
     }
   } catch {
     // Ignore

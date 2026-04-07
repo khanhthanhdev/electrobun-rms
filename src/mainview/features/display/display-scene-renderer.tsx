@@ -1,3 +1,4 @@
+import type { DisplayMatchRef } from "@shared/display";
 import type { DisplaySceneMode } from "./display-scene-types";
 import { DisplaySceneBlank } from "./scenes/display-scene-blank";
 import { DisplaySceneMatchPreview } from "./scenes/display-scene-match-preview";
@@ -11,7 +12,9 @@ import { DisplaySceneTextNotification } from "./scenes/display-scene-text-notifi
 import { useDisplayData } from "./use-display-data";
 
 interface DisplaySceneRendererProps {
+  activeMatch: DisplayMatchRef | null;
   eventCode: string;
+  loadedMatch: DisplayMatchRef | null;
   matchStartedAtMs: number | null;
   message: string;
   sceneMode: DisplaySceneMode;
@@ -19,13 +22,19 @@ interface DisplaySceneRendererProps {
 }
 
 export const DisplaySceneRenderer = ({
+  activeMatch,
   eventCode,
+  loadedMatch,
   matchStartedAtMs,
   sceneMode,
   message,
   token,
 }: DisplaySceneRendererProps): JSX.Element => {
-  const data = useDisplayData(eventCode, token);
+  const data = useDisplayData(eventCode, token, {
+    activeMatch,
+    loadedMatch,
+    sceneMode,
+  });
   const eventName = data.eventName || eventCode;
 
   switch (sceneMode) {
@@ -44,6 +53,7 @@ export const DisplaySceneRenderer = ({
             data.loadedMatch
               ? {
                   matchName: data.loadedMatch.matchName,
+                  fieldNumber: data.loadedMatch.fieldNumber,
                   redTeam: data.loadedMatch.redTeam,
                   redTeamName: data.loadedMatch.redTeamName,
                   blueTeam: data.loadedMatch.blueTeam,

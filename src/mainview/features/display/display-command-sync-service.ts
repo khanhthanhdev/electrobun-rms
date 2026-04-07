@@ -6,7 +6,10 @@ import {
   EventStreamContentType,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
-import type { DisplayCommand } from "./display-command-channel";
+import {
+  normalizeDisplayCommand,
+  type DisplayCommand,
+} from "./display-command-channel";
 import type { DisplaySceneMode } from "./display-scene-types";
 
 const API_BASE_URL = "/api" as const;
@@ -32,16 +35,18 @@ export interface ScoreUpdateEvent {
 }
 
 interface DisplaySyncEventPayload {
+  activeMatch?: unknown;
   changedAt: string;
   eventCode: string;
   kind: string;
+  loadedMatch?: unknown;
   message: string | null;
   mode: DisplaySceneMode | null;
   startedAtMs: number | null;
   version: number;
 }
 
-const parseDisplaySyncEvent = (rawData: string): DisplayCommand | null => {
+export const parseDisplaySyncEvent = (rawData: string): DisplayCommand | null => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawData);
@@ -54,32 +59,29 @@ const parseDisplaySyncEvent = (rawData: string): DisplayCommand | null => {
   }
 
   const payload = parsed as DisplaySyncEventPayload;
-  const { kind, mode, message, startedAtMs } = payload;
+  const { activeMatch, kind, loadedMatch, message, mode, startedAtMs } =
+    payload;
 
   if (kind === "SNAPSHOT_HINT" && mode === null) {
     return null;
   }
 
-  if (!mode) {
+  if (typeof mode !== "string") {
     return null;
   }
 
-  if (mode === "text-notification") {
-    return { mode: "text-notification", message: message ?? "" };
-  }
-
-  if (mode === "match-start") {
-    if (startedAtMs === null || startedAtMs === undefined) {
-      // No startedAtMs means "Show Match" (frozen timer at 2:30), not "Start Match".
-      return { mode: "match-start" };
-    }
-    return { mode: "match-start", startedAtMs };
-  }
-
-  return { mode };
+  return normalizeDisplayCommand({
+    activeMatch,
+    loadedMatch,
+    message,
+    mode,
+    startedAtMs,
+  });
 };
 
-const parseScoreUpdateEvent = (rawData: string): ScoreUpdateEvent | null => {
+export const parseScoreUpdateEvent = (
+  rawData: string
+): ScoreUpdateEvent | null => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawData);

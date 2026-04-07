@@ -10,6 +10,8 @@ import {
 } from "./page-renderer";
 import { readCurrentPath } from "./route-matcher";
 
+const AUDIENCE_DISPLAY_PATTERN = /^\/event\/[^/]+\/display\/?$/;
+
 const App = (): JSX.Element => {
   const [currentPath, setCurrentPath] = useState(readCurrentPath);
   const previousPathRef = useRef(currentPath);
@@ -71,16 +73,20 @@ const App = (): JSX.Element => {
   };
 
   const isAdminUser = hasAdminGlobalRole(user);
+  const showSiteHeader = !AUDIENCE_DISPLAY_PATTERN.test(currentPath);
+
   return (
     <>
-      <AppHeader
-        isAuthLoading={isAuthLoading}
-        onLoginClick={openLoginDialog}
-        onLogoutClick={logout}
-        onNavigate={navigateTo}
-        showAdminMenu={isAdminUser}
-        user={user}
-      />
+      {showSiteHeader ? (
+        <AppHeader
+          isAuthLoading={isAuthLoading}
+          onLoginClick={openLoginDialog}
+          onLogoutClick={logout}
+          onNavigate={navigateTo}
+          showAdminMenu={isAdminUser}
+          user={user}
+        />
+      ) : null}
       <Suspense fallback={<PageLoadingFallback />}>
         <PageRenderer
           currentPath={currentPath}

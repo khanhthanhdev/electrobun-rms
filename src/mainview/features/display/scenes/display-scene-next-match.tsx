@@ -1,40 +1,129 @@
-import { DisplayChrome } from "../display-chrome";
+import hourglassLine from "@/assets/display-sponsors/hourglass-line.svg";
+import hourglassOutline from "@/assets/display-sponsors/hourglass-outline.svg";
+import sponsorAivf from "@/assets/display-sponsors/sponsor-aivf.png";
+import sponsorSteam from "@/assets/display-sponsors/sponsor-steam.png";
+import sponsorUsEmbassy from "@/assets/display-sponsors/sponsor-us-embassy.png";
+import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
+
+import { DisplaySceneFooter } from "../components/display-scene-footer";
 import { formatTimer } from "../display-helpers";
 import { useNow } from "../use-now";
+
+const SPONSOR_LOGOS = [
+  {
+    alt: "U.S. Embassy Hanoi",
+    src: sponsorUsEmbassy,
+  },
+  {
+    alt: "AI for Vietnam Foundation",
+    src: sponsorAivf,
+  },
+  {
+    alt: "STEAM For Vietnam",
+    src: sponsorSteam,
+  },
+] as const;
 
 interface DisplaySceneNextMatchProps {
   eventName: string;
   nextMatchStartTime?: number | null;
 }
 
+const formatCountdownLabel = (
+  nextMatchStartTime: number | null | undefined,
+  now: Date
+): string => {
+  if (!nextMatchStartTime || nextMatchStartTime <= 0) {
+    return "00:00";
+  }
+
+  const remainingMs = nextMatchStartTime - now.getTime();
+  if (remainingMs <= 0) {
+    return "00:00";
+  }
+
+  const [mins, secs] = formatTimer(Math.ceil(remainingMs / 1000)).split(":");
+  return `${mins.padStart(2, "0")}:${secs ?? "00"}`;
+};
+
+const SponsorHourglassIcon = (): JSX.Element => (
+  <span aria-hidden="true" className="display-sponsors-hourglass">
+    <img
+      alt=""
+      className="display-sponsors-hourglass-outline"
+      height={28}
+      src={hourglassOutline}
+      width={20}
+    />
+    <img
+      alt=""
+      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--top"
+      height={2}
+      src={hourglassLine}
+      width={7}
+    />
+    <img
+      alt=""
+      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--bottom"
+      height={2}
+      src={hourglassLine}
+      width={7}
+    />
+  </span>
+);
+
 export const DisplaySceneNextMatch = ({
   eventName,
   nextMatchStartTime,
 }: DisplaySceneNextMatchProps): JSX.Element => {
   const now = useNow(1000);
-
-  let countdownLabel: string;
-  if (nextMatchStartTime && nextMatchStartTime > 0) {
-    const remainingMs = nextMatchStartTime - now.getTime();
-    if (remainingMs > 0) {
-      countdownLabel = formatTimer(Math.ceil(remainingMs / 1000));
-    } else {
-      countdownLabel = "0:00";
-    }
-  } else {
-    countdownLabel = "—";
-  }
+  const countdownLabel = formatCountdownLabel(nextMatchStartTime, now);
 
   return (
-    <DisplayChrome eventName={eventName}>
-      <div className="display-scene display-scene-next-match">
-        <div className="display-scene-center">
-          <div className="display-next-match-box">
-            <span>Next match expected start:</span>
-            <strong>{countdownLabel}</strong>
-          </div>
+    <section
+      aria-label={`${eventName} next match scene`}
+      className="display-sponsors-scene"
+    >
+      <header className="display-sponsors-header">
+        <img
+          alt="STEAM For Vietnam"
+          className="display-sponsors-brand"
+          height={907}
+          src={steamBrandLockup}
+          width={2534}
+        />
+        <SponsorHourglassIcon />
+        <div className="display-sponsors-live-badge">
+          <span aria-hidden="true" className="display-sponsors-live-dot" />
+          <span>Live Feed</span>
+        </div>
+      </header>
+
+      <div className="display-sponsors-main display-next-match-main">
+        <ul className="display-sponsors-logo-list display-next-match-logo-list">
+          {SPONSOR_LOGOS.map((sponsor) => (
+            <li className="display-sponsors-logo-item" key={sponsor.alt}>
+              <img
+                alt={sponsor.alt}
+                className="display-sponsors-logo"
+                height={400}
+                src={sponsor.src}
+                width={400}
+              />
+            </li>
+          ))}
+        </ul>
+
+        <div className="display-next-match-countdown-card">
+          <p className="display-next-match-countdown-label">
+            Tran dau tiep theo bat dau trong
+          </p>
+          <span className="display-next-match-countdown-time">
+            {countdownLabel}
+          </span>
         </div>
       </div>
-    </DisplayChrome>
+      <DisplaySceneFooter />
+    </section>
   );
 };

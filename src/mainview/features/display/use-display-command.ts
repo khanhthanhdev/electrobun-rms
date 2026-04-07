@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { DisplayMatchRef } from "@shared/display";
 import type { DisplayCommand } from "./display-command-channel";
 import { subscribeToDisplayCommand } from "./display-command-channel";
 import {
@@ -12,6 +13,8 @@ import {
 import { applyDisplayRealtimeEvent } from "./state/display-realtime-store";
 
 export interface DisplayCommandState {
+  activeMatch: DisplayMatchRef | null;
+  loadedMatch: DisplayMatchRef | null;
   matchStartedAtMs: number | null;
   message: string;
   mode: DisplaySceneMode;
@@ -21,21 +24,13 @@ const applyCommand = (
   cmd: DisplayCommand,
   setState: React.Dispatch<React.SetStateAction<DisplayCommandState>>
 ): void => {
-  if (cmd.mode === "text-notification" && "message" in cmd) {
-    setState({
-      mode: "text-notification",
-      matchStartedAtMs: null,
-      message: cmd.message ?? "",
-    });
-  } else if (cmd.mode === "match-start" && "startedAtMs" in cmd) {
-    setState({
-      mode: "match-start",
-      matchStartedAtMs: cmd.startedAtMs,
-      message: "",
-    });
-  } else {
-    setState({ mode: cmd.mode, matchStartedAtMs: null, message: "" });
-  }
+  setState({
+    activeMatch: cmd.activeMatch ?? null,
+    loadedMatch: cmd.loadedMatch ?? null,
+    matchStartedAtMs: cmd.startedAtMs ?? null,
+    message: cmd.message ?? "",
+    mode: cmd.mode,
+  });
 };
 
 /**
@@ -53,6 +48,8 @@ export const useDisplayCommand = (
   token?: string | null
 ): DisplayCommandState => {
   const [state, setState] = useState<DisplayCommandState>({
+    activeMatch: null,
+    loadedMatch: null,
     mode: DEFAULT_DISPLAY_SCENE,
     matchStartedAtMs: null,
     message: "",

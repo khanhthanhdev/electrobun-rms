@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { DisplayMatchRef } from "@shared/display";
 import { fetchMatchControlData } from "@/features/events/control";
 import { fetchQualificationRankings } from "@/features/events/rankings";
 import type { EventQualificationRankingsResponse } from "@/features/events/rankings/qualification-rankings-service";
@@ -9,7 +10,8 @@ import { requestJson } from "@/shared/api/http-client";
 import { fetchMatchScoresheet } from "@/shared/api/scoring";
 import type { EventItem } from "@/shared/types/event";
 import type { MatchControlData } from "@/shared/types/match-control";
-import type { MatchScoresheet } from "@/shared/types/scoring";
+import type { MatchScoresheet, MatchType } from "@/shared/types/scoring";
+import type { DisplaySceneMode } from "./display-scene-types";
 import { useDisplayRealtimeRefresh } from "./hooks/use-display-realtime-refresh";
 
 interface FetchEventResponse {
@@ -39,7 +41,7 @@ export interface DisplayData {
     fieldNumber: number;
     matchName: string;
     matchNumber: number;
-    matchType: string;
+    matchType: MatchType;
     redBreakdown: ScoreBreakdown | null;
     redScore: number;
     redTeam: number;
@@ -56,6 +58,12 @@ export interface DisplayData {
     wlt: string;
     winPct: string;
   }>;
+}
+
+interface DisplaySceneSelection {
+  activeMatch: DisplayMatchRef | null;
+  loadedMatch: DisplayMatchRef | null;
+  sceneMode: DisplaySceneMode;
 }
 
 const emptyDisplayData: DisplayData = {
@@ -86,25 +94,43 @@ const toLoadedMatch = (
 ): DisplayData["loadedMatch"] => {
   const type = control.activeScheduleType ?? "quals";
   const rows = control.byType[type] ?? [];
-  const loaded = rows.find((r) => r.state !== "COMMITTED") ?? rows[0];
+  const loaded = rows.find((row) => row.state !== "COMMITTED") ?? rows[0];
   if (!loaded) {
     return null;
   }
+
   return {
+    blueBreakdown: null,
+    blueScore: loaded.blueScore ?? 0,
+    blueTeam: loaded.blueTeam,
+    blueTeamName: loaded.blueTeamName,
+    fieldNumber: loaded.fieldNumber,
     matchName: loaded.matchName,
     matchNumber: loaded.matchNumber,
     matchType: type,
-    fieldNumber: loaded.fieldNumber,
+    redBreakdown: null,
+    redScore: loaded.redScore ?? 0,
     redTeam: loaded.redTeam,
     redTeamName: loaded.redTeamName,
-    redScore: loaded.redScore ?? 0,
-    redBreakdown: null,
-    blueTeam: loaded.blueTeam,
-    blueTeamName: loaded.blueTeamName,
-    blueScore: loaded.blueScore ?? 0,
-    blueBreakdown: null,
   };
 };
+
+const toLoadedMatchFromRef = (
+  match: DisplayMatchRef
+): DisplayData["loadedMatch"] => ({
+  blueBreakdown: null,
+  blueScore: 0,
+  blueTeam: match.blueTeam,
+  blueTeamName: match.blueTeamName ?? "",
+  fieldNumber: match.fieldNumber,
+  matchName: match.matchName,
+  matchNumber: match.matchNumber,
+  matchType: match.matchType,
+  redBreakdown: null,
+  redScore: 0,
+  redTeam: match.redTeam,
+  redTeamName: match.redTeamName ?? "",
+});
 
 const toScoreBreakdown = (
   item: {
@@ -118,6 +144,7 @@ const toScoreBreakdown = (
   if (!item) {
     return null;
   }
+
   return {
     a: item.scoreA,
     b: item.scoreB,
@@ -134,29 +161,30 @@ const applyScoresheet = (
   if (!(match && scoresheet)) {
     return match;
   }
+
   return {
     ...match,
-    redBreakdown: toScoreBreakdown(scoresheet.red),
     blueBreakdown: toScoreBreakdown(scoresheet.blue),
-    redScore: scoresheet.red?.scoreTotal ?? match.redScore,
     blueScore: scoresheet.blue?.scoreTotal ?? match.blueScore,
+    redBreakdown: toScoreBreakdown(scoresheet.red),
+    redScore: scoresheet.red?.scoreTotal ?? match.redScore,
   };
 };
 
 const toRankings = (
   data: EventQualificationRankingsResponse | null
 ): DisplayData["rankings"] =>
-  data?.rankings?.map((r, i) => ({
-    rank: r.rank ?? i + 1,
-    teamNumber: r.teamNumber,
-    teamName: r.name ?? "",
-    rp: r.rankingPoint ?? 0,
-    total: r.total ?? 0,
-    wlt: `${r.wins ?? 0}-${r.losses ?? 0}-${r.ties ?? 0}`,
+  data?.rankings?.map((ranking, index) => ({
+    rank: ranking.rank ?? index + 1,
+    rp: ranking.rankingPoint ?? 0,
+    teamName: ranking.name ?? "",
+    teamNumber: ranking.teamNumber,
+    total: ranking.total ?? 0,
     winPct:
-      (r.played ?? 0) > 0
-        ? `${Math.round(((r.wins ?? 0) / (r.played ?? 1)) * 100)}%`
+      (ranking.played ?? 0) > 0
+        ? `${Math.round(((ranking.wins ?? 0) / (ranking.played ?? 1)) * 100)}%`
         : "0%",
+    wlt: `${ranking.wins ?? 0}-${ranking.losses ?? 0}-${ranking.ties ?? 0}`,
   })) ?? [];
 
 const toMatchesPlayed = (
@@ -165,7 +193,8 @@ const toMatchesPlayed = (
   if (!data?.rankings?.length) {
     return "";
   }
-  const maxPlayed = Math.max(...data.rankings.map((r) => r.played ?? 0));
+
+  const maxPlayed = Math.max(...data.rankings.map((ranking) => ranking.played ?? 0));
   return `${maxPlayed} matches played`;
 };
 
@@ -175,9 +204,10 @@ const toNextMatchStartTime = (
   if (!control) {
     return null;
   }
+
   const type = control.activeScheduleType ?? "quals";
   const rows = control.byType[type] ?? [];
-  const next = rows.find((r) => r.state === "UNPLAYED");
+  const next = rows.find((row) => row.state === "UNPLAYED");
   return next?.startTime ?? null;
 };
 
@@ -190,10 +220,10 @@ const toInspectionTeams = (
     }>;
   } | null
 ): DisplayData["inspectionTeams"] =>
-  data?.teams?.map((t) => ({
-    teamNumber: t.teamNumber,
-    teamName: t.teamName ?? "",
-    status: t.status ?? "NOT_STARTED",
+  data?.teams?.map((team) => ({
+    status: team.status ?? "NOT_STARTED",
+    teamName: team.teamName ?? "",
+    teamNumber: team.teamNumber,
   })) ?? [];
 
 const fetchAllDisplaySources = (
@@ -202,7 +232,7 @@ const fetchAllDisplaySources = (
 ): Promise<
   [
     PromiseSettledResult<EventItem | null>,
-    PromiseSettledResult<MatchControlData | null>,
+    PromiseSettledResult<MatchControlData>,
     PromiseSettledResult<EventQualificationRankingsResponse | null>,
     PromiseSettledResult<{
       teams: Array<{
@@ -210,12 +240,12 @@ const fetchAllDisplaySources = (
         teamNumber: number;
         status?: string;
       }>;
-    }>,
+    }>
   ]
 > =>
   Promise.allSettled([
     fetchEventPublic(eventCode),
-    token ? fetchMatchControlData(eventCode, token) : null,
+    fetchMatchControlData(eventCode, token),
     fetchQualificationRankings(eventCode, token, Date.now()),
     token
       ? fetchInspectionTeams(eventCode, token, "").catch(() => ({
@@ -227,21 +257,53 @@ const fetchAllDisplaySources = (
 const unwrapSettled = <T>(result: PromiseSettledResult<T>): T | null =>
   result.status === "fulfilled" ? result.value : null;
 
+const toMatchType = (value: string): MatchType | null =>
+  value === "practice" || value === "quals" || value === "elims"
+    ? value
+    : null;
+
+const resolveDisplaySceneMatch = (
+  control: MatchControlData | null,
+  selection: DisplaySceneSelection
+): DisplayData["loadedMatch"] => {
+  const fallbackMatch = control ? toLoadedMatch(control) : null;
+  const loadedMatch = selection.loadedMatch
+    ? toLoadedMatchFromRef(selection.loadedMatch)
+    : null;
+  const activeMatch = selection.activeMatch
+    ? toLoadedMatchFromRef(selection.activeMatch)
+    : null;
+
+  switch (selection.sceneMode) {
+    case "match-preview":
+      return loadedMatch ?? activeMatch ?? fallbackMatch;
+    case "match-start":
+    case "match-winner":
+      return activeMatch ?? loadedMatch ?? fallbackMatch;
+    default:
+      return null;
+  }
+};
+
 const loadMatchWithScoresheet = async (
   eventCode: string,
-  token: string | null,
-  control: MatchControlData | null
+  match: DisplayData["loadedMatch"]
 ): Promise<DisplayData["loadedMatch"]> => {
-  const match = control ? toLoadedMatch(control) : null;
-  if (!(match && token)) {
+  if (!match) {
+    return null;
+  }
+
+  const matchType = toMatchType(match.matchType);
+  if (!matchType) {
     return match;
   }
+
   try {
     const scoresheet = await fetchMatchScoresheet(
       eventCode,
-      match.matchType as "practice" | "quals",
+      matchType,
       match.matchNumber,
-      token
+      null
     );
     return applyScoresheet(match, scoresheet);
   } catch {
@@ -251,7 +313,8 @@ const loadMatchWithScoresheet = async (
 
 export const useDisplayData = (
   eventCode: string,
-  token: string | null
+  token: string | null,
+  selection: DisplaySceneSelection
 ): DisplayData => {
   const [data, setData] = useState<DisplayData>(emptyDisplayData);
   const requestIdRef = useRef(0);
@@ -267,15 +330,11 @@ export const useDisplayData = (
     }
 
     const event = unwrapSettled(eventRes);
-    const control = unwrapSettled(controlRes) ?? null;
+    const control = unwrapSettled(controlRes);
     const rankingsData = unwrapSettled(rankingsRes);
     const inspectionData = unwrapSettled(inspectionRes);
-
-    const loadedMatch = await loadMatchWithScoresheet(
-      eventCode,
-      token,
-      control
-    );
+    const sceneMatch = resolveDisplaySceneMatch(control, selection);
+    const loadedMatch = await loadMatchWithScoresheet(eventCode, sceneMatch);
 
     if (rid !== requestIdRef.current) {
       return;
@@ -283,13 +342,19 @@ export const useDisplayData = (
 
     setData({
       eventName: event?.name ?? eventCode,
+      inspectionTeams: toInspectionTeams(inspectionData),
       loadedMatch,
       matchesPlayed: toMatchesPlayed(rankingsData),
       nextMatchStartTime: toNextMatchStartTime(control),
       rankings: toRankings(rankingsData),
-      inspectionTeams: toInspectionTeams(inspectionData),
     });
-  }, [eventCode, token]);
+  }, [
+    eventCode,
+    selection.activeMatch,
+    selection.loadedMatch,
+    selection.sceneMode,
+    token,
+  ]);
 
   useScoringRealtime(eventCode, token);
   useScoringRealtimeRefresh(eventCode, load);

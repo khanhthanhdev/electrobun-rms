@@ -1,8 +1,12 @@
+import hourglassLine from "@/assets/display-sponsors/hourglass-line.svg";
+import hourglassOutline from "@/assets/display-sponsors/hourglass-outline.svg";
+import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
+import { MATCH_DURATION_SECONDS } from "@shared/match-control";
+
+import { DisplaySceneFooter } from "../components/display-scene-footer";
 import { formatTimer } from "../display-helpers";
 import type { ScoreBreakdown } from "../use-display-data";
 import { useNow } from "../use-now";
-
-const MATCH_DURATION_SECONDS = 150;
 
 interface MatchStartData {
   blueBreakdown: ScoreBreakdown | null;
@@ -23,12 +27,93 @@ interface DisplaySceneMatchStartProps {
   matchStartedAtMs?: number | null;
 }
 
-const formatBreakdown = (b: ScoreBreakdown | null): string => {
-  if (!b) {
-    return "A:0 B:0 C:0 D:0";
-  }
-  return `A:${b.a} B:${b.b} C:${b.c} D:${b.d}`;
-};
+const toBreakdownItems = (breakdown: ScoreBreakdown | null) =>
+  (
+    [
+      ["A", breakdown?.a ?? 0],
+      ["B", breakdown?.b ?? 0],
+      ["C", breakdown?.c ?? 0],
+      ["D", breakdown?.d ?? 0],
+    ] as const
+  ).map(([label, value]) => ({ label, value }));
+
+const SponsorHourglassIcon = (): JSX.Element => (
+  <span aria-hidden="true" className="display-sponsors-hourglass">
+    <img
+      alt=""
+      className="display-sponsors-hourglass-outline"
+      height={28}
+      src={hourglassOutline}
+      width={20}
+    />
+    <img
+      alt=""
+      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--top"
+      height={2}
+      src={hourglassLine}
+      width={7}
+    />
+    <img
+      alt=""
+      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--bottom"
+      height={2}
+      src={hourglassLine}
+      width={7}
+    />
+  </span>
+);
+
+const BreakdownItems = ({
+  breakdown,
+}: {
+  breakdown: ScoreBreakdown | null;
+}) => (
+  <>
+    {toBreakdownItems(breakdown).map(({ label, value }) => (
+      <span className="display-match-start-breakdown-pill" key={label}>
+        <span className="display-match-start-breakdown-key">{label}</span>
+        <span className="display-match-start-breakdown-value">{value}</span>
+      </span>
+    ))}
+  </>
+);
+
+const AllianceLiveCard = ({
+  alliance,
+  breakdown,
+  className,
+  score,
+  teamName,
+  teamNumber,
+}: {
+  alliance: "Blue Alliance" | "Red Alliance";
+  breakdown: ScoreBreakdown | null;
+  className: string;
+  score: number;
+  teamName: string | undefined;
+  teamNumber: number | undefined;
+}): JSX.Element => (
+  <article className={`display-match-start-card ${className}`}>
+    <div className="display-match-start-card-top">
+      <span className="display-match-start-card-label">{alliance}</span>
+      <span className="display-match-start-card-score">{score}</span>
+    </div>
+    <div className="display-match-start-card-body">
+      <span className="display-match-start-card-team-number">
+        {teamNumber ?? "TBD"}
+      </span>
+      <p className="display-match-start-card-team-name">
+        {teamName?.trim() || "Team pending"}
+      </p>
+    </div>
+    <section
+      aria-label={`${alliance} score breakdown`}
+      className="display-match-start-breakdown"
+    >
+      <BreakdownItems breakdown={breakdown} />
+    </section>
+  </article>
+);
 
 export const DisplaySceneMatchStart = ({
   eventName,
@@ -48,67 +133,71 @@ export const DisplaySceneMatchStart = ({
   const blueBreakdown = match?.blueBreakdown ?? null;
 
   return (
-    <div className="display-scene display-scene-match-start">
-      {/* Top bar: Field + Gear */}
-      <header className="display-match-start-header">
-        <span className="display-match-start-field">
-          Field {match?.fieldNumber ?? 1}
-        </span>
-        <button
-          aria-label="Display options"
-          className="display-match-start-gear"
-          type="button"
-        >
-          Gear
-        </button>
+    <section
+      aria-label={`${eventName} live match scene`}
+      className="display-sponsors-scene display-match-start-scene"
+    >
+      <header className="display-sponsors-header display-match-start-header">
+        <img
+          alt="STEAM For Vietnam"
+          className="display-sponsors-brand"
+          height={907}
+          src={steamBrandLockup}
+          width={2534}
+        />
+        <div className="display-match-start-header-copy">
+          <span className="display-match-start-field">
+            Field {match?.fieldNumber ?? 1}
+          </span>
+          <h1 className="display-match-start-title">
+            {match?.matchName ?? "Match Start"}
+          </h1>
+        </div>
+        <div className="display-match-start-header-status">
+          <SponsorHourglassIcon />
+          <div className="display-sponsors-live-badge">
+            <span aria-hidden="true" className="display-sponsors-live-dot" />
+            <span>Match Live</span>
+          </div>
+        </div>
       </header>
-
-      {/* Center: Big timer + status dots */}
-      <div className="display-match-start-center">
-        <div className="display-match-timer-box">
-          <span aria-live="polite" className="display-match-timer">
+      <div className="display-sponsors-main display-match-start-main">
+        <div className="display-match-start-timer-panel">
+          <span className="display-match-start-timer-label">
+            Time Remaining
+          </span>
+          <span aria-live="polite" className="display-match-start-timer">
             {formatTimer(timeRemaining)}
           </span>
+          <span className="display-match-start-event">{eventName}</span>
         </div>
-        <div aria-hidden className="display-match-status-dots">
-          <span className="display-match-status-dot" />
-          <span className="display-match-status-dot" />
-          <span className="display-match-status-dot" />
+        <div className="display-match-start-stage">
+          <AllianceLiveCard
+            alliance="Red Alliance"
+            breakdown={redBreakdown}
+            className="display-match-start-card--red"
+            score={redScore}
+            teamName={match?.redTeamName}
+            teamNumber={match?.redTeam}
+          />
+          <div aria-hidden="true" className="display-match-start-versus">
+            <span>VS</span>
+          </div>
+          <AllianceLiveCard
+            alliance="Blue Alliance"
+            breakdown={blueBreakdown}
+            className="display-match-start-card--blue"
+            score={blueScore}
+            teamName={match?.blueTeamName}
+            teamNumber={match?.blueTeam}
+          />
+        </div>
+        <div className="display-match-start-meta">
+          <span className="display-match-start-meta-label">Event</span>
+          <span className="display-match-start-meta-value">{eventName}</span>
         </div>
       </div>
-
-      {/* Bottom: Lower-thirds score bar */}
-      <footer className="display-match-start-footer">
-        <div className="display-match-start-footer-branding">
-          <span className="display-match-start-event">{eventName}</span>
-          <span className="display-match-start-match-name">
-            {match?.matchName ?? "—"}
-          </span>
-        </div>
-        <div className="display-match-start-scorebar">
-          <div className="display-match-start-alliance display-match-start-red">
-            <span className="display-match-start-label">RED</span>
-            <span className="display-match-start-team">
-              {match?.redTeam ?? "—"}
-            </span>
-            <span className="display-match-start-score">{redScore}</span>
-            <span className="display-match-start-breakdown">
-              {formatBreakdown(redBreakdown)}
-            </span>
-          </div>
-          <span className="display-match-start-vs">VS</span>
-          <div className="display-match-start-alliance display-match-start-blue">
-            <span className="display-match-start-label">BLUE</span>
-            <span className="display-match-start-team">
-              {match?.blueTeam ?? "—"}
-            </span>
-            <span className="display-match-start-score">{blueScore}</span>
-            <span className="display-match-start-breakdown">
-              {formatBreakdown(blueBreakdown)}
-            </span>
-          </div>
-        </div>
-      </footer>
-    </div>
+      <DisplaySceneFooter />
+    </section>
   );
 };
