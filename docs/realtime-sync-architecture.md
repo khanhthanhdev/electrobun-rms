@@ -278,8 +278,8 @@ stateDiagram-v2
 - Works well for single-server LAN deployment.
 
 2. No durable replay:
-- Clients that were offline only catch up after next event triggers re-fetch.
-- Initial `SNAPSHOT_HINT` helps align version on connect, but does not replay history.
+- On reconnect, the client resets its stored version to 0 so the server's `SNAPSHOT_HINT` always triggers a refetch of canonical data, ensuring offline catchup without durable event replay.
+- Full event history is not replayed; the client simply re-fetches current state from REST endpoints.
 
 3. Per-page stream mount:
 - Each inspection page mounts its own stream hook.
