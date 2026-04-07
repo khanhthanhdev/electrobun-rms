@@ -30,7 +30,7 @@ export const calcScoringTotal = (s: ScoringState): number => {
     s.flagsL2Defended * 25 +
     s.flagsL1Defended * 20 +
     s.flagsCenterDefended * 10;
-  const scoreB = s.flagsCenterShot * 30 + s.flagsOtherShot * 10;
+  const scoreB = Math.min(1, s.flagsCenterShot) * 30 + s.flagsOtherShot * 10;
   const scoreC = -(s.bulletsInEnemyZone * 10);
   const getParkingPts = (p: ParkingState): number => {
     if (p === 2) {
@@ -234,8 +234,11 @@ export const ScoringEntryForm = ({
 
   const dec = (key: keyof ScoringState) =>
     setScore((s) => ({ ...s, [key]: Math.max(0, (s[key] as number) - 1) }));
-  const inc = (key: keyof ScoringState) =>
-    setScore((s) => ({ ...s, [key]: (s[key] as number) + 1 }));
+  const inc = (key: keyof ScoringState, max?: number) =>
+    setScore((s) => {
+      const next = (s[key] as number) + 1;
+      return { ...s, [key]: max !== undefined ? Math.min(max, next) : next };
+    });
 
   const handleSubmit = (): void => {
     onSubmit?.(score);
@@ -280,7 +283,7 @@ export const ScoringEntryForm = ({
       <CounterRow
         label="Bắn hạ cờ trung tâm"
         onDecrement={() => dec("flagsCenterShot")}
-        onIncrement={() => inc("flagsCenterShot")}
+        onIncrement={() => inc("flagsCenterShot", 1)}
         pts="30 điểm / 1"
         value={score.flagsCenterShot}
       />

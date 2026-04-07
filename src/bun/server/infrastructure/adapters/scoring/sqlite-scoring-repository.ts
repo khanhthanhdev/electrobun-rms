@@ -17,6 +17,7 @@ import type {
   ScoringRepository,
 } from "../../../application/interfaces/scoring-repository";
 import type { ScoreBreakdown } from "../../../domain/season-rules";
+import { ensureResultsTable } from "../match/event-db-results-table";
 
 interface ScoreTableConfig {
   gameSpecificHistoryTable:
@@ -774,6 +775,7 @@ const persistAllianceScoreInEventDb = (
 ): PersistedAllianceScoreResult => {
   ensureScoringSchema(eventDb, tables);
   assertTableExists(eventDb, tables.lineupTable);
+  ensureResultsTable(eventDb, tables.resultsTable);
   assertTableExists(eventDb, tables.resultsTable);
   assertMatchExists(eventDb, tables.lineupTable, input.matchNumber);
 
@@ -1173,6 +1175,39 @@ export class SQLiteScoringRepository implements ScoringRepository {
       return withEventDb(eventCode, (eventDb) =>
         loadMatchScoresheetFromEventDb(eventDb, tables, matchNumber)
       );
+    });
+  }
+
+  clearMatchScores(
+    eventCode: string,
+    matchType: MatchType,
+    matchNumber: number
+  ): Promise<void> {
+    return Promise.resolve().then(() => {
+      assertEventExists(eventCode);
+      const tables = resolveScoreTableConfig(matchType);
+
+      withEventDb(eventCode, (eventDb) => {
+        eventDb.exec("BEGIN TRANSACTION");
+        try {
+          if (tableExists(eventDb, tables.gameSpecificTable)) {
+            eventDb
+              .query(
+                `DELETE FROM ${tables.gameSpecificTable} WHERE match = ?`
+              )
+              .run(matchNumber);
+          }
+          if (tableExists(eventDb, tables.resultsTable)) {
+            eventDb
+              .query(`DELETE FROM ${tables.resultsTable} WHERE match = ?`)
+              .run(matchNumber);
+          }
+          eventDb.exec("COMMIT");
+        } catch (error) {
+          eventDb.exec("ROLLBACK");
+          throw error;
+        }
+      });
     });
   }
 }

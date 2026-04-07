@@ -12,6 +12,7 @@ export default defineConfig({
       "@/pages": path.resolve(import.meta.dirname, "src/mainview/pages"),
       "@/shared": path.resolve(import.meta.dirname, "src/mainview/shared"),
       "@/widgets": path.resolve(import.meta.dirname, "src/mainview/widgets"),
+      "@shared": path.resolve(import.meta.dirname, "src/shared"),
     },
   },
   css: {

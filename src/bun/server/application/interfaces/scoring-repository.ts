@@ -52,4 +52,14 @@ export interface ScoringRepository {
     input: SaveMatchAllianceScoreInput,
     scoreBreakdown: ScoreBreakdown
   ): Promise<PersistedAllianceScoreResult>;
+
+  /**
+   * Clear all scores for a specific match (game-specific + results rows).
+   * Used when a match is aborted so replayed matches start from zero.
+   */
+  clearMatchScores(
+    eventCode: string,
+    matchType: MatchType,
+    matchNumber: number
+  ): Promise<void>;
 }

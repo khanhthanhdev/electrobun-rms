@@ -1,9 +1,11 @@
+import { Database } from "bun:sqlite";
 import { beforeEach, describe, expect, it } from "bun:test";
 import {
   createAdminToken,
   createEventsTestApp,
   createPrintListsEventDb,
   eventDbExists,
+  getEventDbPath,
   insertEvent,
   readStoredEvent,
   resetEventsTestDatabase,
@@ -197,6 +199,18 @@ describe("events contract routes", () => {
       type: 3,
     });
     expect(eventDbExists(eventCode)).toBe(true);
+
+    const eventDb = new Database(getEventDbPath(eventCode));
+    try {
+      const tableRow = eventDb
+        .query(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'practice_results' LIMIT 1"
+        )
+        .get() as { name: string } | null;
+      expect(tableRow).toEqual({ name: "practice_results" });
+    } finally {
+      eventDb.close();
+    }
   });
 
   it("preserves default-account list and regenerate payloads", async () => {

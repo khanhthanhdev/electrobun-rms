@@ -1,5 +1,7 @@
 import type { Database } from "bun:sqlite";
 
+export { ensureResultsTable } from "../match/event-db-results-table";
+
 export const ensureLineupTable = (
   eventDb: Database,
   tableName: "elims" | "practice" | "quals"
@@ -39,19 +41,6 @@ export const ensureMatchDataTable = (
     posted_time INTEGER NOT NULL,
     fms_match_id TEXT NOT NULL,
     fms_schedule_detail_id TEXT NOT NULL
-  )`);
-};
-
-export const ensureResultsTable = (
-  eventDb: Database,
-  tableName: "elims_results" | "practice_results" | "quals_results"
-): void => {
-  eventDb.exec(`CREATE TABLE IF NOT EXISTS ${tableName} (
-    match INTEGER NOT NULL,
-    red_score INTEGER NOT NULL,
-    blue_score INTEGER NOT NULL,
-    red_penalty_committed INTEGER NOT NULL,
-    blue_penalty_committed INTEGER NOT NULL
   )`);
 };
 

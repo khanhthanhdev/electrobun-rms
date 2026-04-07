@@ -19,7 +19,7 @@ export interface ScoringStateForApi {
   robotParking: 0 | 1 | 2;
 }
 
-/** API body for saving an alliance score. MatchType is "quals" | "elims" (no practice). */
+/** API body for saving an alliance score. */
 export interface SaveMatchAllianceScoreBody {
   aCenterFlags: number;
   aFirstTierFlags: number;
@@ -31,7 +31,7 @@ export interface SaveMatchAllianceScoreBody {
   dGoldFlagsDefended: number;
   dRobotParkState: number;
   matchNumber: number;
-  matchType: "quals" | "elims";
+  matchType: MatchType;
 }
 
 /** Map form ScoringState to API SaveMatchAllianceScoreBody fields. */
@@ -39,7 +39,7 @@ export const scoringStateToApiBody = (
   state: ScoringStateForApi,
   alliance: "red" | "blue",
   matchNumber: number,
-  matchType: "quals" | "elims"
+  matchType: MatchType
 ): SaveMatchAllianceScoreBody => ({
   alliance,
   matchNumber,

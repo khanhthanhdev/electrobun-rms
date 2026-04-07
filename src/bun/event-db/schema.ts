@@ -97,6 +97,14 @@ export const practiceData = sqliteTable("practice_data", {
   fmsScheduleDetailId: text("fms_schedule_detail_id").notNull(),
 });
 
+export const practiceResults = sqliteTable("practice_results", {
+  match: integer("match").notNull(),
+  redScore: integer("red_score").notNull(),
+  blueScore: integer("blue_score").notNull(),
+  redPenaltyCommitted: integer("red_penalty_committed").notNull(),
+  bluePenaltyCommitted: integer("blue_penalty_committed").notNull(),
+});
+
 export const quals = sqliteTable("quals", {
   match: integer("match").notNull(),
   red: integer("red").notNull(),

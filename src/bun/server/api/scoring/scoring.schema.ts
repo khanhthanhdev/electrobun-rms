@@ -9,7 +9,7 @@ import {
 } from "valibot";
 
 export const saveMatchAllianceScoreBodySchema = object({
-  matchType: picklist(["quals", "elims"]),
+  matchType: picklist(["practice", "quals", "elims"]),
   matchNumber: pipe(number(), minValue(1), maxValue(Number.MAX_SAFE_INTEGER)),
   alliance: picklist(["red", "blue"]),
   aSecondTierFlags: pipe(

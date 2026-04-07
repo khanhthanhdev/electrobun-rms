@@ -38,9 +38,9 @@ const REFEREE_BLUE_SCORING_PATTERN =
   /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
 const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
 const REFEREE_RED_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)(?:\/(practice|quals|elims))?\/match\/(\d+)\/?$/;
 const REFEREE_BLUE_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)(?:\/(practice|quals|elims))?\/match\/(\d+)\/?$/;
 const HEAD_REFEREE_MATCH_PATTERN =
   /^\/event\/([^/]+)\/hr\/([^/]+)\/match\/(\d+)\/?$/;
 const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;
@@ -916,7 +916,8 @@ const renderScoringEntryPage = (
 ): JSX.Element | null => {
   const eventCode = decodePathSegment(match[1]);
   const fieldNumber = match[2] ? decodePathSegment(match[2]) : null;
-  const matchNumber = Number.parseInt(match[3], 10);
+  const matchType = (match[3] ?? "quals") as "practice" | "quals" | "elims";
+  const matchNumber = Number.parseInt(match[4], 10);
   if (
     eventCode === null ||
     fieldNumber === null ||
@@ -930,6 +931,7 @@ const renderScoringEntryPage = (
       eventCode={eventCode}
       fieldNumber={fieldNumber}
       matchNumber={matchNumber}
+      matchType={matchType}
       onNavigate={onNavigate}
       token={token}
     />

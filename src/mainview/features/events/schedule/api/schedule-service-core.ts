@@ -8,7 +8,7 @@ const buildSchedulePath = (eventCode: string, scheduleType: string): string =>
 export const fetchSchedule = <TResponse>(
   eventCode: string,
   scheduleType: string,
-  token: string
+  token: string | null
 ): Promise<TResponse> =>
   requestJson<TResponse>(buildSchedulePath(eventCode, scheduleType), {
     token,

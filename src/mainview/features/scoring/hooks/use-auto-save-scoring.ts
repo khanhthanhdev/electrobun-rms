@@ -3,6 +3,7 @@ import {
   saveMatchAllianceScore,
   scoringStateToApiBody,
 } from "@/shared/api/scoring";
+import type { MatchType } from "@/shared/types/scoring";
 import type { ScoringState } from "../components/scoring-entry-form";
 
 const DEBOUNCE_MS = 300;
@@ -11,7 +12,7 @@ interface UseAutoSaveScoringOptions {
   alliance: "red" | "blue";
   eventCode: string;
   matchNumber: number;
-  matchType: "quals" | "elims";
+  matchType: MatchType;
   token: string | null;
 }
 

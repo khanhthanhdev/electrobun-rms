@@ -123,7 +123,7 @@ export const printQualificationScheduleResults = ({
 
 export const fetchQualificationSchedule = (
   eventCode: string,
-  token: string
+  token: string | null
 ): Promise<QualificationScheduleResponse> =>
   fetchSchedule<QualificationScheduleResponse>(eventCode, "quals", token);
 

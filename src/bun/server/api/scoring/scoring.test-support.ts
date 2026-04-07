@@ -80,7 +80,9 @@ export function createScoringEventDb(
     blueSurrogate?: number;
     blueTeam?: number;
     blueTeamName?: string;
+    matchType?: "practice" | "quals";
     matchNumber?: number;
+    omitResultsTable?: boolean;
     redPenaltyCommitted?: number;
     redScore?: number;
     redSurrogate?: number;
@@ -89,8 +91,12 @@ export function createScoringEventDb(
   } = {}
 ): string {
   const matchNumber = options.matchNumber ?? 1;
+  const matchType = options.matchType ?? "quals";
   const redTeam = options.redTeam ?? 111;
   const blueTeam = options.blueTeam ?? 222;
+  const lineupTable = matchType === "practice" ? "practice" : "quals";
+  const resultsTable =
+    matchType === "practice" ? "practice_results" : "quals_results";
   const eventDbPath = join(getDataDir(), `${eventCode}.db`);
 
   rmSync(eventDbPath, { force: true });
@@ -104,20 +110,22 @@ export function createScoringEventDb(
       city TEXT,
       country TEXT
     )`);
-    eventDb.exec(`CREATE TABLE quals (
+    eventDb.exec(`CREATE TABLE ${lineupTable} (
       match INTEGER NOT NULL PRIMARY KEY,
       red INTEGER NOT NULL,
       blue INTEGER NOT NULL,
       reds INTEGER NOT NULL DEFAULT 0,
       blues INTEGER NOT NULL DEFAULT 0
     )`);
-    eventDb.exec(`CREATE TABLE quals_results (
-      match INTEGER NOT NULL,
-      red_score INTEGER NOT NULL,
-      blue_score INTEGER NOT NULL,
-      red_penalty_committed INTEGER NOT NULL,
-      blue_penalty_committed INTEGER NOT NULL
-    )`);
+    if (!options.omitResultsTable) {
+      eventDb.exec(`CREATE TABLE ${resultsTable} (
+        match INTEGER NOT NULL,
+        red_score INTEGER NOT NULL,
+        blue_score INTEGER NOT NULL,
+        red_penalty_committed INTEGER NOT NULL,
+        blue_penalty_committed INTEGER NOT NULL
+      )`);
+    }
 
     const insertTeam = eventDb.query(
       `INSERT INTO team_metadata (
@@ -145,7 +153,7 @@ export function createScoringEventDb(
 
     eventDb
       .query(
-        "INSERT INTO quals (match, red, blue, reds, blues) VALUES (?, ?, ?, ?, ?)"
+        `INSERT INTO ${lineupTable} (match, red, blue, reds, blues) VALUES (?, ?, ?, ?, ?)`
       )
       .run(
         matchNumber,
@@ -155,23 +163,25 @@ export function createScoringEventDb(
         options.blueSurrogate ?? 0
       );
 
-    eventDb
-      .query(
-        `INSERT INTO quals_results (
-          match,
-          red_score,
-          blue_score,
-          red_penalty_committed,
-          blue_penalty_committed
-        ) VALUES (?, ?, ?, ?, ?)`
-      )
-      .run(
-        matchNumber,
-        options.redScore ?? 0,
-        options.blueScore ?? 0,
-        options.redPenaltyCommitted ?? 0,
-        options.bluePenaltyCommitted ?? 0
-      );
+    if (!options.omitResultsTable) {
+      eventDb
+        .query(
+          `INSERT INTO ${resultsTable} (
+            match,
+            red_score,
+            blue_score,
+            red_penalty_committed,
+            blue_penalty_committed
+          ) VALUES (?, ?, ?, ?, ?)`
+        )
+        .run(
+          matchNumber,
+          options.redScore ?? 0,
+          options.blueScore ?? 0,
+          options.redPenaltyCommitted ?? 0,
+          options.bluePenaltyCommitted ?? 0
+        );
+    }
   } finally {
     eventDb.close();
   }

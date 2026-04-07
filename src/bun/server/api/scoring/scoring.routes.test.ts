@@ -23,6 +23,11 @@ const RED_SCORE_PAYLOAD = {
   dGoldFlagsDefended: 3,
 } as const;
 
+const PRACTICE_RED_SCORE_PAYLOAD = {
+  ...RED_SCORE_PAYLOAD,
+  matchType: "practice",
+} as const;
+
 const BLUE_SCORE_PAYLOAD = {
   matchType: "quals",
   matchNumber: 1,
@@ -361,5 +366,135 @@ describe("scoring routes", () => {
     expect(typeof finalScoresheet.blue.ts).toBe("number");
     expect((finalScoresheet.red.ts as number) > 0).toBe(true);
     expect((finalScoresheet.blue.ts as number) > 0).toBe(true);
+  });
+
+  it("accepts practice score writes", async () => {
+    const eventCode = "SCPRAC1";
+    insertEvent(eventCode);
+    createScoringEventDb(eventCode, {
+      matchType: "practice",
+    });
+
+    const token = await createAdminToken(eventCode);
+    const app = createScoringTestApp();
+
+    const saveResponse = await app.request(
+      `http://localhost/${eventCode}/scoring/matches`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(PRACTICE_RED_SCORE_PAYLOAD),
+      }
+    );
+
+    expect(saveResponse.status).toBe(200);
+    expect(await saveResponse.json()).toMatchObject({
+      eventCode,
+      matchType: "practice",
+      matchNumber: 1,
+      alliance: "red",
+      result: {
+        redScore: 194,
+        blueScore: 0,
+      },
+    });
+
+    const resultsResponse = await app.request(
+      `http://localhost/${eventCode}/scoring/practice/results`
+    );
+
+    expect(resultsResponse.status).toBe(200);
+    expect(await resultsResponse.json()).toEqual([
+      {
+        matchNumber: 1,
+        redTeam: 111,
+        redTeamName: "Team 111",
+        blueTeam: 222,
+        blueTeamName: "Team 222",
+        redSurrogate: false,
+        blueSurrogate: false,
+        redScore: 194,
+        blueScore: null,
+      },
+    ]);
+  });
+
+  it("heals legacy practice event DBs missing practice_results on score save", async () => {
+    const eventCode = "SCPRAC2";
+    insertEvent(eventCode);
+    createScoringEventDb(eventCode, {
+      matchType: "practice",
+      omitResultsTable: true,
+    });
+
+    const token = await createAdminToken(eventCode);
+    const app = createScoringTestApp();
+
+    const initialResultsResponse = await app.request(
+      `http://localhost/${eventCode}/scoring/practice/results`
+    );
+
+    expect(initialResultsResponse.status).toBe(200);
+    expect(await initialResultsResponse.json()).toEqual([
+      {
+        matchNumber: 1,
+        redTeam: 111,
+        redTeamName: "Team 111",
+        blueTeam: 222,
+        blueTeamName: "Team 222",
+        redSurrogate: false,
+        blueSurrogate: false,
+        redScore: null,
+        blueScore: null,
+      },
+    ]);
+
+    const saveResponse = await app.request(
+      `http://localhost/${eventCode}/scoring/matches`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(PRACTICE_RED_SCORE_PAYLOAD),
+      }
+    );
+
+    expect(saveResponse.status).toBe(200);
+    expect(await saveResponse.json()).toMatchObject({
+      eventCode,
+      matchType: "practice",
+      matchNumber: 1,
+      alliance: "red",
+      result: {
+        redScore: 194,
+        blueScore: 0,
+        redPenaltyCommitted: 0,
+        bluePenaltyCommitted: 0,
+      },
+    });
+
+    const resultsResponse = await app.request(
+      `http://localhost/${eventCode}/scoring/practice/results`
+    );
+
+    expect(resultsResponse.status).toBe(200);
+    expect(await resultsResponse.json()).toEqual([
+      {
+        matchNumber: 1,
+        redTeam: 111,
+        redTeamName: "Team 111",
+        blueTeam: 222,
+        blueTeamName: "Team 222",
+        redSurrogate: false,
+        blueSurrogate: false,
+        redScore: 194,
+        blueScore: null,
+      },
+    ]);
   });
 });

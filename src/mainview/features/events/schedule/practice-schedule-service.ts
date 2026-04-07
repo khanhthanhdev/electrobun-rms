@@ -110,7 +110,7 @@ export const printPracticeScheduleResults = ({
 
 export const fetchPracticeSchedule = (
   eventCode: string,
-  token: string
+  token: string | null
 ): Promise<PracticeScheduleResponse> =>
   fetchSchedule<PracticeScheduleResponse>(eventCode, "practice", token);
 

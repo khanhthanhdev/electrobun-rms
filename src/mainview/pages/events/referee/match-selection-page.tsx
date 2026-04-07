@@ -22,12 +22,12 @@ interface ScheduleResponse {
 interface MatchBlock {
   label: string;
   match: OneVsOneScheduleMatch;
-  type: "practice" | "qual";
+  type: "practice" | "quals";
 }
 
 const collectMatchBlocks = (
   resp: ScheduleResponse | null,
-  type: "practice" | "qual",
+  type: "practice" | "quals",
   prefix: string,
   fieldNumber: string
 ): MatchBlock[] => {
@@ -67,7 +67,7 @@ const loadScheduleMatches = async (
 
   const combined: MatchBlock[] = [
     ...collectMatchBlocks(pracResp, "practice", "Practice", fieldNumber),
-    ...collectMatchBlocks(qualResp, "qual", "Match", fieldNumber),
+    ...collectMatchBlocks(qualResp, "quals", "Match", fieldNumber),
   ];
 
   combined.sort((a, b) => a.match.startTime - b.match.startTime);
@@ -280,7 +280,7 @@ export const MatchSelectionPage = ({
                 const matchPath =
                   refereeRole === "hr"
                     ? `/event/${eventCode}/hr/${fieldNumber}/match/${mb.match.matchNumber}`
-                    : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/match/${mb.match.matchNumber}`;
+                    : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/${mb.type}/match/${mb.match.matchNumber}`;
                 onNavigate(matchPath);
               }}
               style={{

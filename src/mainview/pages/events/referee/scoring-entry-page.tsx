@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { scoresheetToScoringState } from "@/shared/api/scoring";
+import type { MatchType } from "@/shared/types/scoring";
 import {
   calcScoringTotal,
   ScoringEntryForm,
@@ -18,7 +19,7 @@ interface ScoringEntryPageProps {
   eventCode: string;
   fieldNumber: string;
   matchNumber: number;
-  matchType?: "quals" | "elims";
+  matchType?: MatchType;
   onNavigate: (path: string) => void;
   token: string | null;
 }
