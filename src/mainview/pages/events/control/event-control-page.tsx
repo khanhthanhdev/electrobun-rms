@@ -1,7 +1,27 @@
+import type { DisplayMatchRef } from "@shared/display";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publishDisplayCommand } from "@/features/display/display-command-channel";
-import { useMatchControlData } from "@/features/events/control";
+import {
+  useMatchControlData,
+  fetchMatchControlState,
+  postMatchControlLoad,
+  postMatchControlTransition,
+  getMatchControlRealtimeState,
+  subscribeToMatchControlRealtimeState,
+  MatchControlTransitionError,
+} from "@/features/events/control";
+import { useMatchControlRealtime } from "@/features/events/control/hooks/use-match-control-realtime";
+import { useScoringRealtime } from "@/features/scoring/hooks/use-scoring-realtime";
+import {
+  computeTimeRemaining,
+  type MatchRef,
+  matchRefEquals,
+  resolveMatchRow,
+  toMatchRef,
+} from "@/features/events/control/match-control-session";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
+import type { MatchControlState } from "@shared/match-control";
+import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import type {
   ControlMatchRow,
   ControlMatchType,
@@ -26,7 +46,7 @@ type ControlTab =
 type LoadedMatchState = "idle" | "loaded" | "preview" | "ready";
 type ActiveMatchState = "idle" | "in_progress" | "completed";
 
-const MATCH_DURATION_SECONDS = 150;
+
 
 const MATCH_TYPE_LABELS: Record<ControlMatchType, string> = {
   practice: "Practice",
@@ -73,10 +93,16 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-const findDefaultMatch = (rows: ControlMatchRow[]): number | null => {
-  const nextUncommitted = rows.find((row) => row.state !== "COMMITTED");
-  return nextUncommitted?.matchNumber ?? rows[0]?.matchNumber ?? null;
-};
+const toDisplayMatchRef = (match: ControlMatchRow): DisplayMatchRef => ({
+  blueTeam: match.blueTeam,
+  blueTeamName: match.blueTeamName,
+  fieldNumber: match.fieldNumber,
+  matchName: match.matchName,
+  matchNumber: match.matchNumber,
+  matchType: match.matchType,
+  redTeam: match.redTeam,
+  redTeamName: match.redTeamName,
+});
 
 const StatusBar = ({
   activeMatch,
@@ -153,7 +179,6 @@ const StatusBar = ({
 
 const ActionBar = ({
   activeState,
-  hasLoadedMatch,
   loadedState,
   onAbort,
   onCommit,
@@ -163,7 +188,6 @@ const ActionBar = ({
   onStartMatch,
 }: {
   activeState: ActiveMatchState;
-  hasLoadedMatch: boolean;
   loadedState: LoadedMatchState;
   onAbort: () => void;
   onCommit: () => void;
@@ -174,8 +198,10 @@ const ActionBar = ({
 }): JSX.Element => {
   const [showAbortDialog, setShowAbortDialog] = useState(false);
   const isInProgress = activeState === "in_progress";
-  const canPreview = hasLoadedMatch && !isInProgress;
-  const canStart = hasLoadedMatch && !isInProgress;
+  const canLoadNext = activeState === "idle";
+  const canPreview = loadedState === "loaded";
+  const canShowMatch = loadedState === "preview";
+  const canStart = loadedState === "ready" && activeState === "idle";
   const highlightShowPreview = loadedState === "loaded";
   const highlightShowMatch = loadedState === "preview";
 
@@ -185,7 +211,7 @@ const ActionBar = ({
         <div className="match-control-action-row">
           <button
             className="button"
-            disabled={isInProgress}
+            disabled={!canLoadNext}
             onClick={onLoadNext}
             type="button"
           >
@@ -201,7 +227,7 @@ const ActionBar = ({
           </button>
           <button
             className={`button ${highlightShowMatch ? "match-control-action-btn--highlight" : ""}`}
-            disabled={!canPreview}
+            disabled={!canShowMatch}
             onClick={onShowMatch}
             type="button"
           >
@@ -565,22 +591,22 @@ const ScoreEditPanel = ({
                 Open Scoresheet
               </a>
               <a
-                href={`/event/${eventCode}/ref/red/scoring/${editMatch.fieldNumber}/match/${editMatch.matchNumber}`}
+                href={`/event/${eventCode}/ref/red/scoring/${editMatch.fieldNumber}/${editMatch.matchType}/match/${editMatch.matchNumber}`}
                 onClick={(e) => {
                   e.preventDefault();
                   onNavigate(
-                    `/event/${eventCode}/ref/red/scoring/${editMatch.fieldNumber}/match/${editMatch.matchNumber}`
+                    `/event/${eventCode}/ref/red/scoring/${editMatch.fieldNumber}/${editMatch.matchType}/match/${editMatch.matchNumber}`
                   );
                 }}
               >
                 Edit Red Scores
               </a>
               <a
-                href={`/event/${eventCode}/ref/blue/scoring/${editMatch.fieldNumber}/match/${editMatch.matchNumber}`}
+                href={`/event/${eventCode}/ref/blue/scoring/${editMatch.fieldNumber}/${editMatch.matchType}/match/${editMatch.matchNumber}`}
                 onClick={(e) => {
                   e.preventDefault();
                   onNavigate(
-                    `/event/${eventCode}/ref/blue/scoring/${editMatch.fieldNumber}/match/${editMatch.matchNumber}`
+                    `/event/${eventCode}/ref/blue/scoring/${editMatch.fieldNumber}/${editMatch.matchType}/match/${editMatch.matchNumber}`
                   );
                 }}
               >
@@ -603,22 +629,147 @@ export const EventControlPage = ({
     eventCode,
     token
   );
+  useScoringRealtime(eventCode, token);
+  useMatchControlRealtime(eventCode, token);
   const [selectedTab, setSelectedTab] = useState<ControlTab>("schedule");
   const [selectedMatchType, setSelectedMatchType] =
     useState<ControlMatchType>("practice");
-  const [selectedMatchNumber, setSelectedMatchNumber] = useState<number | null>(
+
+  // ---------------------------------------------------------------------------
+  // Server-derived match lifecycle state
+  // ---------------------------------------------------------------------------
+  const [serverState, setServerState] = useState<MatchControlState | null>(
     null
   );
-  const [loadedMatchNumber, setLoadedMatchNumber] = useState<number | null>(
-    null
+  const versionRef = useRef(0);
+
+  const applyServerState = useCallback((state: MatchControlState) => {
+    if (state.version > versionRef.current) {
+      versionRef.current = state.version;
+    }
+    setServerState(state);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Transition error handling
+  // ---------------------------------------------------------------------------
+  const [transitionError, setTransitionError] = useState<string | null>(null);
+  const transitionErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showTransitionError = useCallback((message: string) => {
+    if (transitionErrorTimerRef.current) {
+      clearTimeout(transitionErrorTimerRef.current);
+    }
+    setTransitionError(message);
+    transitionErrorTimerRef.current = setTimeout(() => {
+      setTransitionError(null);
+      transitionErrorTimerRef.current = null;
+    }, 5000);
+  }, []);
+
+  const handleTransitionError = useCallback(
+    (err: unknown) => {
+      if (err instanceof MatchControlTransitionError) {
+        if (err.body.error === "STATE_CONFLICT" && err.body.currentState) {
+          applyServerState(err.body.currentState);
+          showTransitionError("State was out of sync — refreshed. Please retry.");
+        } else {
+          showTransitionError(err.body.message);
+        }
+      } else if (err instanceof Error) {
+        showTransitionError(err.message);
+      } else {
+        showTransitionError("An unexpected error occurred.");
+      }
+    },
+    [applyServerState, showTransitionError]
   );
-  const [loadedState, setLoadedState] = useState<LoadedMatchState>("idle");
-  const [activeMatchNumber, setActiveMatchNumber] = useState<number | null>(
-    null
-  );
-  const [activeState, setActiveState] = useState<ActiveMatchState>("idle");
+
+  useEffect(() => {
+    return () => {
+      if (transitionErrorTimerRef.current) {
+        clearTimeout(transitionErrorTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Initial hydration from server
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    fetchMatchControlState(eventCode, token)
+      .then((res) => {
+        applyServerState(res.state);
+      })
+      .catch(() => {});
+  }, [eventCode, token, applyServerState]);
+
+  // Subscribe to SSE state updates via the sync store
+  useEffect(() => {
+    const syncFromStore = (): void => {
+      const storeState = getMatchControlRealtimeState(eventCode);
+      if (storeState) {
+        applyServerState(storeState);
+      }
+    };
+    // Apply any state already in store
+    syncFromStore();
+    return subscribeToMatchControlRealtimeState(eventCode, syncFromStore);
+  }, [eventCode, applyServerState]);
+
+  // Derive UI values from server state
+  const loadedState: LoadedMatchState = serverState
+    ? (serverState.loadedState.toLowerCase() as LoadedMatchState)
+    : "idle";
+  const activeState: ActiveMatchState = serverState
+    ? (serverState.activeState.toLowerCase() as ActiveMatchState)
+    : "idle";
+  const activeStartedAtMs = serverState?.activeStartedAtMs ?? null;
+
+  // Convert server DisplayMatchRef → MatchRef for row resolution
+  const loadedMatchRef = useMemo<MatchRef | null>(() => {
+    if (!serverState?.loadedMatch) {
+      return null;
+    }
+    return {
+      matchNumber: serverState.loadedMatch.matchNumber,
+      matchType: serverState.loadedMatch.matchType as ControlMatchType,
+    };
+  }, [serverState]);
+
+  const activeMatchRef = useMemo<MatchRef | null>(() => {
+    if (!serverState?.activeMatch) {
+      return null;
+    }
+    return {
+      matchNumber: serverState.activeMatch.matchNumber,
+      matchType: serverState.activeMatch.matchType as ControlMatchType,
+    };
+  }, [serverState]);
+
+  // Timer — local countdown for display only; completion comes from server
   const [timeRemaining, setTimeRemaining] = useState(MATCH_DURATION_SECONDS);
-  const timerCompletedRef = useRef(false);
+
+  useEffect(() => {
+    if (activeState === "in_progress" && activeStartedAtMs) {
+      setTimeRemaining(
+        computeTimeRemaining(activeStartedAtMs, MATCH_DURATION_SECONDS)
+      );
+    } else if (activeState === "idle") {
+      setTimeRemaining(MATCH_DURATION_SECONDS);
+    }
+  }, [activeState, activeStartedAtMs]);
+
+  useEffect(() => {
+    if (activeState !== "in_progress" || timeRemaining <= 0) {
+      return;
+    }
+    const id = setInterval(() => {
+      setTimeRemaining((t) => (t <= 1 ? 0 : t - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [activeState, timeRemaining]);
 
   useEffect(() => {
     if (!data) {
@@ -638,156 +789,124 @@ export const EventControlPage = ({
     return data.byType[selectedMatchType] ?? [];
   }, [data, selectedMatchType]);
 
-  useEffect(() => {
-    setSelectedMatchNumber((currentMatchNumber) => {
-      if (currentMatchNumber === null) {
-        return findDefaultMatch(selectedRows);
-      }
-      const stillPresent = selectedRows.some(
-        (row) => row.matchNumber === currentMatchNumber
-      );
-      return stillPresent ? currentMatchNumber : findDefaultMatch(selectedRows);
-    });
-  }, [selectedRows]);
-
   const incompleteRows = useMemo(
     () => selectedRows.filter((row) => row.state !== "COMMITTED"),
     [selectedRows]
   );
 
-  const activeRows = useMemo(
-    () => (incompleteRows.length > 0 ? incompleteRows : selectedRows),
-    [incompleteRows, selectedRows]
-  );
-
   const loadedMatch = useMemo(
-    () =>
-      loadedMatchNumber !== null
-        ? (selectedRows.find((row) => row.matchNumber === loadedMatchNumber) ??
-          null)
-        : null,
-    [selectedRows, loadedMatchNumber]
+    () => resolveMatchRow(data, loadedMatchRef),
+    [data, loadedMatchRef]
   );
 
   const activeMatch = useMemo(
-    () =>
-      activeMatchNumber !== null
-        ? (selectedRows.find((row) => row.matchNumber === activeMatchNumber) ??
-          null)
-        : null,
-    [selectedRows, activeMatchNumber]
+    () => resolveMatchRow(data, activeMatchRef),
+    [data, activeMatchRef]
   );
 
+  // ---------------------------------------------------------------------------
+  // Action handlers — POST to server, state comes back via SSE
+  // ---------------------------------------------------------------------------
+
   const handleLoadNextMatch = useCallback(() => {
+    if (!token) {
+      return;
+    }
     const nextMatch = selectedRows.find(
-      (row) => row.state === "UNPLAYED" && row.matchNumber !== activeMatchNumber
+      (row) =>
+        row.state === "UNPLAYED" &&
+        !matchRefEquals(toMatchRef(row), activeMatchRef)
     );
     if (nextMatch) {
-      setLoadedMatchNumber(nextMatch.matchNumber);
-      setLoadedState("loaded");
+      postMatchControlLoad(
+        eventCode,
+        token,
+        toDisplayMatchRef(nextMatch),
+        versionRef.current
+      )
+        .then((res) => applyServerState(res.state))
+        .catch(handleTransitionError);
     }
-  }, [selectedRows, activeMatchNumber]);
+  }, [selectedRows, activeMatchRef, eventCode, token, applyServerState, handleTransitionError]);
 
   const handleLoadMatch = useCallback(
     (matchNumber: number) => {
-      if (matchNumber === activeMatchNumber) {
+      if (!token) {
         return;
       }
-      setLoadedMatchNumber(matchNumber);
-      setLoadedState("loaded");
+      const row = selectedRows.find((r) => r.matchNumber === matchNumber);
+      if (!row) {
+        return;
+      }
+      const ref: MatchRef = { matchNumber, matchType: selectedMatchType };
+      if (matchRefEquals(ref, activeMatchRef)) {
+        return;
+      }
+      postMatchControlLoad(
+        eventCode,
+        token,
+        toDisplayMatchRef(row),
+        versionRef.current
+      )
+        .then((res) => applyServerState(res.state))
+        .catch(handleTransitionError);
     },
-    [activeMatchNumber]
+    [activeMatchRef, selectedMatchType, selectedRows, eventCode, token, applyServerState, handleTransitionError]
   );
 
   const handleShowPreview = useCallback(() => {
-    setLoadedState("preview");
-    publishDisplayCommand(
-      eventCode,
-      { mode: getSceneForAction("show-preview") },
-      token
-    );
-  }, [eventCode, token]);
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(eventCode, token, "show-preview", versionRef.current)
+      .then((res) => applyServerState(res.state))
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
 
   const handleShowMatch = useCallback(() => {
-    setLoadedState("ready");
-    publishDisplayCommand(
-      eventCode,
-      { mode: getSceneForAction("show-match") },
-      token
-    );
-  }, [eventCode, token]);
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(eventCode, token, "show-match", versionRef.current)
+      .then((res) => applyServerState(res.state))
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
 
   const handleStartMatch = useCallback(() => {
-    if (loadedMatchNumber === null) {
+    if (!token) {
       return;
     }
-    publishDisplayCommand(
-      eventCode,
-      { mode: getSceneForAction("start-match"), startedAtMs: Date.now() },
-      token
-    );
-    setActiveMatchNumber(loadedMatchNumber);
-    setActiveState("in_progress");
-    setTimeRemaining(MATCH_DURATION_SECONDS);
-    setSelectedTab("active");
-
-    const nextMatch = selectedRows.find(
-      (row) => row.state === "UNPLAYED" && row.matchNumber !== loadedMatchNumber
-    );
-    if (nextMatch) {
-      setLoadedMatchNumber(nextMatch.matchNumber);
-      setLoadedState("loaded");
-    } else {
-      setLoadedMatchNumber(null);
-      setLoadedState("idle");
-    }
-  }, [eventCode, loadedMatchNumber, selectedRows, token]);
+    postMatchControlTransition(eventCode, token, "start", versionRef.current)
+      .then((res) => {
+        applyServerState(res.state);
+        setSelectedTab("active");
+      })
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
 
   const handleAbortMatch = useCallback(() => {
-    publishDisplayCommand(
-      eventCode,
-      { mode: getSceneForAction("show-blank") },
-      token
-    );
-    setLoadedMatchNumber(activeMatchNumber);
-    setLoadedState("loaded");
-    setActiveMatchNumber(null);
-    setActiveState("idle");
-    setTimeRemaining(MATCH_DURATION_SECONDS);
-    refresh();
-  }, [activeMatchNumber, eventCode, refresh, token]);
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(eventCode, token, "abort", versionRef.current)
+      .then((res) => {
+        applyServerState(res.state);
+        refresh();
+      })
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, refresh, handleTransitionError]);
 
   const handleCommitMatch = useCallback(() => {
-    publishDisplayCommand(
-      eventCode,
-      { mode: getSceneForAction("commit-winner") },
-      token
-    );
-    setActiveMatchNumber(null);
-    setActiveState("idle");
-    refresh();
-  }, [eventCode, refresh, token]);
-
-  useEffect(() => {
-    if (activeState !== "in_progress" || timeRemaining > 0) {
-      timerCompletedRef.current = false;
+    if (!token) {
       return;
     }
-    if (!timerCompletedRef.current) {
-      timerCompletedRef.current = true;
-      setActiveState("completed");
-    }
-  }, [activeState, timeRemaining]);
-
-  useEffect(() => {
-    if (activeState !== "in_progress" || timeRemaining <= 0) {
-      return;
-    }
-    const id = setInterval(() => {
-      setTimeRemaining((t) => (t <= 1 ? 0 : t - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [activeState, timeRemaining]);
+    postMatchControlTransition(eventCode, token, "commit", versionRef.current)
+      .then((res) => {
+        applyServerState(res.state);
+        refresh();
+      })
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, refresh, handleTransitionError]);
 
   return (
     <main className="page-shell">
@@ -830,9 +949,14 @@ export const EventControlPage = ({
           timeRemaining={timeRemaining}
         />
 
+        {transitionError ? (
+          <p className="message-block" data-variant="danger" role="alert">
+            {transitionError}
+          </p>
+        ) : null}
+
         <ActionBar
           activeState={activeState}
-          hasLoadedMatch={loadedMatchNumber !== null}
           loadedState={loadedState}
           onAbort={handleAbortMatch}
           onCommit={handleCommitMatch}
@@ -909,13 +1033,11 @@ export const EventControlPage = ({
 
             {selectedTab === "active" ? (
               <ControlActiveMatchPanel
-                activeMatchNumber={activeMatchNumber}
+                activeMatch={activeMatch}
+                activeMatchRef={activeMatchRef}
                 activeState={activeState}
                 eventCode={eventCode}
                 onNavigate={onNavigate}
-                onSelectMatch={setSelectedMatchNumber}
-                rows={activeRows}
-                selectedMatchNumber={selectedMatchNumber}
                 timeRemaining={timeRemaining}
                 token={token}
               />

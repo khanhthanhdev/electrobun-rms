@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { subscribeToScoringRealtimeVersion } from "@/features/scoring/state/scoring-sync-store";
 import type { MatchControlData } from "@/shared/types/match-control";
 import { fetchMatchControlData } from "./match-control-service";
+import { subscribeToMatchControlRealtimeVersion } from "./state/match-control-sync-store";
 
 interface UseMatchControlDataResult {
   data: MatchControlData | null;
@@ -69,7 +69,7 @@ export const useMatchControlData = (
       return;
     }
 
-    return subscribeToScoringRealtimeVersion(eventCode, () => {
+    return subscribeToMatchControlRealtimeVersion(eventCode, () => {
       loadData();
     });
   }, [eventCode, loadData, token]);

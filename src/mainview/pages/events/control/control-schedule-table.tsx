@@ -63,8 +63,8 @@ const MatchActions = ({
 }): JSX.Element => {
   const scoresheetPath = `/event/${eventCode}/match/${row.matchName}`;
   const historyPath = `/event/${eventCode}/match/${row.matchName}/history`;
-  const redEntryPath = `/event/${eventCode}/ref/red/scoring/${row.fieldNumber}/match/${row.matchNumber}`;
-  const blueEntryPath = `/event/${eventCode}/ref/blue/scoring/${row.fieldNumber}/match/${row.matchNumber}`;
+  const redEntryPath = `/event/${eventCode}/ref/red/scoring/${row.fieldNumber}/${row.matchType}/match/${row.matchNumber}`;
+  const blueEntryPath = `/event/${eventCode}/ref/blue/scoring/${row.fieldNumber}/${row.matchType}/match/${row.matchNumber}`;
 
   if (row.state === "COMMITTED") {
     return (

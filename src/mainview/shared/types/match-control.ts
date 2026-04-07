@@ -1,6 +1,14 @@
 export type ControlMatchType = "practice" | "quals";
 
-export type ControlMatchState = "COMMITTED" | "INCOMPLETE" | "UNPLAYED";
+export type ControlMatchState =
+  | "UNPLAYED"
+  | "LOADED"
+  | "PREVIEW"
+  | "READY"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "COMMITTED"
+  | "INCOMPLETE";
 
 export interface ControlMatchRow {
   blueScore: number | null;

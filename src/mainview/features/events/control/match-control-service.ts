@@ -121,7 +121,7 @@ const toActiveScheduleType = (
 
 export const fetchMatchControlData = async (
   eventCode: string,
-  token: string
+  token: string | null
 ): Promise<MatchControlData> => {
   const [
     practiceScheduleResult,
