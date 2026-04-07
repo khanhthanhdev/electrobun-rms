@@ -1,4 +1,4 @@
-import type { DisplaySceneMode } from "@shared/display";
+import type { DisplayMatchRef, DisplaySceneMode } from "@shared/display";
 import { InMemorySyncHub } from "../../infrastructure/services/in-memory-sync-hub";
 
 export const DISPLAY_SYNC_EVENT_NAME = "display.command" as const;
@@ -8,9 +8,11 @@ export type DisplaySyncChangeKind = "COMMAND_ISSUED" | "SCORE_UPDATE";
 export type DisplaySyncEventKind = DisplaySyncChangeKind | "SNAPSHOT_HINT";
 
 export interface DisplaySyncEvent {
+  activeMatch: DisplayMatchRef | null;
   changedAt: string;
   eventCode: string;
   kind: DisplaySyncEventKind;
+  loadedMatch: DisplayMatchRef | null;
   matchNumber: number | null;
   matchType: string | null;
   message: string | null;
@@ -20,8 +22,10 @@ export interface DisplaySyncEvent {
 }
 
 export interface PublishDisplaySyncEventInput {
+  activeMatch?: DisplayMatchRef | null;
   eventCode: string;
   kind: DisplaySyncChangeKind;
+  loadedMatch?: DisplayMatchRef | null;
   matchNumber?: number | null;
   matchType?: string | null;
   message?: string | null;
@@ -35,6 +39,7 @@ export interface DisplaySyncPublisher {
   getCurrentVersion: (eventCode: string) => number;
   getLatestEvent: (eventCode: string) => DisplaySyncEvent | null;
   publish: (input: PublishDisplaySyncEventInput) => DisplaySyncEvent;
+  removeEvent: (eventCode: string) => void;
   subscribe: (
     eventCode: string,
     subscriber: DisplaySyncSubscriber
@@ -58,9 +63,11 @@ export const displaySyncHub: DisplaySyncPublisher = {
   publish: (input) =>
     hub.publish(input.eventCode, (version) => {
       const event: DisplaySyncEvent = {
+        activeMatch: input.activeMatch ?? null,
         changedAt: new Date().toISOString(),
         eventCode: input.eventCode,
         kind: input.kind,
+        loadedMatch: input.loadedMatch ?? null,
         matchNumber: input.matchNumber ?? null,
         matchType: input.matchType ?? null,
         message: input.message ?? null,
@@ -72,6 +79,11 @@ export const displaySyncHub: DisplaySyncPublisher = {
       return event;
     }),
 
+  removeEvent: (eventCode) => {
+    hub.removeEvent(eventCode);
+    latestByEventCode.delete(eventCode);
+  },
+
   subscribe: (eventCode, subscriber) => hub.subscribe(eventCode, subscriber),
 };
 
@@ -80,9 +92,11 @@ export const createDisplaySnapshotHintEvent = (
   version: number,
   latest: DisplaySyncEvent | null
 ): DisplaySyncEvent => ({
+  activeMatch: latest?.activeMatch ?? null,
   changedAt: new Date().toISOString(),
   eventCode,
   kind: "SNAPSHOT_HINT",
+  loadedMatch: latest?.loadedMatch ?? null,
   matchNumber: latest?.matchNumber ?? null,
   matchType: latest?.matchType ?? null,
   message: latest?.message ?? null,
@@ -93,17 +107,13 @@ export const createDisplaySnapshotHintEvent = (
 
 // Display stays in api/ because it is a transport bridge that republishes
 // scoring changes without introducing persistence or domain logic.
-export const createDisplayScoreUpdateEvent = (
+export const publishDisplayScoreUpdate = (
   eventCode: string,
   source: DisplayScoreUpdateSource
-): DisplaySyncEvent => ({
-  changedAt: new Date().toISOString(),
-  eventCode,
-  kind: "SCORE_UPDATE",
-  matchNumber: source.matchNumber,
-  matchType: source.matchType,
-  message: null,
-  mode: null,
-  startedAtMs: null,
-  version: source.version,
-});
+): DisplaySyncEvent =>
+  displaySyncHub.publish({
+    eventCode,
+    kind: "SCORE_UPDATE",
+    matchNumber: source.matchNumber,
+    matchType: source.matchType,
+  });

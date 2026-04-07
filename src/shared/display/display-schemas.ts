@@ -19,6 +19,29 @@ export const displaySceneModeSchema = union(
 );
 
 /**
+ * Match types that can be shown on the audience display.
+ */
+export const displayMatchTypeSchema = union([
+  literal("practice"),
+  literal("quals"),
+  literal("elims"),
+]);
+
+/**
+ * Match reference for display snapshots.
+ */
+export const displayMatchRefSchema = object({
+  matchNumber: number(),
+  matchType: displayMatchTypeSchema,
+  matchName: string(),
+  fieldNumber: number(),
+  redTeam: number(),
+  redTeamName: optional(string()),
+  blueTeam: number(),
+  blueTeamName: optional(string()),
+});
+
+/**
  * Display intent: command sent from control page to change display state.
  */
 export const displayIntentSchema = object({
@@ -28,18 +51,10 @@ export const displayIntentSchema = object({
   message: optional(nullable(string())),
   /** Timestamp when match started (for match-start scene) */
   startedAtMs: optional(nullable(number())),
-});
-
-/**
- * Match reference for display snapshots.
- */
-export const displayMatchRefSchema = object({
-  matchNumber: number(),
-  matchName: string(),
-  redTeam: string(),
-  redTeamName: optional(string()),
-  blueTeam: string(),
-  blueTeamName: optional(string()),
+  /** Currently loaded match selected on the control page */
+  loadedMatch: optional(nullable(displayMatchRefSchema)),
+  /** Currently active match selected on the control page */
+  activeMatch: optional(nullable(displayMatchRefSchema)),
 });
 
 /**
@@ -52,8 +67,8 @@ export const displayScenePayloadSchema = object({
     object({
       matchNumber: number(),
       matchName: string(),
-      redTeam: string(),
-      blueTeam: string(),
+      redTeam: number(),
+      blueTeam: number(),
       startTimeMs: optional(number()),
     })
   ),
@@ -62,9 +77,9 @@ export const displayScenePayloadSchema = object({
     object({
       matchNumber: number(),
       matchName: string(),
-      redTeam: string(),
+      redTeam: number(),
       redTeamName: optional(string()),
-      blueTeam: string(),
+      blueTeam: number(),
       blueTeamName: optional(string()),
       redScore: optional(number()),
       blueScore: optional(number()),
@@ -76,7 +91,7 @@ export const displayScenePayloadSchema = object({
       rankings: array(
         object({
           rank: number(),
-          teamNumber: string(),
+          teamNumber: number(),
           teamName: optional(string()),
           matchesPlayed: number(),
           points: number(),
@@ -89,7 +104,7 @@ export const displayScenePayloadSchema = object({
     object({
       teams: array(
         object({
-          teamNumber: string(),
+          teamNumber: number(),
           teamName: optional(string()),
           status: union([
             literal("NOT_STARTED"),
@@ -151,4 +166,8 @@ export const displayStreamEventSchema = object({
   message: nullable(string()),
   /** Started at timestamp */
   startedAtMs: nullable(number()),
+  /** Currently loaded match selected on the control page */
+  loadedMatch: optional(nullable(displayMatchRefSchema)),
+  /** Currently active match selected on the control page */
+  activeMatch: optional(nullable(displayMatchRefSchema)),
 });

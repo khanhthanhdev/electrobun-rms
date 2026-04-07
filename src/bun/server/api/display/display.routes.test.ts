@@ -107,7 +107,10 @@ describe("display routes", () => {
             authorization: `Bearer ${token}`,
             "content-type": "application/json",
           },
-          body: JSON.stringify({ mode: "blank" }),
+          body: JSON.stringify({
+            mode: "blank",
+            message: "Intermission",
+          }),
         }
       );
 
@@ -119,6 +122,7 @@ describe("display routes", () => {
       expect(commandChunk).toContain(`id: ${eventCode}:`);
       expect(commandChunk).toContain('"kind":"COMMAND_ISSUED"');
       expect(commandChunk).toContain('"mode":"blank"');
+      expect(commandChunk).toContain('"message":"Intermission"');
 
       scoringSyncHub.publish({
         eventCode,

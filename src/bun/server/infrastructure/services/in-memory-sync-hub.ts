@@ -8,6 +8,7 @@ export type SyncSubscriber<TEvent> = (event: TEvent) => void;
 export interface SyncPublisher<TEvent extends SyncHubEvent> {
   getCurrentVersion(eventCode: string): number;
   publish(eventCode: string, buildEvent: (version: number) => TEvent): TEvent;
+  removeEvent(eventCode: string): void;
   subscribe(eventCode: string, subscriber: SyncSubscriber<TEvent>): () => void;
 }
 
@@ -67,5 +68,10 @@ export class InMemorySyncHub<TEvent extends SyncHubEvent>
         this.subscribersByEventCode.delete(eventCode);
       }
     };
+  }
+
+  removeEvent(eventCode: string): void {
+    this.subscribersByEventCode.delete(eventCode);
+    this.versionByEventCode.delete(eventCode);
   }
 }

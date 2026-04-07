@@ -3,17 +3,18 @@ import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
+import { awaitStreamClose } from "../common/sse";
 import { requireEventAdmin } from "../common/guards";
 import { parseJsonBody } from "../common/http";
 import { formatValidationIssues } from "../common/validation";
 import { scoringSyncHub } from "../scoring/scoring-sync";
 import { publishDisplayCommandBodySchema } from "./display.schema";
 import {
-  createDisplayScoreUpdateEvent,
   createDisplaySnapshotHintEvent,
   DISPLAY_SYNC_EVENT_NAME,
   type DisplaySyncEvent,
   displaySyncHub,
+  publishDisplayScoreUpdate,
 } from "./display-sync";
 
 export const displayRoutes = new Hono<AppEnv>();
@@ -21,6 +22,17 @@ export const displayRoutes = new Hono<AppEnv>();
 const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
 const SCORE_UPDATE_EVENT_NAME = "display.change" as const;
+
+/**
+ * Match lifecycle scenes that must go through /match-control/* routes.
+ * Blocked from /display/command to prevent bypassing server-side validation.
+ */
+const BLOCKED_LIFECYCLE_MODES = new Set([
+  "next-match",
+  "match-preview",
+  "match-start",
+  "match-winner",
+]);
 
 const writeDisplaySyncEvent = async (
   stream: SSEStreamingApi,
@@ -77,21 +89,20 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
     );
 
     const unsubscribe = displaySyncHub.subscribe(eventCode, (event) => {
-      enqueueWrite((streamApi) => writeDisplaySyncEvent(streamApi, event));
+      const writer =
+        event.kind === "SCORE_UPDATE"
+          ? writeScoreUpdateEvent
+          : writeDisplaySyncEvent;
+      enqueueWrite((streamApi) => writer(streamApi, event));
     });
 
-    // Subscribe to scoring events and forward as display sync events
+    // Subscribe to scoring events and republish through displaySyncHub
+    // so they share the same version sequence as COMMAND_ISSUED events.
     const scoringUnsubscribe = scoringSyncHub.subscribe(
       eventCode,
       (scoringEvent) => {
         if (scoringEvent.kind === "SCORE_UPDATED") {
-          const displayEvent = createDisplayScoreUpdateEvent(
-            eventCode,
-            scoringEvent
-          );
-          enqueueWrite((streamApi) =>
-            writeScoreUpdateEvent(streamApi, displayEvent)
-          );
+          publishDisplayScoreUpdate(eventCode, scoringEvent);
         }
       }
     );
@@ -118,9 +129,7 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
     });
 
     try {
-      while (!stream.aborted) {
-        await stream.sleep(1000);
-      }
+      await awaitStreamClose(stream);
     } finally {
       cleanup();
       await queuedWrite;
@@ -151,11 +160,34 @@ displayRoutes.post("/:eventCode/display/command", requireAuth, async (c) => {
     );
   }
 
-  const { mode, message, startedAtMs } = bodyResult.output;
+  const { activeMatch, loadedMatch, message, mode, startedAtMs } =
+    bodyResult.output;
+
+  if (BLOCKED_LIFECYCLE_MODES.has(mode)) {
+    return c.json(
+      {
+        error: "Use /match-control/* routes for match lifecycle scenes.",
+        blockedMode: mode,
+      },
+      400
+    );
+  }
+
+  if (loadedMatch || activeMatch || startedAtMs) {
+    return c.json(
+      {
+        error:
+          "Match lifecycle fields (loadedMatch, activeMatch, startedAtMs) must go through /match-control/* routes.",
+      },
+      400
+    );
+  }
 
   displaySyncHub.publish({
+    activeMatch: activeMatch ?? null,
     eventCode,
     kind: "COMMAND_ISSUED",
+    loadedMatch: loadedMatch ?? null,
     message: message ?? null,
     mode,
     startedAtMs: startedAtMs ?? null,

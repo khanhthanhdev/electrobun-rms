@@ -23,7 +23,6 @@ const isApplicationError = (error: unknown): error is ApplicationError =>
 
 rankingRoutes.get(
   "/:eventCode/ranking/qualifications",
-  requireAuth,
   async (c) => {
     const eventCode = c.req.param("eventCode");
 

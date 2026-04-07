@@ -38,8 +38,6 @@ export interface QualificationRankingsSyncPublisher {
 
 const hub = new InMemorySyncHub<QualificationRankingsSyncEvent>();
 
-export { hub };
-
 export const createQualificationRankingsSnapshotHintEvent = (
   eventCode: string,
   version: number

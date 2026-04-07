@@ -1,13 +1,12 @@
 import { db, schema } from "../../../db";
 import type {
   QualificationRankingsSyncChangeKind,
-  QualificationRankingsSyncEvent,
+  QualificationRankingsSyncPublisher,
 } from "../../api/events/rankings-sync";
 import type {
   GetQualificationRankingSourceFingerprintUseCase,
   RebuildQualificationRankingsUseCase,
 } from "../../application/use-cases/ranking";
-import type { InMemorySyncHub } from "./in-memory-sync-hub";
 
 interface MonitorState {
   inFlight: boolean;
@@ -16,7 +15,7 @@ interface MonitorState {
 
 interface RankingPollServiceDependencies {
   getFingerprintUseCase: GetQualificationRankingSourceFingerprintUseCase;
-  hub: InMemorySyncHub<QualificationRankingsSyncEvent>;
+  hub: QualificationRankingsSyncPublisher;
   rebuildUseCase: RebuildQualificationRankingsUseCase;
 }
 
@@ -124,11 +123,6 @@ export class RankingPollService {
     eventCode: string,
     kind: QualificationRankingsSyncChangeKind
   ): void {
-    this.deps.hub.publish(eventCode, (version) => ({
-      changedAt: new Date().toISOString(),
-      eventCode,
-      kind,
-      version,
-    }));
+    this.deps.hub.publish({ eventCode, kind });
   }
 }

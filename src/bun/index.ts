@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { BrowserWindow, Updater, Utils } from "electrobun/bun";
 import { initializeDatabase } from "./db/migrate";
 import { createServer } from "./server";
-import { hub as rankingHub } from "./server/api/events/rankings-sync";
+import { qualificationRankingsSyncHub } from "./server/api/events/rankings-sync";
 import {
   GetQualificationRankingSourceFingerprintUseCase,
   RebuildQualificationRankingsUseCase,
@@ -20,7 +20,7 @@ await initializeDatabase();
 
 // --- Start ranking poll service ---
 const pollService = new RankingPollService({
-  hub: rankingHub,
+  hub: qualificationRankingsSyncHub,
   getFingerprintUseCase: new GetQualificationRankingSourceFingerprintUseCase(
     new SQLiteRankingRepository()
   ),
