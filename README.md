@@ -45,7 +45,7 @@ The app runs as a **desktop application** using Electrobun (Bun runtime + embedd
 ### Tech Stack
 
 - **Runtime**: Bun + Electrobun
-- **Frontend**: React 18 + Vite + Tailwind CSS
+- **Frontend**: React 18 + Vite 8 + Tailwind CSS
 - **Backend**: Hono (lightweight HTTP framework)
 - **Database**: bun:sqlite with Drizzle ORM
 - **Realtime**: SSE (Server-Sent Events) for live sync

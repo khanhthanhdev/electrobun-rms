@@ -29,6 +29,8 @@ export default defineConfig({
   },
   root: "src/mainview",
   build: {
+    target: "chrome100",
+    cssMinify: "esbuild",
     outDir: "../../dist",
     emptyOutDir: true,
     rollupOptions: {

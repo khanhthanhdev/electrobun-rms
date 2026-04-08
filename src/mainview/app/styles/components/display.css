@@ -2,6 +2,7 @@
 
 .audience-display-page {
   height: 100vh;
+  padding-block-start: 0;
   overflow: hidden;
   color: var(--background);
   background: var(--foreground);
@@ -617,6 +618,64 @@
 
   .display-match-preview-versus {
     order: 2;
+  }
+}
+
+@media (max-height: 820px) {
+  .display-sponsors-header {
+    padding-block: 0.75rem;
+  }
+
+  .display-sponsors-title {
+    margin-bottom: 1.5rem;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  .display-sponsors-logo-list {
+    gap: clamp(1rem, 4vw, 4rem);
+    padding: clamp(1.5rem, 3vh, 2.5rem) clamp(1rem, 3vw, 3rem);
+  }
+
+  .display-sponsors-logo-item {
+    width: clamp(6rem, 9vw, 10rem);
+    height: clamp(6rem, 9vw, 10rem);
+  }
+
+  .display-next-match-main,
+  .display-match-start-main {
+    gap: clamp(1rem, 3vh, 2rem);
+    padding-top: clamp(1rem, 4vh, 2rem);
+    padding-bottom: clamp(1rem, 4vh, 1.5rem);
+  }
+
+  .display-next-match-countdown-card {
+    min-height: 5.5rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .display-match-start-timer {
+    margin-bottom: 0.5rem;
+    font-size: clamp(3.25rem, 7vw, 6rem);
+  }
+
+  .display-match-start-board {
+    padding: 1rem 1.5rem;
+  }
+
+  .display-match-start-board-total {
+    min-height: 4rem;
+  }
+
+  .display-sponsors-footer {
+    height: clamp(3.75rem, 4.5vw, 5rem);
+  }
+
+  .display-sponsors-footer-logo {
+    height: clamp(2.25rem, 3vw, 3.5rem);
+  }
+
+  .display-sponsors-footer-title {
+    font-size: clamp(0.95rem, 1.4vw, 1.2rem);
   }
 }
 
