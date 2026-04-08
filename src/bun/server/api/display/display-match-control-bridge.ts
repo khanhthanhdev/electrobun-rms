@@ -37,7 +37,7 @@ export const publishDisplayFromMatchControl = (
       displaySyncHub.publish({
         eventCode: state.eventCode,
         kind: "COMMAND_ISSUED",
-        mode: "next-match",
+        mode: "match-preview",
         loadedMatch: state.loadedMatch,
         activeMatch: null,
       });
@@ -47,9 +47,10 @@ export const publishDisplayFromMatchControl = (
       displaySyncHub.publish({
         eventCode: state.eventCode,
         kind: "COMMAND_ISSUED",
-        mode: "match-preview",
+        mode: "match-start",
         loadedMatch: state.loadedMatch,
         activeMatch: null,
+        startedAtMs: null,
       });
       break;
 

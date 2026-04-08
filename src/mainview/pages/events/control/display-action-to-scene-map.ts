@@ -26,17 +26,17 @@ export type DisplayControlAction =
  * @returns The corresponding display scene ID
  *
  * @example
- * getSceneForAction("show-preview") // returns "next-match"
- * getSceneForAction("show-match") // returns "match-preview"
+ * getSceneForAction("show-preview") // returns "match-preview"
+ * getSceneForAction("show-match") // returns "match-start"
  */
 export function getSceneForAction(
   action: DisplayControlAction
 ): DisplaySceneMode {
   switch (action) {
     case "show-preview":
-      return "next-match";
-    case "show-match":
       return "match-preview";
+    case "show-match":
+      return "match-start";
     case "start-match":
       return "match-start";
     case "commit-winner":

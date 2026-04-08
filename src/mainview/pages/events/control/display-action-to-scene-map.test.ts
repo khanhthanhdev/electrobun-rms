@@ -2,12 +2,12 @@ import { describe, expect, it } from "bun:test";
 import { getSceneForAction } from "./display-action-to-scene-map";
 
 describe("getSceneForAction", () => {
-  it("returns next-match for show-preview action", () => {
-    expect(getSceneForAction("show-preview")).toBe("next-match");
+  it("returns match-preview for show-preview action", () => {
+    expect(getSceneForAction("show-preview")).toBe("match-preview");
   });
 
-  it("returns match-preview for show-match action", () => {
-    expect(getSceneForAction("show-match")).toBe("match-preview");
+  it("returns match-start for show-match action", () => {
+    expect(getSceneForAction("show-match")).toBe("match-start");
   });
 
   it("returns match-start for start-match action", () => {
