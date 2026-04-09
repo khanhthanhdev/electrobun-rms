@@ -81,29 +81,33 @@ export const applyInspectionRealtimeEvent = (
 ): void => {
   ensureInspectionRealtimeRow(event.eventCode);
 
-  const currentVersion = getInspectionRealtimeVersion(event.eventCode);
-  const nextVersion =
-    event.version > currentVersion ? event.version : currentVersion;
-
   inspectionRealtimeStore.transaction(() => {
-    inspectionRealtimeStore.setCell(
-      INSPECTION_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_AT_CELL_ID,
-      event.changedAt
-    );
-    inspectionRealtimeStore.setCell(
-      INSPECTION_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_ID_CELL_ID,
-      `${event.eventCode}:${event.version}`
-    );
-    inspectionRealtimeStore.setCell(
-      INSPECTION_REALTIME_TABLE_ID,
+    const currentVersion = readNumberCell(
       event.eventCode,
       LATEST_VERSION_CELL_ID,
-      nextVersion
+      0
     );
+
+    if (event.version > currentVersion) {
+      inspectionRealtimeStore.setCell(
+        INSPECTION_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_AT_CELL_ID,
+        event.changedAt
+      );
+      inspectionRealtimeStore.setCell(
+        INSPECTION_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_ID_CELL_ID,
+        `${event.eventCode}:${event.version}`
+      );
+      inspectionRealtimeStore.setCell(
+        INSPECTION_REALTIME_TABLE_ID,
+        event.eventCode,
+        LATEST_VERSION_CELL_ID,
+        event.version
+      );
+    }
   });
 };
 

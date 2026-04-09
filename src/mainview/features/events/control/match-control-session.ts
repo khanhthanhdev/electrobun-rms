@@ -149,6 +149,7 @@ export const computeTimeRemaining = (
   if (!startedAtMs) {
     return durationSeconds;
   }
-  const elapsed = Math.floor((Date.now() - startedAtMs) / 1000);
+  const elapsedMs = Date.now() - startedAtMs;
+  const elapsed = Math.max(0, Math.floor(elapsedMs / 1000));
   return Math.max(0, durationSeconds - elapsed);
 };

@@ -39,6 +39,7 @@ export const useInspectionDetail = (
   const [refreshTick, setRefreshTick] = useState(0);
   const [history, setHistory] = useState<InspectionHistoryEntry[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const refreshDetail = useCallback((): void => {
     setRefreshTick((t) => t + 1);
@@ -54,7 +55,9 @@ export const useInspectionDetail = (
     }
 
     let isCancelled = false;
-    setIsLoading(true);
+    if (isInitialLoad) {
+      setIsLoading(true);
+    }
     setError(null);
 
     fetchInspectionDetail(eventCode, teamNumber, token)
@@ -74,6 +77,7 @@ export const useInspectionDetail = (
       .finally(() => {
         if (!isCancelled) {
           setIsLoading(false);
+          setIsInitialLoad(false);
         }
       });
 
@@ -90,7 +94,9 @@ export const useInspectionDetail = (
     }
 
     let isCancelled = false;
-    setIsHistoryLoading(true);
+    if (history.length === 0) {
+      setIsHistoryLoading(true);
+    }
 
     fetchInspectionHistory(eventCode, teamNumber, token)
       .then((result) => {

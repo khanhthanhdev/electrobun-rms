@@ -119,6 +119,16 @@ export const applyDisplayRealtimeEvent = (
   });
 };
 
+export const resetDisplayRealtimeVersion = (eventCode: string): void => {
+  ensureDisplayRealtimeRow(eventCode);
+  displayRealtimeStore.setCell(
+    DISPLAY_REALTIME_TABLE_ID,
+    eventCode,
+    LATEST_VERSION_CELL_ID,
+    0
+  );
+};
+
 export const subscribeToDisplayRealtimeVersion = (
   eventCode: string,
   listener: () => void

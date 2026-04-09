@@ -91,9 +91,8 @@ export const DisplaySceneMatchStart = ({
   matchStartedAtMs,
 }: DisplaySceneMatchStartProps): JSX.Element => {
   const now = useNow(1000);
-  const elapsed = matchStartedAtMs
-    ? Math.floor((now.getTime() - matchStartedAtMs) / 1000)
-    : 0;
+  const elapsedMs = matchStartedAtMs ? now.getTime() - matchStartedAtMs : 0;
+  const elapsed = Math.max(0, Math.floor(elapsedMs / 1000));
   const timeRemaining = Math.max(0, MATCH_DURATION_SECONDS - elapsed);
   const redScore = match?.redScore ?? 0;
   const blueScore = match?.blueScore ?? 0;

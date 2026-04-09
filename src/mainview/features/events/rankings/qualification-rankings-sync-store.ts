@@ -99,27 +99,27 @@ export const applyQualificationRankingsRealtimeEvent = (
       LATEST_VERSION_CELL_ID,
       0
     );
-    const nextVersion =
-      event.version > currentVersion ? event.version : currentVersion;
 
-    qualificationRankingsRealtimeStore.setCell(
-      QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_AT_CELL_ID,
-      event.changedAt
-    );
-    qualificationRankingsRealtimeStore.setCell(
-      QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
-      event.eventCode,
-      LAST_EVENT_ID_CELL_ID,
-      `${event.eventCode}:${event.version}`
-    );
-    qualificationRankingsRealtimeStore.setCell(
-      QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
-      event.eventCode,
-      LATEST_VERSION_CELL_ID,
-      nextVersion
-    );
+    if (event.version > currentVersion) {
+      qualificationRankingsRealtimeStore.setCell(
+        QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_AT_CELL_ID,
+        event.changedAt
+      );
+      qualificationRankingsRealtimeStore.setCell(
+        QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
+        event.eventCode,
+        LAST_EVENT_ID_CELL_ID,
+        `${event.eventCode}:${event.version}`
+      );
+      qualificationRankingsRealtimeStore.setCell(
+        QUALIFICATION_RANKINGS_REALTIME_TABLE_ID,
+        event.eventCode,
+        LATEST_VERSION_CELL_ID,
+        event.version
+      );
+    }
   });
 };
 
