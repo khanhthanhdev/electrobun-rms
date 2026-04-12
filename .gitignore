@@ -7,6 +7,10 @@ bun.lock
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+playwright/.auth/
+test-results/
+.codesight/
 
 # Build & dist
 build/

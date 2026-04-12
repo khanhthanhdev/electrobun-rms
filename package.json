@@ -6,6 +6,7 @@
     "dev": "vite build && bun scripts/run-electrobun-build.ts && electrobun run",
     "dev:hmr": "concurrently \"bun run hmr\" \"bun run dev\"",
     "hmr": "vite --port 5173",
+    "build:web": "vite build",
     "build": "vite build && bun scripts/run-electrobun-build.ts",
     "build:canary": "vite build && bun scripts/run-electrobun-build.ts --env=canary",
     "build:stable": "vite build && bun scripts/run-electrobun-build.ts --env=stable",
@@ -13,6 +14,10 @@
     "db:seed:s4v1:teams": "bun src/bun/db/seed-s4v1-teams.ts",
     "start": "bun run dev",
     "check": "ultracite check",
+    "e2e:install": "playwright install chromium firefox",
+    "e2e:server": "bun run build:web && bun src/bun/e2e-server.ts",
+    "e2e:test": "playwright test --workers 4",
+    "e2e:test:ui": "playwright test --ui",
     "fix": "ultracite fix",
     "postinstall": "bun scripts/patch-electrobun.ts",
     "prepare": "husky"
@@ -29,6 +34,7 @@
     "valibot": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@biomejs/biome": "2.4.0",
     "@types/bun": "latest",
     "@types/react": "^18.3.12",
