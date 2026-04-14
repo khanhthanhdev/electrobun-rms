@@ -1,4 +1,8 @@
+/* Site header — DESIGN.md: white sticky header, border-bottom #d0d5dd */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: var(--app-header-bg);
   border-bottom: 1px solid var(--app-header-border);
 }
@@ -58,8 +62,7 @@
   font-size: var(--text-6);
   font-weight: var(--font-semibold);
   color: var(--app-header-fg);
-  text-decoration: underline;
-  text-underline-offset: 0.16em;
+  text-decoration: none;
 }
 
 .site-header__admin-menu {
@@ -102,6 +105,40 @@
   justify-content: flex-end;
 }
 
+/* Nav links — Inter 15px weight 500 */
+.site-header__nav a:not(.button) {
+  font-size: 0.9375rem;
+  font-weight: var(--font-medium);
+  color: var(--app-header-fg);
+  text-decoration: none;
+  letter-spacing: 0.15px;
+}
+
+.site-header__nav a:not(.button):hover {
+  color: var(--primary);
+}
+
+/* Active link accent — border-bottom 2px solid #7a5af8 */
+.site-header__nav a:not(.button).is-active {
+  border-bottom: 2px solid var(--border-accent);
+}
+
+/* Primary CTA pill in header */
+.site-header__cta {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: var(--font-medium);
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+.site-header__cta:hover {
+  color: #ffffff;
+  background: var(--brand-purple-dark);
+}
+
 .site-header__utility-link {
   font-size: var(--text-7);
   color: var(--app-header-muted);
@@ -129,11 +166,10 @@
   background: none;
   border: none;
   border-radius: var(--radius-small);
-  transition: background-color 0.2s;
 }
 
 .site-header__menu-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--background-mist);
 }
 
 .site-header__collapsible {
@@ -184,7 +220,7 @@
     align-items: stretch;
     width: 100%;
     padding: var(--space-4) 0;
-    border-top: 1px solid var(--app-header-border);
+    border-top: 1px solid var(--border);
   }
 
   .site-header__collapsible.is-open {
@@ -200,8 +236,8 @@
 
   .site-header__admin-menu {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: var(--background-mist);
+    border-color: var(--border);
   }
 
   .site-header__admin-menu summary {
@@ -212,25 +248,25 @@
     position: static;
     padding: var(--space-3);
     margin: var(--space-1) 0;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--background-violet);
     border: none;
   }
 
   .site-header__admin-dropdown a {
-    color: var(--app-header-fg);
+    color: var(--foreground);
   }
 
   .site-header__utility-link {
     padding: var(--space-2) 0;
-    color: var(--app-header-fg);
-    border-bottom: 1px solid var(--app-header-border);
+    color: var(--muted-foreground);
+    border-bottom: 1px solid var(--border);
   }
 
   .site-header__session {
     justify-content: space-between;
     padding: var(--space-3);
-    color: var(--app-header-fg);
-    background: rgba(255, 255, 255, 0.08);
+    color: var(--foreground);
+    background: var(--background-mist);
     border-radius: var(--radius-medium);
   }
 
@@ -239,11 +275,11 @@
     width: 100%;
     padding: var(--space-2) var(--space-4);
     font-weight: var(--font-semibold);
-    color: var(--app-header-bg);
+    color: var(--primary-foreground);
     cursor: pointer;
-    background: var(--app-header-fg);
+    background: var(--primary);
     border: none;
-    border-radius: var(--radius-small);
+    border-radius: var(--radius-pill);
   }
 }
 

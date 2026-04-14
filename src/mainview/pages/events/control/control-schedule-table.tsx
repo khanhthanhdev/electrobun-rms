@@ -162,10 +162,10 @@ export const ControlScheduleTable = ({
           <th>Round</th>
           <th>Field</th>
           <th>State</th>
-          <th>Red</th>
-          <th className="match-control-score-cell">Red Score</th>
-          <th className="match-control-score-cell">Blue Score</th>
           <th>Blue</th>
+          <th className="match-control-score-cell">Blue Score</th>
+          <th className="match-control-score-cell">Red Score</th>
+          <th>Red</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -189,17 +189,17 @@ export const ControlScheduleTable = ({
                   {toStateLabel(row.state)}
                 </span>
               </td>
-              <td className="match-control-red-team">
-                {toTeamLabel(row.redTeam, row.redTeamName, row.redSurrogate)}
-              </td>
-              <td className="match-control-score-cell">
-                {row.redScore === null ? "-" : row.redScore}
+              <td className="match-control-blue-team">
+                {toTeamLabel(row.blueTeam, row.blueTeamName, row.blueSurrogate)}
               </td>
               <td className="match-control-score-cell">
                 {row.blueScore === null ? "-" : row.blueScore}
               </td>
-              <td className="match-control-blue-team">
-                {toTeamLabel(row.blueTeam, row.blueTeamName, row.blueSurrogate)}
+              <td className="match-control-score-cell">
+                {row.redScore === null ? "-" : row.redScore}
+              </td>
+              <td className="match-control-red-team">
+                {toTeamLabel(row.redTeam, row.redTeamName, row.redSurrogate)}
               </td>
               <td>
                 <MatchActions

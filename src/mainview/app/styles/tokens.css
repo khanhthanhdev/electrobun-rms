@@ -1,16 +1,30 @@
-/* Theme values mapped from output/steamforvietnam.org/2026-02-20T14-48-28-852Z.json */
+/* Design tokens — DESIGN.md: ElevenLabs structure × OctoAI/STEAM colors */
 :root {
+  /* ── Brand Colors ── */
+  --brand-purple: #7a5af8;
+  --brand-purple-dark: #5925dc;
+  --brand-blue: #447aff;
+  --brand-blue-light: #9bb4ff;
+  --brand-pink: #ee46bc;
+  --brand-navy: #172b4d;
+
+  /* ── Surfaces ── */
   --background: #ffffff;
+  --background-mist: #f8f7ff;
+  --background-violet: #f0eeff;
+  --background-info: #d7defa;
+
+  /* ── Semantic Roles ── */
   --foreground: #172b4d;
   --card: #ffffff;
   --card-foreground: #172b4d;
-  --primary: #447aff;
+  --primary: #7a5af8;
   --primary-foreground: #ffffff;
-  --secondary: #d7defa;
-  --secondary-foreground: #172b4d;
-  --muted: #ebecf0;
+  --secondary: #f0eeff;
+  --secondary-foreground: #7a5af8;
+  --muted: #f0eeff;
   --muted-foreground: #6b778c;
-  --faint: #f4f6fa;
+  --faint: #f8f7ff;
   --accent: #54c9c2;
   --danger: #d0021b;
   --danger-foreground: #ffffff;
@@ -18,28 +32,53 @@
   --success-foreground: #ffffff;
   --warning: #ffc400;
   --warning-foreground: #172b4d;
-  --border: #c1c7d0;
-  --input: #c1c7d0;
-  --ring: #ffab00;
-  --font-sans: "Quicksand", Arial, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* ── Neutral Scale ── */
+  --gray-700: #475467;
+  --gray-500: #6b778c;
+  --gray-400: #98a2b3;
+  --gray-300: #d0d5dd;
+  --dark: #212121;
+
+  /* ── Borders & Interactive ── */
+  --border: #d0d5dd;
+  --border-accent: #7a5af8;
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --input: #d0d5dd;
+  --ring: rgba(68, 122, 255, 0.4);
+
+  /* ── Typography ── */
+  --font-display: "Waldenburg", "Waldenburg Fallback", system-ui, sans-serif;
+  --font-display-bold: "WaldenburgFH", "WaldenburgFH Fallback", system-ui, sans-serif;
+  --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
-  --radius-small: 0.25rem;
-  --radius-medium: 0.25rem;
-  --radius-large: 0.25rem;
+
+  /* ── Border Radius ── */
+  --radius-small: 4px;
+  --radius-medium: 8px;
+  --radius-large: 16px;
+  --radius-xl: 24px;
+  --radius-soft: 30px;
+  --radius-pill: 9999px;
+
+  /* ── Shadows (none — flat design) ── */
   --shadow-small: none;
   --shadow-medium: none;
   --shadow-large: none;
+
+  /* ── Transitions (disabled for instant feel) ── */
   --transition-fast: 0s;
   --transition: 0s;
 
+  /* ── App-level ── */
   --app-bg: var(--background);
-  --app-header-bg: #172b4d;
-  --app-header-border: #2f3a7e;
-  --app-header-fg: #ffffff;
-  --app-header-muted: #d6e1ff;
+  --app-header-bg: #ffffff;
+  --app-header-border: #d0d5dd;
+  --app-header-fg: #172b4d;
+  --app-header-muted: #6b778c;
   --app-surface-max: 72rem;
   color-scheme: light;
 }

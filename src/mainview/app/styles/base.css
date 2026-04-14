@@ -8,6 +8,11 @@
 body {
   min-height: 100vh;
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--foreground);
+  letter-spacing: 0.16px;
   background: var(--app-bg);
 }
 
@@ -19,7 +24,7 @@ a:not(.button) {
 
 a:not(.button):hover,
 a:not(.button):active {
-  color: var(--primary);
+  color: var(--brand-purple-dark);
   text-decoration: underline;
 }
 
@@ -36,7 +41,8 @@ a:not(.button):active {
 :is(button, [type="submit"], [type="reset"], [type="button"], a.button):not(
     .outline
   ):not(.ghost):not([data-variant]):hover:not(:disabled) {
-  background-color: var(--primary);
+  color: #ffffff;
+  background-color: var(--brand-purple-dark);
 }
 
 :is(
@@ -46,7 +52,8 @@ a:not(.button):active {
     [type="button"],
     a.button
   )[data-variant="secondary"]:hover:not(:disabled) {
-  background-color: var(--secondary);
+  color: var(--foreground);
+  background-color: var(--background-violet);
 }
 
 :is(
@@ -56,6 +63,7 @@ a:not(.button):active {
     [type="button"],
     a.button
   )[data-variant="danger"]:hover:not(:disabled) {
+  color: #ffffff;
   background-color: var(--danger);
 }
 
@@ -73,7 +81,14 @@ a:not(.button):active {
     [type="button"],
     a.button
   ).ghost:hover:not(:disabled) {
-  background-color: transparent;
+  color: var(--foreground);
+  background-color: var(--background-violet);
+}
+
+/* Focus ring — STEAM blue at 40% */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 summary:hover,
@@ -85,6 +100,10 @@ tbody tr:active {
 
 .app-heading {
   margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  line-height: 1.17;
+  color: var(--foreground);
 }
 
 .app-heading--center {
@@ -95,6 +114,7 @@ tbody tr:active {
   margin: var(--space-2) 0 0;
   font-size: var(--text-7);
   color: var(--muted-foreground);
+  letter-spacing: 0.16px;
 }
 
 .app-subheading--center {

@@ -431,6 +431,7 @@
 }
 
 .inspection-btn-teal:hover:not(:disabled) {
+  color: #ffffff;
   background-color: #138496;
 }
 

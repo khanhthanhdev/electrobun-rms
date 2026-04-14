@@ -137,12 +137,12 @@ export const ControlActiveMatchPanel = ({
       </div>
 
       <div className="match-control-active-scores">
-        <div className="match-control-active-alliance match-control-red-team">
+        <div className="match-control-active-alliance match-control-blue-team">
           <p>
-            #{selectedMatch.redTeam} {selectedMatch.redTeamName}
+            #{selectedMatch.blueTeam} {selectedMatch.blueTeamName}
           </p>
           <p className="match-control-active-score-value">
-            {redScore}
+            {blueScore}
             {isLiveScoring ? (
               <span aria-hidden className="match-control-live-badge">
                 {" "}
@@ -151,12 +151,12 @@ export const ControlActiveMatchPanel = ({
             ) : null}
           </p>
         </div>
-        <div className="match-control-active-alliance match-control-blue-team">
+        <div className="match-control-active-alliance match-control-red-team">
           <p>
-            #{selectedMatch.blueTeam} {selectedMatch.blueTeamName}
+            #{selectedMatch.redTeam} {selectedMatch.redTeamName}
           </p>
           <p className="match-control-active-score-value">
-            {blueScore}
+            {redScore}
             {isLiveScoring ? (
               <span aria-hidden className="match-control-live-badge">
                 {" "}
@@ -206,20 +206,6 @@ export const ControlActiveMatchPanel = ({
           ) : null}
           <div className="match-control-score-entry-inline scoresheet-grid-container">
             <ScoringEntryForm
-              alliance="red"
-              embedded
-              fieldLabel={fieldLabel}
-              initialScore={
-                scoresheet?.red
-                  ? scoresheetToScoringState(scoresheet.red)
-                  : undefined
-              }
-              key={`red-${selectedMatch.matchNumber}`}
-              matchLabel={matchLabel}
-              onChange={redAutoSave.onScoreChange}
-              onSubmit={redAutoSave.submitScore}
-            />
-            <ScoringEntryForm
               alliance="blue"
               embedded
               fieldLabel={fieldLabel}
@@ -232,6 +218,20 @@ export const ControlActiveMatchPanel = ({
               matchLabel={matchLabel}
               onChange={blueAutoSave.onScoreChange}
               onSubmit={blueAutoSave.submitScore}
+            />
+            <ScoringEntryForm
+              alliance="red"
+              embedded
+              fieldLabel={fieldLabel}
+              initialScore={
+                scoresheet?.red
+                  ? scoresheetToScoringState(scoresheet.red)
+                  : undefined
+              }
+              key={`red-${selectedMatch.matchNumber}`}
+              matchLabel={matchLabel}
+              onChange={redAutoSave.onScoreChange}
+              onSubmit={redAutoSave.submitScore}
             />
           </div>
         </div>

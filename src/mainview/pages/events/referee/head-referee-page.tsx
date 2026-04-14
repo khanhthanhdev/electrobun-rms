@@ -387,18 +387,18 @@ const ScoringGrid = ({
   redFouls: AllianceFoulState;
   redTeam: number;
 }): JSX.Element => {
-  const leftFouls = flipped ? blueFouls : redFouls;
-  const rightFouls = flipped ? redFouls : blueFouls;
-  const leftCards = flipped ? blueCards : redCards;
-  const rightCards = flipped ? redCards : blueCards;
-  const leftColor: "blue" | "red" = flipped ? "blue" : "red";
-  const rightColor: "blue" | "red" = flipped ? "red" : "blue";
-  const leftTeam = flipped ? blueTeam : redTeam;
-  const rightTeam = flipped ? redTeam : blueTeam;
-  const leftFoulChange = flipped ? onChangeBlueFoul : onChangeRedFoul;
-  const rightFoulChange = flipped ? onChangeRedFoul : onChangeBlueFoul;
-  const leftCardChange = flipped ? onChangeBlueCard : onChangeRedCard;
-  const rightCardChange = flipped ? onChangeRedCard : onChangeBlueCard;
+  const leftFouls = flipped ? redFouls : blueFouls;
+  const rightFouls = flipped ? blueFouls : redFouls;
+  const leftCards = flipped ? redCards : blueCards;
+  const rightCards = flipped ? blueCards : redCards;
+  const leftColor: "blue" | "red" = flipped ? "red" : "blue";
+  const rightColor: "blue" | "red" = flipped ? "blue" : "red";
+  const leftTeam = flipped ? redTeam : blueTeam;
+  const rightTeam = flipped ? blueTeam : redTeam;
+  const leftFoulChange = flipped ? onChangeRedFoul : onChangeBlueFoul;
+  const rightFoulChange = flipped ? onChangeBlueFoul : onChangeRedFoul;
+  const leftCardChange = flipped ? onChangeRedCard : onChangeBlueCard;
+  const rightCardChange = flipped ? onChangeBlueCard : onChangeRedCard;
 
   const leftTitleClass =
     leftColor === "blue" ? "hr-alliance-title--blue" : "hr-alliance-title--red";
@@ -569,8 +569,8 @@ const NormalScoresAccordion = ({
   redData: MatchHistoryItem;
 }): JSX.Element => {
   const [open, setOpen] = useState(false);
-  const left = flipped ? blueData : redData;
-  const right = flipped ? redData : blueData;
+  const left = flipped ? redData : blueData;
+  const right = flipped ? blueData : redData;
 
   const scoreRows = [
     {
@@ -772,14 +772,14 @@ const ActiveMatchTab = ({
 
       {/* Live score totals */}
       <div className="hr-live-scores">
-        <div className="hr-live-score hr-live-score--red">
-          <span className="hr-live-score-label">Red</span>
-          <span className="hr-live-score-value">{redTotal}</span>
-        </div>
-        <div className="hr-live-score hr-live-score-vs">VS</div>
         <div className="hr-live-score hr-live-score--blue">
           <span className="hr-live-score-label">Blue</span>
           <span className="hr-live-score-value">{blueTotal}</span>
+        </div>
+        <div className="hr-live-score hr-live-score-vs">VS</div>
+        <div className="hr-live-score hr-live-score--red">
+          <span className="hr-live-score-label">Red</span>
+          <span className="hr-live-score-value">{redTotal}</span>
         </div>
       </div>
 
@@ -1213,7 +1213,7 @@ const ScoresheetsTab = ({
 
       <div className="hr-scoresheet-controls">
         <div className="hr-scoresheet-radio-group">
-          {(["red", "blue", "both"] as const).map((v) => (
+          {(["blue", "red", "both"] as const).map((v) => (
             <label key={v}>
               <input
                 checked={allianceView === v}
@@ -1222,8 +1222,8 @@ const ScoresheetsTab = ({
                 type="radio"
               />
               {v === "both" && "Both"}
-              {v === "red" && "Red"}
               {v === "blue" && "Blue"}
+              {v === "red" && "Red"}
             </label>
           ))}
         </div>
@@ -1248,6 +1248,7 @@ const ScoresheetsTab = ({
           {(allianceView === "red" || allianceView === "both") && (
             <AllianceScoresheetCard alliance="red" data={redData} />
           )}
+
         </div>
       )}
     </div>

@@ -18,6 +18,9 @@
 .surface-card {
   width: min(100%, var(--surface-width, var(--app-surface-max)));
   margin: 0 auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
 }
 
 .surface-card--small {

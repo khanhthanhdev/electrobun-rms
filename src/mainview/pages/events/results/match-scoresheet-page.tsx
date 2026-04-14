@@ -314,16 +314,6 @@ const MobileAllianceSelector = ({
       Alliance selector
     </legend>
     <button
-      aria-pressed={mobileAllianceView === "red"}
-      className={`scoresheet-mobile-toggle-btn ${
-        mobileAllianceView === "red" ? "active" : ""
-      }`}
-      onClick={() => onSelect("red")}
-      type="button"
-    >
-      Red
-    </button>
-    <button
       aria-pressed={mobileAllianceView === "blue"}
       className={`scoresheet-mobile-toggle-btn ${
         mobileAllianceView === "blue" ? "active" : ""
@@ -332,6 +322,16 @@ const MobileAllianceSelector = ({
       type="button"
     >
       Blue
+    </button>
+    <button
+      aria-pressed={mobileAllianceView === "red"}
+      className={`scoresheet-mobile-toggle-btn ${
+        mobileAllianceView === "red" ? "active" : ""
+      }`}
+      onClick={() => onSelect("red")}
+      type="button"
+    >
+      Red
     </button>
     <button
       aria-pressed={mobileAllianceView === "all"}
@@ -379,17 +379,6 @@ export const ScoresheetGrid = ({
           : "scoresheet-grid-container"
       }
     >
-      {showRed && (
-        <div
-          style={
-            allianceFilter === "blue" && mobileView !== "all"
-              ? { display: "none" }
-              : {}
-          }
-        >
-          <AllianceScoresheet alliance="red" data={scoresheet?.red ?? null} />
-        </div>
-      )}
       {showBlue && (
         <div
           style={
@@ -399,6 +388,17 @@ export const ScoresheetGrid = ({
           }
         >
           <AllianceScoresheet alliance="blue" data={scoresheet?.blue ?? null} />
+        </div>
+      )}
+      {showRed && (
+        <div
+          style={
+            allianceFilter === "blue" && mobileView !== "all"
+              ? { display: "none" }
+              : {}
+          }
+        >
+          <AllianceScoresheet alliance="red" data={scoresheet?.red ?? null} />
         </div>
       )}
     </div>

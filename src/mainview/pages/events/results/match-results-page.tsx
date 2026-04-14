@@ -69,24 +69,24 @@ const MatchRow = ({
   return (
     <tr>
       <td className="match-name">{matchName}</td>
-      <td className={`team-cell red-alliance ${redWon ? "winner" : ""}`}>
-        {formatTeamLabel({
-          teamNumber: match.redTeam,
-          teamName: match.redTeamName,
-          isSurrogate: match.redSurrogate,
-        })}
-      </td>
-      <td className={`score-cell ${redWon ? "highlight-red" : ""}`}>
-        {match.redScore ?? "-"}
-      </td>
-      <td className={`score-cell ${blueWon ? "highlight-blue" : ""}`}>
-        {match.blueScore ?? "-"}
-      </td>
       <td className={`team-cell blue-alliance ${blueWon ? "winner" : ""}`}>
         {formatTeamLabel({
           teamNumber: match.blueTeam,
           teamName: match.blueTeamName,
           isSurrogate: match.blueSurrogate,
+        })}
+      </td>
+      <td className={`score-cell ${blueWon ? "highlight-blue" : ""}`}>
+        {match.blueScore ?? "-"}
+      </td>
+      <td className={`score-cell ${redWon ? "highlight-red" : ""}`}>
+        {match.redScore ?? "-"}
+      </td>
+      <td className={`team-cell red-alliance ${redWon ? "winner" : ""}`}>
+        {formatTeamLabel({
+          teamNumber: match.redTeam,
+          teamName: match.redTeamName,
+          isSurrogate: match.redSurrogate,
         })}
       </td>
       <td className="links-cell">
@@ -271,10 +271,10 @@ const StandardMatchesView = ({
           <thead>
             <tr>
               <th>Match</th>
-              <th>Red</th>
-              <th className="score-col">Red Score</th>
-              <th className="score-col">Blue Score</th>
               <th>Blue</th>
+              <th className="score-col">Blue Score</th>
+              <th className="score-col">Red Score</th>
+              <th>Red</th>
               <th className="action-col">Breakdown</th>
               <th className="action-col">History</th>
             </tr>

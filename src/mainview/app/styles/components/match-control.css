@@ -68,7 +68,7 @@
   padding: 0.2rem 0.5rem;
   font-size: 0.85rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .match-control-state-badge--committed {
@@ -350,6 +350,7 @@
 }
 
 .match-control-action-btn--abort:hover {
+  color: #ffffff;
   background: #b91c1c;
   border-color: #b91c1c;
 }
@@ -441,6 +442,7 @@
 .match-control-table-action {
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
+  color: var(--foreground);
   cursor: pointer;
   background: var(--card);
   border: 1px solid var(--border);
@@ -448,7 +450,8 @@
 }
 
 .match-control-table-action:hover {
-  background: var(--faint);
+  color: var(--foreground);
+  background: var(--background-violet);
 }
 
 .match-control-table-action--play {
@@ -489,8 +492,8 @@
   width: 480px;
   max-width: 90vw;
   background: var(--card);
-  border-radius: var(--radius-medium);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
 }
 
 .match-control-dialog-header {
@@ -556,6 +559,7 @@
 }
 
 .match-control-dialog-btn-secondary:hover {
+  color: #ffffff;
   background: #5a6268;
 }
 
@@ -570,7 +574,8 @@
 }
 
 .match-control-dialog-btn-primary:hover {
-  background: #3568e0;
+  color: #ffffff;
+  background: var(--brand-purple-dark);
 }
 
 @media (max-width: 40rem) {

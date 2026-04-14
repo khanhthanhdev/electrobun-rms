@@ -2,6 +2,27 @@
 .form-row > label,
 .form-section-label {
   font-weight: var(--font-medium);
+  color: var(--foreground);
+  letter-spacing: 0.16px;
+}
+
+/* Inputs & Forms — DESIGN.md: 1px solid #d0d5dd, focus ring */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 0;
 }
 
 .form-help {

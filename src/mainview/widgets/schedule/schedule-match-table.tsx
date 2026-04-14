@@ -48,8 +48,8 @@ export const ScheduleMatchTable = ({
           <th>Start</th>
           <th>Match</th>
           <th>Field</th>
-          <th>Red</th>
           <th>Blue</th>
+          <th>Red</th>
         </tr>
       </thead>
       <tbody>
@@ -60,16 +60,16 @@ export const ScheduleMatchTable = ({
             <td>{match.fieldNumber}</td>
             <td>
               {formatTeamDisplay({
-                isSurrogate: match.redSurrogate,
-                teamName: match.redTeamName,
-                teamNumber: match.redTeam,
+                isSurrogate: match.blueSurrogate,
+                teamName: match.blueTeamName,
+                teamNumber: match.blueTeam,
               })}
             </td>
             <td>
               {formatTeamDisplay({
-                isSurrogate: match.blueSurrogate,
-                teamName: match.blueTeamName,
-                teamNumber: match.blueTeam,
+                isSurrogate: match.redSurrogate,
+                teamName: match.redTeamName,
+                teamNumber: match.redTeam,
               })}
             </td>
           </tr>

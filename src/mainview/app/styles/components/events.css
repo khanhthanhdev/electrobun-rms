@@ -28,7 +28,7 @@
   font-weight: var(--font-semibold);
   text-align: center;
   border: 1px solid transparent;
-  border-radius: var(--radius-medium);
+  border-radius: var(--radius-pill);
 }
 
 .events-table-section__title--primary {
@@ -39,7 +39,7 @@
 
 .events-table-section__title--secondary {
   color: var(--secondary-foreground);
-  background-color: var(--secondary);
+  background-color: var(--background-violet);
   border-color: var(--border);
 }
 

@@ -1,3 +1,9 @@
+.event-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+}
+
 .event-card > header {
   display: flex;
   gap: var(--space-3);
@@ -7,6 +13,9 @@
 
 .event-card > header h3 {
   margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  color: var(--foreground);
 }
 
 .event-meta {
@@ -16,4 +25,9 @@
 .event-meta td:first-child {
   width: 8rem;
   color: var(--muted-foreground);
+}
+
+/* Featured card variant — accent left border */
+.event-card--featured {
+  border-left: 3px solid var(--border-accent);
 }

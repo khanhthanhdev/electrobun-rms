@@ -1,7 +1,7 @@
 .event-directory-page {
   min-height: 100vh;
   padding: var(--space-6);
-  background-color: var(--app-bg);
+  background-color: var(--background-mist);
 }
 
 .event-directory-container {
@@ -85,8 +85,9 @@
 
 .event-directory-section-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-4);
-  font-weight: 600;
+  font-weight: 300;
   color: var(--foreground);
 }
 
