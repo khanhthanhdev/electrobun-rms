@@ -22,6 +22,9 @@ const findStatusRow = (page: Page, rowLabel: string) =>
   });
 
 const REALTIME_TIMEOUT_MS = 20_000;
+const MATCH_AUTO_COMPLETE_TIMEOUT_MS = 190_000;
+const RUN_FULL_WORKFLOW_COLLAB =
+  process.argv.includes("-full") || process.argv.includes("--full");
 
 const expectStatusRowToContain = async (
   row: Locator,
@@ -149,18 +152,26 @@ test("propagates inspection status updates to other pages without manual refresh
   await observerPage.close();
 });
 
-test("aggregates red and blue referee score submissions for head referee view", async ({
+test("simulates the full match workflow from control start to head referee review", async ({
   context,
   page,
   request,
 }) => {
+  test.skip(
+    !RUN_FULL_WORKFLOW_COLLAB,
+    "Skipped by default. Run with -full to include the full workflow collaboration scenario."
+  );
+  test.setTimeout(260_000);
+
   const { eventCode } = await createControlReadyEvent(request);
+  const displayPage = await context.newPage();
   const redRefereePage = await context.newPage();
   const blueRefereePage = await context.newPage();
   const headRefPage = await context.newPage();
 
   await Promise.all([
     page.goto(`/event/${eventCode}/control`),
+    displayPage.goto(`/event/${eventCode}/display`),
     redRefereePage.goto(`/event/${eventCode}/ref/red/scoring/1/quals/match/1`),
     blueRefereePage.goto(
       `/event/${eventCode}/ref/blue/scoring/1/quals/match/1`
@@ -168,21 +179,65 @@ test("aggregates red and blue referee score submissions for head referee view", 
     headRefPage.goto(`/event/${eventCode}/hr/1`),
   ]);
 
+  const loadedRow = findStatusRow(page, "Loaded Match:");
+  const activeRow = findStatusRow(page, "Active Match:");
+  await expect(loadedRow).toContainText("No match loaded");
+  await expect(activeRow).toContainText("—");
+
+  await page.getByRole("button", { name: "Load Next Match" }).click();
+  await page.getByRole("button", { name: "Show Preview" }).click();
+  await expect(displayPage.locator(".display-match-preview-scene")).toBeVisible({
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+
+  await page.getByRole("button", { name: "Show Match" }).click();
+  const displayTimer = displayPage.locator(".display-match-start-timer");
+  await expect(displayPage.locator(".display-match-start-scene")).toBeVisible({
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(displayTimer).toHaveText("2:30");
+
+  await page.getByRole("button", { name: "Start Match" }).click();
+  await expect(activeRow).toContainText("In Progress");
+  await expect(displayTimer).not.toHaveText("2:30", { timeout: 12_000 });
+
   const redLiveScore = headRefPage.locator(
     ".hr-live-score--red .hr-live-score-value"
   );
   const blueLiveScore = headRefPage.locator(
     ".hr-live-score--blue .hr-live-score-value"
   );
+  const controlRedLiveScore = page.locator(
+    ".match-control-active-scores .match-control-red-team .match-control-active-score-value"
+  );
+  const controlBlueLiveScore = page.locator(
+    ".match-control-active-scores .match-control-blue-team .match-control-active-score-value"
+  );
+  const displayRedScore = displayPage.locator(
+    ".display-match-start-board-total-score--red"
+  );
+  const displayBlueScore = displayPage.locator(
+    ".display-match-start-board-total-score--blue"
+  );
+
   await expect(redLiveScore).toHaveText("0");
   await expect(blueLiveScore).toHaveText("0");
+  await expect(displayRedScore).toHaveText("00");
+  await expect(displayBlueScore).toHaveText("00");
 
   await redRefereePage.getByRole("button", { name: "+" }).first().click();
   await redRefereePage.getByRole("button", { name: "Submit Score" }).click();
   await expect(
     redRefereePage.getByRole("heading", { name: "Score Submitted" })
   ).toBeVisible();
-
+  await expect(controlRedLiveScore).toContainText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(controlBlueLiveScore).toContainText("0");
+  await expect(displayRedScore).toHaveText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(displayBlueScore).toHaveText("00");
   await headRefPage.reload();
   await expect(redLiveScore).toHaveText("25");
   await expect(blueLiveScore).toHaveText("0");
@@ -192,12 +247,51 @@ test("aggregates red and blue referee score submissions for head referee view", 
   await expect(
     blueRefereePage.getByRole("heading", { name: "Score Submitted" })
   ).toBeVisible();
-
+  await expect(controlRedLiveScore).toContainText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(controlBlueLiveScore).toContainText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(displayRedScore).toHaveText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+  await expect(displayBlueScore).toHaveText("25", {
+    timeout: REALTIME_TIMEOUT_MS,
+  });
   await headRefPage.reload();
   await expect(redLiveScore).toHaveText("25");
   await expect(blueLiveScore).toHaveText("25");
 
+  const penaltyValue = headRefPage
+    .locator(".hr-scoring-grid .hr-counter-value")
+    .first();
+  const penaltyPlusButton = headRefPage
+    .locator(".hr-scoring-grid .hr-counter")
+    .first()
+    .getByRole("button", { name: "+" });
+  await expect(penaltyValue).toHaveText("0");
+  await penaltyPlusButton.click();
+  await expect(penaltyValue).toHaveText("1");
+
+  const commitButton = page.getByRole("button", {
+    name: "Commit & Post Last Match",
+  });
+  await expect(commitButton).toBeEnabled({
+    timeout: MATCH_AUTO_COMPLETE_TIMEOUT_MS,
+  });
+  await expect(activeRow).toContainText("Complete", {
+    timeout: MATCH_AUTO_COMPLETE_TIMEOUT_MS,
+  });
+
+  await commitButton.click();
+  await expect(activeRow).toContainText("—");
+  await expect(displayPage.locator(".display-scene-match-winner")).toBeVisible({
+    timeout: REALTIME_TIMEOUT_MS,
+  });
+
   await Promise.all([
+    displayPage.close(),
     redRefereePage.close(),
     blueRefereePage.close(),
     headRefPage.close(),
@@ -220,11 +314,16 @@ test("keeps two audience displays synchronized to the same commanded scenes", as
   ]);
   await expect(displayPageA.getByLabel("Audience display")).toBeVisible();
   await expect(displayPageB.getByLabel("Audience display")).toBeVisible();
-  await expectStatusRowToContain(findStatusRow(page, "Loaded Match:"), "No match loaded");
-  await expect(page.getByRole("button", { name: "Load Next Match" })).toBeEnabled();
+  const loadedRow = findStatusRow(page, "Loaded Match:");
+  const loadNextButton = page.getByRole("button", { name: "Load Next Match" });
+  const showPreviewButton = page.getByRole("button", { name: "Show Preview" });
+  await expectStatusRowToContain(loadedRow, "No match loaded");
+  await expect(loadNextButton).toBeEnabled();
 
-  await page.getByRole("button", { name: "Load Next Match" }).click();
-  await page.getByRole("button", { name: "Show Preview" }).click();
+  await loadNextButton.click();
+  await expectStatusRowToContain(loadedRow, "Not Started");
+  await expect(showPreviewButton).toBeEnabled({ timeout: REALTIME_TIMEOUT_MS });
+  await showPreviewButton.click();
   await expect(displayPageA.locator(".display-match-preview-scene")).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });

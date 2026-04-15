@@ -21,10 +21,25 @@ interface AuthResponse {
   token: string;
 }
 
+export type E2eRoleValue =
+  | "ADMIN"
+  | "TSO"
+  | "HEAD_REFEREE"
+  | "REFEREE"
+  | "INSPECTOR"
+  | "LEAD_INSPECTOR"
+  | "JUDGE";
+
 interface CreateEventResponse {
   event: {
     code: string;
     name: string;
+  };
+}
+
+interface CreateUserResponse {
+  user: {
+    username: string;
   };
 }
 
@@ -45,8 +60,8 @@ interface ProvisionEventOptions {
 interface QualificationScoreBody {
   aCenterFlags: number;
   aFirstTierFlags: number;
-  aSecondTierFlags: number;
   alliance: "blue" | "red";
+  aSecondTierFlags: number;
   bBaseFlagsDown: number;
   bCenterFlagDown: number;
   cOpponentBackfieldBullets: number;
@@ -54,6 +69,13 @@ interface QualificationScoreBody {
   dRobotParkState: number;
   matchNumber: number;
   matchType: "quals";
+}
+
+interface CreateEventRoleUserOptions {
+  eventCode: string;
+  password?: string;
+  role: E2eRoleValue;
+  usernamePrefix?: string;
 }
 
 function buildUniqueFragment(): string {
@@ -120,6 +142,36 @@ export function createUsername(prefix = "user"): string {
   const compactPrefix =
     prefix.replace(USERNAME_SANITIZE_PATTERN, "").toLowerCase() || "user";
   return `${compactPrefix}${buildUniqueFragment()}`.slice(0, 24);
+}
+
+export async function createEventRoleUserApi(
+  request: APIRequestContext,
+  token: string,
+  options: CreateEventRoleUserOptions
+): Promise<{ password: string; username: string }> {
+  const username = createUsername(options.usernamePrefix ?? "role");
+  const password = options.password ?? `pw${buildUniqueFragment()}`;
+
+  const response = await requestJson<CreateUserResponse>(request, "/users", {
+    data: {
+      password,
+      passwordConfirm: password,
+      roles: [
+        {
+          event: options.eventCode,
+          role: options.role,
+        },
+      ],
+      username,
+    },
+    method: "POST",
+    token,
+  });
+
+  return {
+    password,
+    username: response.user.username,
+  };
 }
 
 export async function loginAsAdminApi(
@@ -240,10 +292,14 @@ export async function rebuildQualificationRankingsApi(
   token: string,
   eventCode: string
 ): Promise<void> {
-  await requestJson(request, `/events/${eventCode}/qualification-rankings/rebuild`, {
-    method: "POST",
-    token,
-  });
+  await requestJson(
+    request,
+    `/events/${eventCode}/qualification-rankings/rebuild`,
+    {
+      method: "POST",
+      token,
+    }
+  );
 }
 
 export async function saveQualificationAllianceScoreApi(
