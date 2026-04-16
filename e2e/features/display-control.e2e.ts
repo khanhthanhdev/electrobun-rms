@@ -10,7 +10,7 @@ test("publishes control-page display commands to the audience display", async ({
   request,
 }) => {
   const { eventCode } = await createProvisionedEvent(request, {
-    teamCount: 4,
+    teamCount: 1,
   });
 
   const displayPage = await context.newPage();
@@ -52,7 +52,8 @@ test("switches audience display scenes during control lifecycle transitions", as
 }) => {
   const { eventCode, token } = await createProvisionedEvent(request, {
     generateQualificationSchedule: true,
-    teamCount: 4,
+    qualificationMatchesPerTeam: 1,
+    teamCount: 3,
   });
   await activateQualificationScheduleApi(request, token, eventCode);
 

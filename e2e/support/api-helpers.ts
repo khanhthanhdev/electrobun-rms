@@ -10,6 +10,7 @@ const EVENT_CODE_SANITIZE_PATTERN = /[^a-z0-9]/gi;
 const USERNAME_SANITIZE_PATTERN = /[^a-z0-9_]/gi;
 
 let uniqueCounter = 0;
+let cachedAdminToken: string | null = null;
 
 interface ApiRequestOptions {
   data?: unknown;
@@ -53,6 +54,7 @@ interface ProvisionEventOptions {
   eventName?: string;
   fields?: number;
   generateQualificationSchedule?: boolean;
+  qualificationMatchesPerTeam?: number;
   teamCount?: number;
   token?: string;
 }
@@ -177,6 +179,10 @@ export async function createEventRoleUserApi(
 export async function loginAsAdminApi(
   request: APIRequestContext
 ): Promise<string> {
+  if (cachedAdminToken) {
+    return cachedAdminToken;
+  }
+
   const response = await requestJson<AuthResponse>(request, "/auth/login", {
     data: {
       password: ADMIN_PASSWORD,
@@ -185,6 +191,7 @@ export async function loginAsAdminApi(
     method: "POST",
   });
 
+  cachedAdminToken = response.token;
   return response.token;
 }
 
@@ -258,14 +265,15 @@ export async function seedTeamsApi(
 export async function generateQualificationScheduleApi(
   request: APIRequestContext,
   token: string,
-  eventCode: string
+  eventCode: string,
+  matchesPerTeam = 4
 ): Promise<void> {
   await requestJson(request, `/events/${eventCode}/schedule/quals/generate`, {
     data: {
       cycleTimeSeconds: 240,
       fieldCount: 1,
       fieldStartOffsetSeconds: 15,
-      matchesPerTeam: 4,
+      matchesPerTeam,
       startTime: Date.UTC(2026, 3, 10, 1, 0, 0),
     },
     method: "POST",
@@ -382,7 +390,12 @@ export async function createProvisionedEvent(
       : [];
 
   if (options.generateQualificationSchedule) {
-    await generateQualificationScheduleApi(request, token, eventCode);
+    await generateQualificationScheduleApi(
+      request,
+      token,
+      eventCode,
+      options.qualificationMatchesPerTeam ?? 4
+    );
   }
 
   return {

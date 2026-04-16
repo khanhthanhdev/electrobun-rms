@@ -10,7 +10,8 @@ const createControlReadyEvent = async (
 ): Promise<{ eventCode: string; token: string }> => {
   const { eventCode, token } = await createProvisionedEvent(request, {
     generateQualificationSchedule: true,
-    teamCount: 4,
+    qualificationMatchesPerTeam: 1,
+    teamCount: 3,
   });
   await activateQualificationScheduleApi(request, token, eventCode);
   return { eventCode, token };
@@ -119,7 +120,7 @@ test("propagates inspection status updates to other pages without manual refresh
   request,
 }) => {
   const { eventCode } = await createProvisionedEvent(request, {
-    teamCount: 4,
+    teamCount: 1,
   });
   const observerPage = await context.newPage();
 
