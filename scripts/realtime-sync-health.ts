@@ -19,8 +19,22 @@ const FATAL_ERROR_FILES = [
   "src/mainview/features/events/control/services/match-control-sync-service.ts",
 ] as const;
 
-const hasResetGuardIssue = (source: string): boolean =>
-  /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/.test(source);
+const hasResetGuardIssue = (source: string): boolean => {
+  const hasMonotonicGuard = /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/.test(
+    source
+  );
+  if (!hasMonotonicGuard) {
+    return false;
+  }
+
+  const hasResetHandling =
+    /realtimeVersion\s*<\s*lastAppliedRef\.current\.version/.test(source) &&
+    /lastAppliedRef\.current\s*=\s*\{\s*eventCode\s*,\s*version:\s*0\s*\}/.test(
+      source
+    );
+
+  return !hasResetHandling;
+};
 
 const hasFatalErrorClassIssue = (source: string): boolean =>
   /export\s+class\s+\w+FatalError\s+extends\s+Error\s*\{\s*\}/.test(source);

@@ -19,6 +19,11 @@ export const useDisplayRealtimeRefresh = (
   }
 
   useEffect(() => {
+    if (realtimeVersion < lastAppliedRef.current.version) {
+      lastAppliedRef.current = { eventCode, version: 0 };
+      return;
+    }
+
     if (realtimeVersion <= lastAppliedRef.current.version) {
       return;
     }

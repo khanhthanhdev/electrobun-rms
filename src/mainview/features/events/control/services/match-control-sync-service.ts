@@ -1,6 +1,7 @@
 import type { MatchControlState } from "@shared/match-control";
 import {
   connectRealtimeStream,
+  RealtimeFatalError,
   type RealtimeConnectionState,
 } from "../../../../shared/services/realtime-stream-service";
 
@@ -17,7 +18,7 @@ export interface MatchControlRealtimeChangeEvent {
   version: number;
 }
 
-export class MatchControlRealtimeFatalError extends Error {}
+export { RealtimeFatalError as MatchControlRealtimeFatalError };
 
 interface ConnectMatchControlRealtimeOptions {
   eventCode: string;
