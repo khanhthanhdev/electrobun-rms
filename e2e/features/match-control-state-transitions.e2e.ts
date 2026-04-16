@@ -29,7 +29,9 @@ test("runs load->preview->ready->start->abort transitions from match control act
   const { eventCode } = await setupControlEvent(request);
 
   await page.goto(`/event/${eventCode}/control`);
-  await expect(page.getByRole("cell", { exact: true, name: "Q1" })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { exact: true, name: "Q1" })
+  ).toBeVisible();
 
   const loadedRow = findControlStatusRow(page, "Loaded Match:");
   const activeRow = findControlStatusRow(page, "Active Match:");
@@ -89,7 +91,9 @@ test("updates schedule row state from incomplete to committed as scores are post
   });
 
   await page.goto(`/event/${eventCode}/control`);
-  await expect(page.getByRole("cell", { exact: true, name: "Q1" })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { exact: true, name: "Q1" })
+  ).toBeVisible();
 
   const q1Row = page.locator("table.match-control-table tbody tr").filter({
     has: page.getByRole("cell", { exact: true, name: "Q1" }),

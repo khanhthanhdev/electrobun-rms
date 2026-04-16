@@ -110,8 +110,8 @@
   font-size: 0.9375rem;
   font-weight: var(--font-medium);
   color: var(--app-header-fg);
-  text-decoration: none;
   letter-spacing: 0.15px;
+  text-decoration: none;
 }
 
 .site-header__nav a:not(.button):hover {

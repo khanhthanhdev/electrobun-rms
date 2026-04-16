@@ -1,4 +1,5 @@
 import type {
+  EventTeamDirectoryEntry,
   PushSyncBatchRequestDto,
   PushSyncBatchResult,
 } from "../../dtos/sync";
@@ -31,9 +32,20 @@ export class PushSyncBatchUseCase {
 
     assertDefinitionVersion(command.payload.definitionVersion);
 
-    const teamDirectory = await this.syncRepository.getEventTeamDirectory(
-      command.eventCode
-    );
+    let teamDirectory: EventTeamDirectoryEntry[] = [];
+    try {
+      teamDirectory = await this.syncRepository.getEventTeamDirectory(
+        command.eventCode
+      );
+    } catch (error) {
+      throwSyncError(
+        "NOT_FOUND",
+        404,
+        error instanceof Error
+          ? error.message
+          : `Event "${command.eventCode}" data was not found.`
+      );
+    }
     const registeredTeams = buildRegisteredTeamSet(teamDirectory);
     const warnings = command.payload.resources.flatMap((resource) =>
       validatePushResource({

@@ -161,7 +161,9 @@ test("completes full inspection lifecycle: Not Started → In Progress → Passe
   await page.reload();
   await expect(
     page.getByText(
-      new RegExp(`Progress:\\s*${requiredCount}\\/${requiredCount} required items`)
+      new RegExp(
+        `Progress:\\s*${requiredCount}\\/${requiredCount} required items`
+      )
     )
   ).toBeVisible();
 

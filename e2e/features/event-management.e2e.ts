@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createEventCode, createProvisionedEvent } from "../support/api-helpers";
+import {
+  createEventCode,
+  createProvisionedEvent,
+} from "../support/api-helpers";
 
 test("creates an event and manages its default accounts flow", async ({
   page,

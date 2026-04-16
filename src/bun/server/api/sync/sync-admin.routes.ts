@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { safeParse } from "valibot";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin, requireGlobalAdmin } from "../common/guards";
@@ -20,6 +21,7 @@ import {
   listSyncBatchesUseCase,
   listSyncClientsUseCase,
   revokeSyncClientUseCase,
+  toSyncErrorResponse,
   updateSyncPolicyUseCase,
 } from "./sync.shared";
 
@@ -121,6 +123,54 @@ syncAdminRoutes.get(
 
     const policy = await getSyncPolicyUseCase.execute({ eventCode });
     return c.json(policy);
+  }
+);
+
+// Get Outbound Sync Status
+syncAdminRoutes.get(
+  "/admin/seasons/:season/events/:eventCode/outbound-status",
+  requireAuth,
+  async (c) => {
+    const { season, eventCode } = c.req.param();
+    if (season !== SYNC_SEASON) {
+      return c.json({ error: "Unsupported season" }, 400);
+    }
+    const forbidden = requireEventAdmin(c, eventCode);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    const status = await outboundSyncPushService.getEventStatus(eventCode);
+    return c.json(status);
+  }
+);
+
+// Retry Outbound Sync
+syncAdminRoutes.post(
+  "/admin/seasons/:season/events/:eventCode/outbound-retry",
+  requireAuth,
+  async (c) => {
+    const { season, eventCode } = c.req.param();
+    if (season !== SYNC_SEASON) {
+      return c.json({ error: "Unsupported season" }, 400);
+    }
+    const forbidden = requireEventAdmin(c, eventCode);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    try {
+      const result =
+        await outboundSyncPushService.requestImmediateRetry(eventCode);
+      return c.json({
+        batchId: result.batchId,
+        eventCode,
+        success: true,
+      });
+    } catch (error) {
+      const response = toSyncErrorResponse(error);
+      return c.json(response.body, response.status);
+    }
   }
 );
 
@@ -248,12 +298,17 @@ syncAdminRoutes.post(
       return c.json({ error: "Validation failed", issues: result.issues }, 400);
     }
 
-    const reviewResult = await applySyncBatchReviewUseCase.execute({
-      changeSetId,
-      decision: result.output.decision,
-      reason: result.output.reason,
-      reviewerId: auth.sub,
-    });
-    return c.json(reviewResult);
+    try {
+      const reviewResult = await applySyncBatchReviewUseCase.execute({
+        changeSetId,
+        decision: result.output.decision,
+        reason: result.output.reason,
+        reviewerId: auth.sub,
+      });
+      return c.json(reviewResult);
+    } catch (error) {
+      const response = toSyncErrorResponse(error);
+      return c.json(response.body, response.status);
+    }
   }
 );

@@ -5,6 +5,7 @@ import {
   RebuildQualificationRankingsUseCase,
 } from "../../application/use-cases/ranking";
 import { SQLiteRankingRepository } from "../../infrastructure/adapters/ranking";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
@@ -57,6 +58,7 @@ rankingRoutes.post(
       const result = await rebuildQualificationRankingsUseCase.execute({
         eventCode,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(result);
     } catch (error) {
       if (isApplicationError(error)) {

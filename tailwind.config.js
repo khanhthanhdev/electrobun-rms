@@ -33,10 +33,28 @@ export default {
         danger: "#d0021b",
       },
       fontFamily: {
-        display: ["Waldenburg", "Waldenburg Fallback", "system-ui", "sans-serif"],
-        "display-bold": ["WaldenburgFH", "WaldenburgFH Fallback", "system-ui", "sans-serif"],
+        display: [
+          "Waldenburg",
+          "Waldenburg Fallback",
+          "system-ui",
+          "sans-serif",
+        ],
+        "display-bold": [
+          "WaldenburgFH",
+          "WaldenburgFH Fallback",
+          "system-ui",
+          "sans-serif",
+        ],
         sans: ["Inter", "Inter Fallback", "system-ui", "sans-serif"],
-        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+        mono: [
+          "Geist Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       borderRadius: {
         sm: "4px",

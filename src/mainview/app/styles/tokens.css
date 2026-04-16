@@ -49,9 +49,12 @@
 
   /* ── Typography ── */
   --font-display: "Waldenburg", "Waldenburg Fallback", system-ui, sans-serif;
-  --font-display-bold: "WaldenburgFH", "WaldenburgFH Fallback", system-ui, sans-serif;
+  --font-display-bold:
+    "WaldenburgFH", "WaldenburgFH Fallback", system-ui, sans-serif;
   --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;

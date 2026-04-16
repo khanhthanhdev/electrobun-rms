@@ -1248,7 +1248,6 @@ const ScoresheetsTab = ({
           {(allianceView === "red" || allianceView === "both") && (
             <AllianceScoresheetCard alliance="red" data={redData} />
           )}
-
         </div>
       )}
     </div>

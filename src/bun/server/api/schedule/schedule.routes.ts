@@ -13,6 +13,7 @@ import {
   SaveQualificationScheduleUseCase,
 } from "../../application/use-cases/schedule";
 import { SQLiteScheduleRepository } from "../../infrastructure/adapters/schedule/sqlite-schedule-repository";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
@@ -102,6 +103,7 @@ scheduleRoutes.put("/:eventCode/schedule/practice", requireAuth, async (c) => {
       eventCode,
       payload: bodyResult.output,
     });
+    outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
     if (isApplicationError(error)) {
@@ -145,6 +147,7 @@ scheduleRoutes.post(
         eventCode,
         payload: bodyResult.output,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule, 201);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -173,6 +176,7 @@ scheduleRoutes.delete(
 
     try {
       const schedule = await deletePracticeMatchUseCase.execute({ eventCode });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -239,6 +243,7 @@ scheduleRoutes.put("/:eventCode/schedule/quals", requireAuth, async (c) => {
       eventCode,
       payload: bodyResult.output,
     });
+    outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
     if (isApplicationError(error)) {
@@ -282,6 +287,7 @@ scheduleRoutes.post(
         eventCode,
         payload: bodyResult.output,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule, 201);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -309,6 +315,7 @@ scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, async (c) => {
     const schedule = await clearQualificationScheduleUseCase.execute({
       eventCode,
     });
+    outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
     if (isApplicationError(error)) {
@@ -356,6 +363,7 @@ scheduleRoutes.put(
         scheduleType: "practice",
         active: bodyResult.output.active,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -404,6 +412,7 @@ scheduleRoutes.put(
         scheduleType: "quals",
         active: bodyResult.output.active,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
       if (isApplicationError(error)) {

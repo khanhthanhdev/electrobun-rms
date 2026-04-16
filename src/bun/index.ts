@@ -8,6 +8,7 @@ import {
   RebuildQualificationRankingsUseCase,
 } from "./server/application/use-cases/ranking";
 import { SQLiteRankingRepository } from "./server/infrastructure/adapters/ranking";
+import { outboundSyncPushService } from "./server/infrastructure/services/outbound-sync-push-service";
 import { RankingPollService } from "./server/infrastructure/services/ranking-poll-service";
 
 // --- Configuration ---
@@ -29,6 +30,7 @@ const pollService = new RankingPollService({
   ),
 });
 pollService.start();
+outboundSyncPushService.start();
 
 // Resolve static dir relative to the bundled bun entry point
 // import.meta.dir = .../Resources/app/bun → static files at .../Resources/app/views/mainview
@@ -75,6 +77,7 @@ const mainWindow = new BrowserWindow({
 });
 
 mainWindow.on("close", () => {
+  outboundSyncPushService.stop();
   server.stop(true);
   Utils.quit();
 });

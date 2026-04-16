@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { eq } from "drizzle-orm";
 import {
   createEventDb,
   createInspectionResultPayload,
   createSyncTestApp,
   createToken,
+  db,
   insertEvent,
   insertSyncClient,
+  insertSyncOutboundLink,
   insertSyncPolicy,
   openEventDb,
   resetSyncTestDatabase,
+  schema,
 } from "./sync.test-support";
 
 const EVENT_CODE = "SYNCRT";
@@ -82,6 +86,147 @@ describe("sync routes", () => {
     });
   });
 
+  it("accepts case-insensitive bearer auth scheme", async () => {
+    createEventDb(EVENT_CODE, ["123"]);
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE);
+    const secret = insertSyncClient(EVENT_CODE);
+    const app = createSyncTestApp();
+
+    const response = await app.request("http://localhost/machine/bootstrap", {
+      headers: { authorization: `bearer ${secret}` },
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("validates resource records against declared resourceType", async () => {
+    createEventDb(EVENT_CODE, ["123", "456"]);
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE, {
+      allowedPushResources: ["match_results"],
+    });
+    const secret = insertSyncClient(EVENT_CODE, {
+      allowedResources: ["match_results"],
+    });
+    const app = createSyncTestApp();
+
+    const response = await app.request("http://localhost/machine/push", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        batchId: "route-batch-mismatch",
+        definitionVersion: "2025.1",
+        producedAt: "2026-03-23T10:00:00.000Z",
+        schemaVersion: "2026-03-08",
+        resources: [
+          {
+            resourceType: "match_results",
+            mode: "upsert",
+            records: [
+              {
+                matchKey: "P1",
+                phase: "PRACTICE",
+                matchNumber: 1,
+                status: "SCHEDULED",
+                alliances: [
+                  { color: "RED", teamNumbers: ["123"] },
+                  { color: "BLUE", teamNumbers: ["456"] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: "VALIDATION_FAILED",
+    });
+  });
+
+  it("returns NOT_FOUND when local event database is missing on push", async () => {
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE, {
+      allowedPushResources: ["inspection_results"],
+    });
+    const secret = insertSyncClient(EVENT_CODE, {
+      allowedResources: ["inspection_results"],
+    });
+    const app = createSyncTestApp();
+
+    const response = await app.request("http://localhost/machine/push", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(
+        createInspectionResultPayload({
+          batchId: "route-batch-missing-event-db",
+        })
+      ),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      error: "NOT_FOUND",
+    });
+  });
+
+  it("exposes outbound status and manual retry controls", async () => {
+    createEventDb(EVENT_CODE, ["123"]);
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE, { isSyncEnabled: true });
+    insertSyncOutboundLink(EVENT_CODE);
+    const adminToken = await createToken({
+      roles: [{ role: "ADMIN", event: EVENT_CODE }],
+    });
+    const app = createSyncTestApp();
+
+    const statusResponse = await app.request(
+      `http://localhost/admin/seasons/2025/events/${EVENT_CODE}/outbound-status`,
+      {
+        headers: { authorization: `Bearer ${adminToken}` },
+      }
+    );
+    expect(statusResponse.status).toBe(200);
+    expect(await statusResponse.json()).toMatchObject({
+      eventCode: EVENT_CODE,
+      hasOutboundLink: true,
+      isSyncEnabled: true,
+    });
+
+    const retryResponse = await app.request(
+      `http://localhost/admin/seasons/2025/events/${EVENT_CODE}/outbound-retry`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }
+    );
+    expect(retryResponse.status).toBe(200);
+    expect(await retryResponse.json()).toMatchObject({
+      eventCode: EVENT_CODE,
+      success: true,
+    });
+
+    const batches = db
+      .select()
+      .from(schema.syncOutboundBatches)
+      .where(eq(schema.syncOutboundBatches.eventCode, EVENT_CODE))
+      .all();
+    expect(batches.length).toBe(1);
+    expect(batches[0]?.status).toBe("queued");
+  });
+
   it("preserves admin batch review flow", async () => {
     createEventDb(EVENT_CODE, ["123"]);
     insertEvent(EVENT_CODE);
@@ -141,5 +286,59 @@ describe("sync routes", () => {
     } finally {
       eventDb.close();
     }
+  });
+
+  it("allows only one successful review decision under concurrency", async () => {
+    createEventDb(EVENT_CODE, ["123"]);
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE, {
+      allowedPushResources: ["inspection_results"],
+      reviewMode: "MANUAL_REVIEW",
+    });
+    const secret = insertSyncClient(EVENT_CODE);
+    const adminToken = await createToken({
+      roles: [{ role: "ADMIN", event: EVENT_CODE }],
+    });
+    const app = createSyncTestApp();
+
+    const pushResponse = await app.request("http://localhost/machine/push", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(
+        createInspectionResultPayload({ batchId: "route-batch-race-review" })
+      ),
+    });
+    const pushPayload = (await pushResponse.json()) as { changeSetId: string };
+
+    const [first, second] = await Promise.all([
+      app.request(
+        `http://localhost/admin/batches/${pushPayload.changeSetId}/review`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ decision: "APPROVE" }),
+        }
+      ),
+      app.request(
+        `http://localhost/admin/batches/${pushPayload.changeSetId}/review`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ decision: "APPROVE" }),
+        }
+      ),
+    ]);
+
+    const statuses = [first.status, second.status].sort((a, b) => a - b);
+    expect(statuses).toEqual([200, 409]);
   });
 });

@@ -19,14 +19,20 @@ export const syncMachineRoutes = new Hono<AppEnv>();
 // Machine Bootstrap Endpoint
 syncMachineRoutes.get("/machine/bootstrap", async (c) => {
   const authorization = c.req.header("authorization");
-  if (!authorization?.startsWith("Bearer ")) {
+  if (!(authorization && BEARER_TOKEN_REGEX.test(authorization))) {
     return c.json(
       { error: "UNAUTHORIZED", message: "Bearer token required" },
       401
     );
   }
 
-  const token = authorization.replace(BEARER_TOKEN_REGEX, "");
+  const token = authorization.replace(BEARER_TOKEN_REGEX, "").trim();
+  if (!token) {
+    return c.json(
+      { error: "UNAUTHORIZED", message: "Bearer token required" },
+      401
+    );
+  }
 
   try {
     const auth = await authenticateSyncClientUseCase.execute({
@@ -59,14 +65,20 @@ syncMachineRoutes.get("/machine/bootstrap", async (c) => {
 // Machine Push Endpoint
 syncMachineRoutes.post("/machine/push", async (c) => {
   const authorization = c.req.header("authorization");
-  if (!authorization?.startsWith("Bearer ")) {
+  if (!(authorization && BEARER_TOKEN_REGEX.test(authorization))) {
     return c.json(
       { error: "UNAUTHORIZED", message: "Bearer token required" },
       401
     );
   }
 
-  const token = authorization.replace(BEARER_TOKEN_REGEX, "");
+  const token = authorization.replace(BEARER_TOKEN_REGEX, "").trim();
+  if (!token) {
+    return c.json(
+      { error: "UNAUTHORIZED", message: "Bearer token required" },
+      401
+    );
+  }
 
   try {
     const auth = await authenticateSyncClientUseCase.execute({

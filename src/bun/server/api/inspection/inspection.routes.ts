@@ -14,6 +14,7 @@ import {
   UpdateInspectionStatusUseCase,
 } from "../../application/use-cases/inspection";
 import { SQLiteInspectionRepository } from "../../infrastructure/adapters/inspection";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireInspector, requireLeadInspector } from "../common/guards";
@@ -265,6 +266,7 @@ inspectionRoutes.patch(
         kind: "ITEMS_UPDATED",
         teamNumber: teamNumberResult.teamNumber,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -328,6 +330,7 @@ inspectionRoutes.patch(
         kind: "STATUS_UPDATED",
         teamNumber: teamNumberResult.teamNumber,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
       if (isApplicationError(error)) {
@@ -389,6 +392,7 @@ inspectionRoutes.post(
         kind: "COMMENT_UPDATED",
         teamNumber: teamNumberResult.teamNumber,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json({ success: true });
     } catch (error) {
       if (isApplicationError(error)) {
@@ -491,6 +495,7 @@ inspectionRoutes.post(
         kind: "OVERRIDE_APPLIED",
         teamNumber: teamNumberResult.teamNumber,
       });
+      outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
       if (isApplicationError(error)) {

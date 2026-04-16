@@ -229,6 +229,44 @@ export function insertSyncClient(
   return secret;
 }
 
+export function insertSyncOutboundLink(
+  eventCode: string,
+  overrides: {
+    allowedPullResources?: string[];
+    allowedPushResources?: string[];
+    baseUrl?: string;
+    bearerSecret?: string;
+    definitionVersion?: string;
+    remoteEventKey?: string;
+    reviewMode?: "AUTO_ACCEPT" | "MANUAL_REVIEW";
+    scheduleOwner?: "LOCAL_APP" | "WEB";
+  } = {}
+): void {
+  db.insert(schema.syncOutboundLinks)
+    .values({
+      eventCode,
+      baseUrl: overrides.baseUrl ?? "http://localhost:3001",
+      bearerSecret: overrides.bearerSecret ?? "outbound-secret",
+      remoteEventKey: overrides.remoteEventKey ?? `2025/${eventCode}`,
+      definitionVersion: overrides.definitionVersion ?? SYNC_DEFINITION_VERSION,
+      allowedPushResources: overrides.allowedPushResources ?? [
+        ...DEFAULT_ALLOWED_PUSH_RESOURCES,
+      ],
+      allowedPullResources: overrides.allowedPullResources ?? [
+        "season_definition",
+        "event_manifest",
+        "approved_registrations",
+        "team_operational_profiles",
+        "sync_policy",
+      ],
+      reviewMode: overrides.reviewMode ?? "AUTO_ACCEPT",
+      scheduleOwner: overrides.scheduleOwner ?? "WEB",
+      bootstrappedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    .run();
+}
+
 export function createInspectionResultPayload(
   overrides: {
     batchId?: string;

@@ -35,7 +35,9 @@ test("publishes control-page display commands to the audience display", async ({
   await expect(displayPage.getByText("No rankings yet")).toBeVisible();
 
   await page.getByRole("button", { name: "Show Sponsors" }).click();
-  await expect(displayPage.getByRole("heading", { name: "Nhà tài trợ" })).toBeVisible();
+  await expect(
+    displayPage.getByRole("heading", { name: "Nhà tài trợ" })
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Show Blank Screen" }).click();
   await expect(displayPage.locator(".display-scene-blank")).toBeVisible();
@@ -67,7 +69,9 @@ test("switches audience display scenes during control lifecycle transitions", as
 
   await page.getByRole("button", { name: "Load Next Match" }).click();
   await page.getByRole("button", { name: "Show Preview" }).click();
-  await expect(displayPage.locator(".display-match-preview-scene")).toBeVisible();
+  await expect(
+    displayPage.locator(".display-match-preview-scene")
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Show Match" }).click();
   const timer = displayPage.locator(".display-match-start-timer");

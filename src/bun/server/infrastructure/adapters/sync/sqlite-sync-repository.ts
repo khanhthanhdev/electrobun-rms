@@ -32,6 +32,19 @@ import {
 import { applySyncChangeSetsToEventDb } from "./sync-event-db-apply-sync-change-sets";
 import { loadEventTeamDirectory } from "./sync-event-db-team-directory";
 
+const withImmediateTransaction = <T>(fn: () => T): T => {
+  const sqlite = getSqlite();
+  sqlite.exec("BEGIN IMMEDIATE TRANSACTION");
+  try {
+    const result = fn();
+    sqlite.exec("COMMIT");
+    return result;
+  } catch (error) {
+    sqlite.exec("ROLLBACK");
+    throw error;
+  }
+};
+
 const toIsoString = (value: number | null | undefined): string | undefined =>
   typeof value === "number" ? new Date(value).toISOString() : undefined;
 
@@ -421,13 +434,8 @@ export class SQLiteSyncRepository implements SyncRepository {
     const payloadHash = calculatePayloadHash(input.payload);
     const batchDbId = crypto.randomUUID();
     const changeSetId = crypto.randomUUID();
-    let transactionOpen = false;
-    let transactionClosed = false;
 
-    const sqlite = getSqlite();
-    sqlite.exec("BEGIN IMMEDIATE TRANSACTION");
-    transactionOpen = true;
-    try {
+    return withImmediateTransaction(() => {
       const existingBatch = db
         .select()
         .from(schema.syncBatches)
@@ -440,14 +448,11 @@ export class SQLiteSyncRepository implements SyncRepository {
         .get();
 
       if (existingBatch) {
-        sqlite.exec("COMMIT");
-        transactionClosed = true;
-
         if (existingBatch.payloadHash === payloadHash) {
           return {
             batchId: input.payload.batchId,
             changeSetId: existingBatch.changeSetId ?? existingBatch.id,
-            status: "duplicate",
+            status: "duplicate" as const,
             warnings: [],
           };
         }
@@ -498,27 +503,17 @@ export class SQLiteSyncRepository implements SyncRepository {
             .set({ status: "failed" })
             .where(eq(schema.syncBatches.id, batchDbId))
             .run();
-          sqlite.exec("COMMIT");
-          transactionClosed = true;
           throw error;
         }
       }
 
-      sqlite.exec("COMMIT");
-      transactionClosed = true;
-    } catch (error) {
-      if (transactionOpen && !transactionClosed) {
-        sqlite.exec("ROLLBACK");
-      }
-      throw error;
-    }
-
-    return {
-      batchId: input.payload.batchId,
-      changeSetId,
-      status: input.status,
-      warnings: input.warnings,
-    };
+      return {
+        batchId: input.payload.batchId,
+        changeSetId,
+        status: input.status,
+        warnings: input.warnings,
+      };
+    });
   }
 
   reviewBatch(input: {
@@ -527,38 +522,53 @@ export class SQLiteSyncRepository implements SyncRepository {
     reason?: string;
     reviewerId: string;
   }): ReviewSyncBatchResult {
-    const batch = db
-      .select()
-      .from(schema.syncBatches)
-      .where(eq(schema.syncBatches.changeSetId, input.changeSetId))
-      .get();
+    return withImmediateTransaction(() => {
+      const batch = db
+        .select()
+        .from(schema.syncBatches)
+        .where(eq(schema.syncBatches.changeSetId, input.changeSetId))
+        .get();
 
-    if (!batch) {
-      throwSyncError("NOT_FOUND", 404, "Batch not found");
-    }
-    const resolvedBatch = batch as NonNullable<typeof batch>;
+      if (!batch) {
+        throwSyncError("NOT_FOUND", 404, "Batch not found");
+      }
+      const resolvedBatch = batch as NonNullable<typeof batch>;
 
-    if (input.newStatus === "applied") {
-      this.applyStoredBatch(resolvedBatch.id, resolvedBatch.eventCode);
-    }
+      if (resolvedBatch.status !== "pending_review") {
+        throwSyncError(
+          "BATCH_ALREADY_REVIEWED",
+          409,
+          "Batch already reviewed."
+        );
+      }
 
-    const reviewedAt = Date.now();
-    db.update(schema.syncBatches)
-      .set({
-        reviewReason: input.reason,
-        reviewedAt,
-        reviewerId: input.reviewerId,
-        status: input.newStatus,
-      })
-      .where(eq(schema.syncBatches.changeSetId, input.changeSetId))
-      .run();
+      if (input.newStatus === "applied") {
+        this.applyStoredBatch(resolvedBatch.id, resolvedBatch.eventCode);
+      }
 
-    return {
-      changeSetId: input.changeSetId,
-      newStatus: input.newStatus,
-      reviewedAt: new Date(reviewedAt).toISOString(),
-      success: true,
-    };
+      const reviewedAt = Date.now();
+      db.update(schema.syncBatches)
+        .set({
+          reviewReason: input.reason,
+          reviewedAt,
+          reviewerId: input.reviewerId,
+          status: input.newStatus,
+        })
+        .where(
+          and(
+            eq(schema.syncBatches.changeSetId, input.changeSetId),
+            eq(schema.syncBatches.status, "pending_review")
+          )
+        )
+        .run();
+
+      return {
+        changeSetId: input.changeSetId,
+        newStatus: input.newStatus,
+        reviewedAt: new Date(reviewedAt).toISOString(),
+        success: true,
+      };
+    });
   }
 
   private applyStoredBatch(batchDbId: string, eventCode: string): void {

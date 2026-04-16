@@ -7,6 +7,7 @@ import type {
   GetQualificationRankingSourceFingerprintUseCase,
   RebuildQualificationRankingsUseCase,
 } from "../../application/use-cases/ranking";
+import { outboundSyncPushService } from "./outbound-sync-push-service";
 
 interface MonitorState {
   inFlight: boolean;
@@ -124,5 +125,6 @@ export class RankingPollService {
     kind: QualificationRankingsSyncChangeKind
   ): void {
     this.deps.hub.publish({ eventCode, kind });
+    outboundSyncPushService.requestEventSync(eventCode);
   }
 }

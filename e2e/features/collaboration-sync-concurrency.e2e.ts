@@ -104,9 +104,7 @@ test("shows conflict feedback and recovers when a stale transition version is su
   });
 
   await page.getByRole("button", { name: "Show Preview" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "State was out of sync"
-  );
+  await expect(page.getByRole("alert")).toContainText("State was out of sync");
   await expect(findStatusRow(page, "Loaded Match:")).toContainText(
     "Not Started"
   );
@@ -137,9 +135,11 @@ test("propagates inspection status updates to other pages without manual refresh
     });
   await expect(observerTeamRow).toContainText("Not Started");
 
-  const actorTeamRow = page.locator("table.inspection-teams-table tbody tr").filter({
-    hasText: "Test Team 1",
-  });
+  const actorTeamRow = page
+    .locator("table.inspection-teams-table tbody tr")
+    .filter({
+      hasText: "Test Team 1",
+    });
   await actorTeamRow.getByRole("link", { name: "Inspect" }).click();
   await expect(page).toHaveURL(`/event/${eventCode}/inspection/1`);
 
@@ -186,9 +186,11 @@ test("simulates the full match workflow from control start to head referee revie
 
   await page.getByRole("button", { name: "Load Next Match" }).click();
   await page.getByRole("button", { name: "Show Preview" }).click();
-  await expect(displayPage.locator(".display-match-preview-scene")).toBeVisible({
-    timeout: REALTIME_TIMEOUT_MS,
-  });
+  await expect(displayPage.locator(".display-match-preview-scene")).toBeVisible(
+    {
+      timeout: REALTIME_TIMEOUT_MS,
+    }
+  );
 
   await page.getByRole("button", { name: "Show Match" }).click();
   const displayTimer = displayPage.locator(".display-match-start-timer");
@@ -324,10 +326,14 @@ test("keeps two audience displays synchronized to the same commanded scenes", as
   await expectStatusRowToContain(loadedRow, "Not Started");
   await expect(showPreviewButton).toBeEnabled({ timeout: REALTIME_TIMEOUT_MS });
   await showPreviewButton.click();
-  await expect(displayPageA.locator(".display-match-preview-scene")).toBeVisible({
+  await expect(
+    displayPageA.locator(".display-match-preview-scene")
+  ).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });
-  await expect(displayPageB.locator(".display-match-preview-scene")).toBeVisible({
+  await expect(
+    displayPageB.locator(".display-match-preview-scene")
+  ).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });
 
@@ -349,10 +355,14 @@ test("keeps two audience displays synchronized to the same commanded scenes", as
   ).toBeVisible({ timeout: REALTIME_TIMEOUT_MS });
 
   await page.getByRole("button", { name: "Show Sponsors" }).click();
-  await expect(displayPageA.getByRole("heading", { name: "Nhà tài trợ" })).toBeVisible({
+  await expect(
+    displayPageA.getByRole("heading", { name: "Nhà tài trợ" })
+  ).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });
-  await expect(displayPageB.getByRole("heading", { name: "Nhà tài trợ" })).toBeVisible({
+  await expect(
+    displayPageB.getByRole("heading", { name: "Nhà tài trợ" })
+  ).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });
 

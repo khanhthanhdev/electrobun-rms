@@ -2,6 +2,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createProvisionedEvent } from "../support/api-helpers";
 
+const BACK_TO_TEAM_SELECT_PATTERN = /Back to Team Select/i;
+
 const findInspectionRow = (page: Page, teamName: string) =>
   page.locator("table.inspection-teams-table tbody tr").filter({
     hasText: teamName,
@@ -75,7 +77,7 @@ test("updates team statuses from the override page and syncs back to inspection 
   await expect(overrideRow).toContainText("Passed");
   await expect(page.getByText("50% Passed")).toBeVisible();
 
-  await page.getByRole("link", { name: /Back to Team Select/i }).click();
+  await page.getByRole("link", { name: BACK_TO_TEAM_SELECT_PATTERN }).click();
   await expect(page).toHaveURL(`/event/${eventCode}/inspection`);
 
   const inspectionRow = findInspectionRow(page, "Test Team 1");

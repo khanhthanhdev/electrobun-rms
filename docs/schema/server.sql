@@ -158,3 +158,54 @@ CREATE TABLE IF NOT EXISTS sync_outbound_links (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_outbound_links_event_code ON sync_outbound_links(event_code);
+
+-- sync_outbound_batches
+CREATE TABLE IF NOT EXISTS sync_outbound_batches (
+  id TEXT PRIMARY KEY,
+  event_code TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL,
+  last_attempt_at INTEGER,
+  last_http_status INTEGER,
+  last_error TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_outbound_batches_event_batch_id
+  ON sync_outbound_batches(event_code, batch_id);
+CREATE INDEX IF NOT EXISTS idx_sync_outbound_batches_status_next_attempt
+  ON sync_outbound_batches(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_sync_outbound_batches_event_code
+  ON sync_outbound_batches(event_code);
+
+-- sync_outbound_attempts
+CREATE TABLE IF NOT EXISTS sync_outbound_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  outbound_batch_id TEXT NOT NULL,
+  attempted_at INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  http_status INTEGER,
+  response_body TEXT,
+  error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_outbound_attempts_batch_id
+  ON sync_outbound_attempts(outbound_batch_id);
+
+-- sync_outbound_state
+CREATE TABLE IF NOT EXISTS sync_outbound_state (
+  event_code TEXT PRIMARY KEY,
+  paused INTEGER NOT NULL DEFAULT 0,
+  last_success_at INTEGER,
+  last_attempt_at INTEGER,
+  last_error TEXT,
+  backoff_until INTEGER,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_outbound_state_backoff_until
+  ON sync_outbound_state(backoff_until);

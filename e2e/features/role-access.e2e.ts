@@ -6,12 +6,14 @@ import {
 } from "@playwright/test";
 import {
   createEventRoleUserApi,
-  createUsername,
   createProvisionedEvent,
+  createUsername,
   type E2eRoleValue,
   loginAsAdminApi,
 } from "../support/api-helpers";
 import { loginAsUser } from "../support/session-helpers";
+
+const LEAD_INSPECTOR_PATTERN = /Lead Inspector access required/i;
 
 const API_BASE_URL = "http://127.0.0.1:3102/api";
 
@@ -201,7 +203,9 @@ test.describe("role-based event access", () => {
     await page.goto(`/event/${eventCode}/inspection/override`);
 
     await expect(
-      page.getByRole("heading", { name: `Robot Inspection Override - ${eventCode}` })
+      page.getByRole("heading", {
+        name: `Robot Inspection Override - ${eventCode}`,
+      })
     ).toBeVisible();
     await expect(
       page.locator("table.inspection-teams-table tbody tr")
@@ -268,10 +272,7 @@ test.describe("role-based event access", () => {
     ).toBeVisible();
   });
 
-  test("REFEREE can access scoring match entry", async ({
-    page,
-    request,
-  }) => {
+  test("REFEREE can access scoring match entry", async ({ page, request }) => {
     const { eventCode } = await provisionRoleSession(page, request, {
       role: "REFEREE",
       usernamePrefix: "refmatch",
@@ -281,9 +282,15 @@ test.describe("role-based event access", () => {
 
     await page.goto(`/event/${eventCode}/ref/red/scoring/1/quals/match/1`);
 
-    await expect(page.getByRole("heading", { name: "Score Submitted" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Submit Score" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Back to Selection" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Score Submitted" })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Submit Score" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Back to Selection" })
+    ).toBeVisible();
   });
 
   test("HEAD_REFEREE can access head referee field selection", async ({
@@ -385,7 +392,7 @@ test.describe("role-based event access", () => {
       }
     );
 
-    await expectForbiddenApiResponse(response, /Lead Inspector access required/i);
+    await expectForbiddenApiResponse(response, LEAD_INSPECTOR_PATTERN);
   });
 
   test("REFEREE cannot submit scoring updates", async ({ request }) => {
@@ -422,7 +429,7 @@ test.describe("role-based event access", () => {
 
     await expectForbiddenApiResponse(
       response,
-      new RegExp(`Admin access for event \"${eventCode}\" is required.`, "i")
+      new RegExp(`Admin access for event "${eventCode}" is required.`, "i")
     );
   });
 });

@@ -5,6 +5,8 @@ import {
   saveQualificationMatchScoresApi,
 } from "../support/api-helpers";
 
+const BACK_TO_MATCH_RESULTS_PATTERN = /Back to Match Results/i;
+
 // Derived from api-helpers score bodies + season-2025-2026 scoring rules:
 // Red: aCenterFlags(3)*10 + bBaseFlagsDown(2)*10 + parkFull(2)=15 → 65
 // Blue: aCenterFlags(1)*10 + bBaseFlagsDown(1)*10 + parkPartial(1)=10 → 30
@@ -95,10 +97,14 @@ test("generates a qualification schedule and covers rankings plus result drill-d
   ).toBeVisible();
   await expect(page.getByText("Red Alliance Scoring")).toBeVisible();
   await expect(page.getByText("Blue Alliance Scoring")).toBeVisible();
-  await expect(page.getByText(EXPECTED_RED_SCORE, { exact: true })).toBeVisible();
-  await expect(page.getByText(EXPECTED_BLUE_SCORE, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(EXPECTED_RED_SCORE, { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText(EXPECTED_BLUE_SCORE, { exact: true })
+  ).toBeVisible();
 
-  await page.getByRole("link", { name: /Back to Match Results/i }).click();
+  await page.getByRole("link", { name: BACK_TO_MATCH_RESULTS_PATTERN }).click();
   firstResultRow = page.locator("table tbody tr").filter({
     has: page.getByRole("cell", { exact: true, name: "Q1" }),
   });
@@ -117,7 +123,9 @@ test("generates a qualification schedule and covers rankings plus result drill-d
   });
 
   await firstResultRow.getByRole("link", { name: "[Match History]" }).click();
-  await expect(page.getByRole("heading", { name: "History for Q1" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "History for Q1" })
+  ).toBeVisible();
   await expect(page.getByText("Blue Ref Save")).toBeVisible();
   await expect(page.getByText("Red Ref Save")).toBeVisible();
 

@@ -239,6 +239,67 @@ export const syncOutboundLinks = sqliteTable(
   (table) => [index("idx_sync_outbound_links_event_code").on(table.eventCode)]
 );
 
+export const syncOutboundBatches = sqliteTable(
+  "sync_outbound_batches",
+  {
+    id: text("id").primaryKey(),
+    eventCode: text("event_code").notNull(),
+    batchId: text("batch_id").notNull(),
+    payload: text("payload", { mode: "json" }).$type<unknown>(),
+    status: text("status").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: integer("next_attempt_at").notNull(),
+    lastAttemptAt: integer("last_attempt_at"),
+    lastHttpStatus: integer("last_http_status"),
+    lastError: text("last_error"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_sync_outbound_batches_event_code").on(table.eventCode),
+    index("idx_sync_outbound_batches_status_next_attempt").on(
+      table.status,
+      table.nextAttemptAt
+    ),
+    index("idx_sync_outbound_batches_event_batch_id").on(
+      table.eventCode,
+      table.batchId
+    ),
+  ]
+);
+
+export const syncOutboundAttempts = sqliteTable(
+  "sync_outbound_attempts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    outboundBatchId: text("outbound_batch_id").notNull(),
+    attemptedAt: integer("attempted_at").notNull(),
+    outcome: text("outcome").notNull(),
+    httpStatus: integer("http_status"),
+    responseBody: text("response_body"),
+    errorMessage: text("error_message"),
+  },
+  (table) => [
+    index("idx_sync_outbound_attempts_batch_id").on(table.outboundBatchId),
+  ]
+);
+
+export const syncOutboundState = sqliteTable(
+  "sync_outbound_state",
+  {
+    eventCode: text("event_code").primaryKey(),
+    paused: integer("paused", { mode: "boolean" }).notNull().default(false),
+    lastSuccessAt: integer("last_success_at"),
+    lastAttemptAt: integer("last_attempt_at"),
+    lastError: text("last_error"),
+    backoffUntil: integer("backoff_until"),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_sync_outbound_state_backoff_until").on(table.backoffUntil),
+  ]
+);
+
 // Sync Type Exports
 
 export type SyncClient = typeof syncClients.$inferSelect;
@@ -251,3 +312,9 @@ export type SyncPolicy = typeof syncPolicies.$inferSelect;
 export type NewSyncPolicy = typeof syncPolicies.$inferInsert;
 export type SyncOutboundLink = typeof syncOutboundLinks.$inferSelect;
 export type NewSyncOutboundLink = typeof syncOutboundLinks.$inferInsert;
+export type SyncOutboundBatch = typeof syncOutboundBatches.$inferSelect;
+export type NewSyncOutboundBatch = typeof syncOutboundBatches.$inferInsert;
+export type SyncOutboundAttempt = typeof syncOutboundAttempts.$inferSelect;
+export type NewSyncOutboundAttempt = typeof syncOutboundAttempts.$inferInsert;
+export type SyncOutboundState = typeof syncOutboundState.$inferSelect;
+export type NewSyncOutboundState = typeof syncOutboundState.$inferInsert;

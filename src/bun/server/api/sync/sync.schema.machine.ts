@@ -52,22 +52,57 @@ export const DEFAULT_ALLOWED_PULL_RESOURCES = [...machinePullResourceTypes];
 export type MachinePushResourceType = (typeof machinePushResourceTypes)[number];
 export type MachinePullResourceType = (typeof machinePullResourceTypes)[number];
 
-// Machine API: Push Resource Envelope
-export const pushResourceSchema = object({
-  resourceType: picklist(machinePushResourceTypes),
+const inspectionSchedulePushResourceSchema = object({
+  resourceType: literal("inspection_schedule"),
   schemaRef: optional(string()),
-  mode: picklist(["upsert", "replace_snapshot"]),
-  records: array(
-    union([
-      inspectionScheduleRecordSchema,
-      inspectionResultsRecordSchema,
-      matchScheduleRecordSchema,
-      matchResultsRecordSchema,
-      teamRankingsRecordSchema,
-      teamAwardsRecordSchema,
-    ])
-  ),
+  mode: literal("replace_snapshot"),
+  records: array(inspectionScheduleRecordSchema),
 });
+
+const inspectionResultsPushResourceSchema = object({
+  resourceType: literal("inspection_results"),
+  schemaRef: optional(string()),
+  mode: literal("upsert"),
+  records: array(inspectionResultsRecordSchema),
+});
+
+const matchSchedulePushResourceSchema = object({
+  resourceType: literal("match_schedule"),
+  schemaRef: optional(string()),
+  mode: literal("replace_snapshot"),
+  records: array(matchScheduleRecordSchema),
+});
+
+const matchResultsPushResourceSchema = object({
+  resourceType: literal("match_results"),
+  schemaRef: optional(string()),
+  mode: literal("upsert"),
+  records: array(matchResultsRecordSchema),
+});
+
+const teamRankingsPushResourceSchema = object({
+  resourceType: literal("team_rankings"),
+  schemaRef: optional(string()),
+  mode: literal("replace_snapshot"),
+  records: array(teamRankingsRecordSchema),
+});
+
+const teamAwardsPushResourceSchema = object({
+  resourceType: literal("team_awards"),
+  schemaRef: optional(string()),
+  mode: literal("replace_snapshot"),
+  records: array(teamAwardsRecordSchema),
+});
+
+// Machine API: Push Resource Envelope
+export const pushResourceSchema = union([
+  inspectionSchedulePushResourceSchema,
+  inspectionResultsPushResourceSchema,
+  matchSchedulePushResourceSchema,
+  matchResultsPushResourceSchema,
+  teamRankingsPushResourceSchema,
+  teamAwardsPushResourceSchema,
+]);
 
 // Machine API: Push Request
 export const pushSyncBatchRequestSchema = object({

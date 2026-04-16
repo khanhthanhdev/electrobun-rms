@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { eq } from "drizzle-orm";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -10,6 +11,7 @@ import {
   getEventBootstrap,
   insertEvent,
   insertSyncClient,
+  insertSyncOutboundLink,
   insertSyncPolicy,
   openEventDb,
   pushSyncBatch,
@@ -19,9 +21,53 @@ import {
   TEST_DATA_DIR,
   waitFor,
 } from "./sync.test-support";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 
 const EVENT_CODE = "SYNC01";
 const PUSH_WORKER_DIR = join(TEST_DATA_DIR, "sync-race");
+
+const waitForCondition = async (
+  predicate: () => boolean | Promise<boolean>,
+  description: string
+): Promise<void> => {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    if (await predicate()) {
+      return;
+    }
+    await Bun.sleep(25);
+  }
+
+  throw new Error(`Timed out waiting for ${description}.`);
+};
+
+const startMockMachinePushServer = (handler: (
+  body: unknown
+) => { body: unknown; status?: number }) => {
+  let requestCount = 0;
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: async (req) => {
+      if (
+        req.method === "POST" &&
+        new URL(req.url).pathname === "/api/sync/v1/machine/push"
+      ) {
+        requestCount += 1;
+        const payload = await req.json().catch(() => null);
+        const result = handler(payload);
+        return Response.json(result.body, { status: result.status ?? 200 });
+      }
+
+      return new Response("Not Found", { status: 404 });
+    },
+  });
+
+  return {
+    getRequestCount: () => requestCount,
+    stop: () => server.stop(true),
+    url: `http://127.0.0.1:${server.port}`,
+  };
+};
 
 const readChildResult = async (
   child: ReturnType<typeof Bun.spawn>
@@ -51,8 +97,13 @@ const readChildResult = async (
 
 describe("sync service", () => {
   beforeEach(async () => {
+    outboundSyncPushService.stop();
     await resetSyncTestDatabase();
     rmSync(PUSH_WORKER_DIR, { force: true, recursive: true });
+  });
+
+  afterEach(() => {
+    outboundSyncPushService.stop();
   });
 
   it("authenticates active clients and updates lastUsedAt", () => {
@@ -282,5 +333,98 @@ try {
 
     expect(error).toBeInstanceOf(SyncError);
     expect((error as { code?: string }).code).toBe("BATCH_HASH_MISMATCH");
+  });
+
+  it("delivers queued outbound batch and marks success when remote applies", async () => {
+    const mockServer = startMockMachinePushServer(() => ({
+      body: { batchId: "remote-batch", status: "applied" },
+    }));
+    try {
+      createEventDb(EVENT_CODE, ["123"]);
+      insertEvent(EVENT_CODE);
+      insertSyncPolicy(EVENT_CODE, {
+        isSyncEnabled: true,
+      });
+      insertSyncOutboundLink(EVENT_CODE, {
+        baseUrl: mockServer.url,
+      });
+
+      outboundSyncPushService.start();
+      const retryResult = await outboundSyncPushService.requestImmediateRetry(
+        EVENT_CODE
+      );
+      expect(typeof retryResult.batchId).toBe("string");
+
+      await waitForCondition(() => mockServer.getRequestCount() > 0, "push call");
+      await waitForCondition(async () => {
+        const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
+        return status.counts.succeeded > 0;
+      }, "outbound success status");
+
+      const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
+      expect(status.counts.succeeded).toBe(1);
+      expect(typeof status.lastSuccessAt).toBe("string");
+
+      const batchRow = db
+        .select()
+        .from(schema.syncOutboundBatches)
+        .where(eq(schema.syncOutboundBatches.batchId, retryResult.batchId))
+        .get();
+      expect(batchRow?.status).toBe("succeeded");
+    } finally {
+      mockServer.stop();
+    }
+  });
+
+  it("marks outbound batch as pending_review when remote requires review", async () => {
+    const mockServer = startMockMachinePushServer(() => ({
+      body: { batchId: "remote-batch", status: "pending_review" },
+    }));
+    try {
+      createEventDb(EVENT_CODE, ["123"]);
+      insertEvent(EVENT_CODE);
+      insertSyncPolicy(EVENT_CODE, {
+        isSyncEnabled: true,
+      });
+      insertSyncOutboundLink(EVENT_CODE, {
+        baseUrl: mockServer.url,
+      });
+
+      outboundSyncPushService.start();
+      await outboundSyncPushService.requestImmediateRetry(EVENT_CODE);
+
+      await waitForCondition(() => mockServer.getRequestCount() > 0, "push call");
+      await waitForCondition(async () => {
+        const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
+        return status.counts.pending_review > 0;
+      }, "pending review status");
+
+      const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
+      expect(status.counts.pending_review).toBe(1);
+      expect(status.lastError).toBe("Remote batch is pending review.");
+    } finally {
+      mockServer.stop();
+    }
+  });
+
+  it("rejects manual outbound retry when sync is disabled", async () => {
+    createEventDb(EVENT_CODE, ["123"]);
+    insertEvent(EVENT_CODE);
+    insertSyncPolicy(EVENT_CODE, {
+      isSyncEnabled: false,
+    });
+    insertSyncOutboundLink(EVENT_CODE, {
+      baseUrl: "http://127.0.0.1:39999",
+    });
+
+    let error: unknown;
+    try {
+      await outboundSyncPushService.requestImmediateRetry(EVENT_CODE);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("Sync is disabled");
   });
 });

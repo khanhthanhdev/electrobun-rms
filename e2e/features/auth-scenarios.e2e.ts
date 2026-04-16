@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const EMPTY_CREDENTIALS_ERROR_PATTERN =
-  /invalid length|expected >=1|required/i;
+const EMPTY_CREDENTIALS_ERROR_PATTERN = /invalid length|expected >=1|required/i;
 const INVALID_LOGIN_ERROR_PATTERN = /invalid username or password/i;
 
 test.describe("unauthenticated auth scenarios", () => {
@@ -40,8 +39,12 @@ test.describe("unauthenticated auth scenarios", () => {
     await page.goto("/create/event");
 
     await expect(page).toHaveURL("/create/event");
-    await expect(page.getByRole("alert")).toContainText("Admin access required.");
-    await expect(page.getByRole("link", { name: "Back to Home" })).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText(
+      "Admin access required."
+    );
+    await expect(
+      page.getByRole("link", { name: "Back to Home" })
+    ).toBeVisible();
   });
 });
 

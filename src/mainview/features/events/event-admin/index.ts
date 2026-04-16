@@ -33,5 +33,12 @@ export type {
   BootstrapSyncEventPayload,
   BootstrapSyncEventResponse,
   NrcWebConfigResponse,
+  OutboundSyncStatusResponse,
+  RetryOutboundSyncResponse,
 } from "./sync-event-service";
-export { bootstrapSyncEvent, fetchNrcWebBaseUrl } from "./sync-event-service";
+export {
+  bootstrapSyncEvent,
+  fetchNrcWebBaseUrl,
+  fetchOutboundSyncStatus,
+  retryOutboundSync,
+} from "./sync-event-service";

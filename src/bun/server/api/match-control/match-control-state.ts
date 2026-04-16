@@ -282,11 +282,13 @@ export const applyTransition = (
       return { state: next, version: 0 };
     }
 
-    default:
+    default: {
+      const exhaustiveCheck: never = command;
       return {
         error: "INVALID_TRANSITION",
-        message: `Unknown transition command: ${command.type}`,
+        message: `Unknown transition command: ${exhaustiveCheck}`,
         currentState: state,
       };
+    }
   }
 };

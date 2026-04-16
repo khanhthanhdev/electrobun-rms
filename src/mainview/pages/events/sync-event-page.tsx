@@ -2,6 +2,9 @@ import { type FormEvent, useEffect, useState } from "react";
 import {
   bootstrapSyncEvent,
   fetchNrcWebBaseUrl,
+  fetchOutboundSyncStatus,
+  type OutboundSyncStatusResponse,
+  retryOutboundSync,
 } from "@/features/events/event-admin";
 
 const LOCAL_NRC_WEB_BASE_URL = "http://localhost:3001";
@@ -17,7 +20,11 @@ export const SyncEventPage = ({ token }: SyncEventPageProps): JSX.Element => {
   const [eventCode, setEventCode] = useState("");
   const [eventKey, setEventKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [outboundStatus, setOutboundStatus] =
+    useState<OutboundSyncStatusResponse | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -34,6 +41,21 @@ export const SyncEventPage = ({ token }: SyncEventPageProps): JSX.Element => {
         // Ignore errors - user can manually enter URL
       });
   }, [token]);
+
+  useEffect(() => {
+    if (!(token && eventCode.trim())) {
+      setOutboundStatus(null);
+      return;
+    }
+
+    fetchOutboundSyncStatus(eventCode.trim(), token)
+      .then((status) => {
+        setOutboundStatus(status);
+      })
+      .catch(() => {
+        setOutboundStatus(null);
+      });
+  }, [eventCode, token]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -63,6 +85,27 @@ export const SyncEventPage = ({ token }: SyncEventPageProps): JSX.Element => {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRetryOutboundSync = async (): Promise<void> => {
+    if (!(token && eventCode.trim())) {
+      return;
+    }
+
+    setIsRetrying(true);
+    setRetryMessage(null);
+    try {
+      const result = await retryOutboundSync(eventCode.trim(), token);
+      const status = await fetchOutboundSyncStatus(eventCode.trim(), token);
+      setOutboundStatus(status);
+      setRetryMessage(`Queued batch ${result.batchId} for retry.`);
+    } catch (error) {
+      setRetryMessage(
+        error instanceof Error ? error.message : "Retry request failed."
+      );
+    } finally {
+      setIsRetrying(false);
     }
   };
 
@@ -143,6 +186,50 @@ export const SyncEventPage = ({ token }: SyncEventPageProps): JSX.Element => {
         <button className="form-submit" disabled={isSubmitting} type="submit">
           {isSubmitting ? "Bootstrapping Event..." : "Bootstrap Event"}
         </button>
+
+        <section className="stack stack--compact">
+          <h3 className="app-heading app-heading--small">
+            Outbound Sync Status
+          </h3>
+          <p className="form-help" data-hint>
+            Event code is required to inspect queue and trigger manual retry.
+          </p>
+          {outboundStatus ? (
+            <div className="stack stack--compact">
+              <p className="form-help" data-hint>
+                Link:{" "}
+                {outboundStatus.hasOutboundLink ? "Configured" : "Missing"}
+                {" · "}Enabled: {outboundStatus.isSyncEnabled ? "Yes" : "No"}
+              </p>
+              <p className="form-help" data-hint>
+                queued {outboundStatus.counts.queued}, in-flight{" "}
+                {outboundStatus.counts.in_flight}, failed{" "}
+                {outboundStatus.counts.failed}, pending review{" "}
+                {outboundStatus.counts.pending_review}
+              </p>
+              {outboundStatus.lastError ? (
+                <p className="form-help" data-hint>
+                  Last error: {outboundStatus.lastError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {retryMessage ? (
+            <p className="form-help" data-hint>
+              {retryMessage}
+            </p>
+          ) : null}
+          <button
+            className="form-submit"
+            disabled={isRetrying || !token || !eventCode.trim()}
+            onClick={() => {
+              handleRetryOutboundSync();
+            }}
+            type="button"
+          >
+            {isRetrying ? "Queueing Retry..." : "Retry Outbound Push"}
+          </button>
+        </section>
       </form>
     </main>
   );

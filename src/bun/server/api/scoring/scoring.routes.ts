@@ -9,6 +9,7 @@ import {
   SubmitAllianceScoreUseCase,
 } from "../../application/use-cases/scoring";
 import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
@@ -167,6 +168,7 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
       matchNumber: bodyResult.output.matchNumber,
       matchType: bodyResult.output.matchType,
     });
+    outboundSyncPushService.requestEventSync(eventCode);
     return c.json(result);
   } catch (error) {
     if (isApplicationError(error)) {
