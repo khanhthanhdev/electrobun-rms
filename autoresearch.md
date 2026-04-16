@@ -41,3 +41,6 @@ Reduce hidden sync failures in SSE + TinyBase cross-client update flows, especia
   - Added version rollback handling in realtime refresh hooks so reconnect resets cannot suppress the next snapshot-triggered refresh.
   - Replaced feature-local fatal error classes with aliases to shared `RealtimeFatalError` so hook `instanceof` checks correctly detect fatal 401/403 stop conditions.
   - Result: `sync_error_count=0`.
+- **Regression-proofing (kept):**
+  - Expanded `display-command-sync-service` unit tests to cover invalid JSON/object shape handling, `SNAPSHOT_HINT`+null mode rejection, normalization fallbacks, and score-update validation branches.
+  - Metric unchanged (`sync_error_count=0`), but parser behavior now pinned by tests.
