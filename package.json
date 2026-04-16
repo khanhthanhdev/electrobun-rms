@@ -14,6 +14,7 @@
     "db:seed:s4v1:teams": "bun src/bun/db/seed-s4v1-teams.ts",
     "start": "bun run dev",
     "check": "ultracite check",
+    "test": "bun test",
     "e2e:install": "playwright install chromium firefox",
     "e2e:server": "bun run build:web && bun src/bun/e2e-server.ts",
     "e2e:test": "playwright test --workers 4",
