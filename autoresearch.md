@@ -36,4 +36,8 @@ Reduce hidden sync failures in SSE + TinyBase cross-client update flows, especia
 - Keep implementations simple (YAGNI/KISS/DRY).
 
 ## What's Been Tried
-- Session initialized. Baseline not yet captured.
+- **Baseline (kept):** `sync_error_count=7` (`reset_guard_issues=4`, `fatal_error_class_issues=3`).
+- **Winning fix (kept):**
+  - Added version rollback handling in realtime refresh hooks so reconnect resets cannot suppress the next snapshot-triggered refresh.
+  - Replaced feature-local fatal error classes with aliases to shared `RealtimeFatalError` so hook `instanceof` checks correctly detect fatal 401/403 stop conditions.
+  - Result: `sync_error_count=0`.
