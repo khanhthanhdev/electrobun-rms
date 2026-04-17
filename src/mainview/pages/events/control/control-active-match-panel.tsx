@@ -87,9 +87,13 @@ export const ControlActiveMatchPanel = ({
     return <p className="empty-state">No active match.</p>;
   }
 
-  const redScore = scoresheet?.red?.scoreTotal ?? selectedMatch.redScore ?? 0;
-  const blueScore =
-    scoresheet?.blue?.scoreTotal ?? selectedMatch.blueScore ?? 0;
+  const isReplay = selectedMatch.state === "COMMITTED";
+  const redScore = isReplay
+    ? 0
+    : (scoresheet?.red?.scoreTotal ?? selectedMatch.redScore ?? 0);
+  const blueScore = isReplay
+    ? 0
+    : (scoresheet?.blue?.scoreTotal ?? selectedMatch.blueScore ?? 0);
   const isLiveScoring =
     redAutoSave.isAutoSaving ||
     redAutoSave.isSubmitting ||
@@ -210,11 +214,11 @@ export const ControlActiveMatchPanel = ({
               embedded
               fieldLabel={fieldLabel}
               initialScore={
-                scoresheet?.blue
+                !isReplay && scoresheet?.blue
                   ? scoresheetToScoringState(scoresheet.blue)
                   : undefined
               }
-              key={`blue-${selectedMatch.matchNumber}`}
+              key={`blue-${selectedMatch.matchNumber}-${isReplay ? "replay" : "normal"}`}
               matchLabel={matchLabel}
               onChange={blueAutoSave.onScoreChange}
               onSubmit={blueAutoSave.submitScore}
@@ -224,11 +228,11 @@ export const ControlActiveMatchPanel = ({
               embedded
               fieldLabel={fieldLabel}
               initialScore={
-                scoresheet?.red
+                !isReplay && scoresheet?.red
                   ? scoresheetToScoringState(scoresheet.red)
                   : undefined
               }
-              key={`red-${selectedMatch.matchNumber}`}
+              key={`red-${selectedMatch.matchNumber}-${isReplay ? "replay" : "normal"}`}
               matchLabel={matchLabel}
               onChange={redAutoSave.onScoreChange}
               onSubmit={redAutoSave.submitScore}

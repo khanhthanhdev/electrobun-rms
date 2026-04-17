@@ -48,11 +48,12 @@ const handleTransition = (
   preTransitionState?: MatchControlState
 ): Response => {
   if ("error" in result) {
+    const currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
     return c.json(
       {
         error: result.error,
         message: result.message,
-        currentState: result.currentState,
+        currentState: { ...result.currentState, version: currentVersion },
       },
       409
     );
@@ -63,8 +64,11 @@ const handleTransition = (
     const { matchType, matchNumber } = preTransitionState.activeMatch;
     scoringRepository
       .clearMatchScores(eventCode, matchType, matchNumber)
-      .catch(() => {
-        // Ignore cleanup failures; the match state transition still succeeds.
+      .catch((err) => {
+        console.error(
+          `Failed to clear scores for ${matchType} #${matchNumber} in ${eventCode}:`,
+          err
+        );
       });
   }
 
@@ -272,6 +276,7 @@ const createTransitionRoute = (
   );
 };
 
+createTransitionRoute("unload", "UNLOAD");
 createTransitionRoute("show-preview", "SHOW_PREVIEW");
 createTransitionRoute("show-match", "SHOW_MATCH");
 createTransitionRoute("start", "START");

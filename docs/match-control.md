@@ -4,6 +4,29 @@
 
 The Match Control page (URL: `/event/$eventcode/control/`) serves as the central command hub for tournament operations. It provides Head Referees, Scorekeepers, and Event Managers with real-time match scheduling, scoring, and administrative controls.
 
+## Match Control State Machine Notes
+
+### Transition guardrails
+
+- `LOAD` is allowed when `activeState === "IDLE"` and replaces any staged loaded state (`LOADED`, `PREVIEW`, or `READY`) back to `LOADED`.
+- `UNLOAD` clears the staged match (`loadedMatch = null`, `loadedState = "IDLE"`).
+- `UNLOAD` is rejected when no staged match exists (`loadedState === "IDLE"`).
+
+### Runtime invariants
+
+The server transition layer asserts these invariants on read and write:
+
+- `loadedState === "IDLE"` implies `loadedMatch === null`.
+- `loadedState !== "IDLE"` implies `loadedMatch !== null`.
+- `activeState === "IDLE"` implies `activeMatch === null` and `activeStartedAtMs === null`.
+- `activeState !== "IDLE"` implies `activeMatch !== null` and `activeStartedAtMs !== null`.
+
+### Concurrency assumption
+
+- Match-control state and sync versions are managed in-memory per event code.
+- Current implementation assumes a single Bun process/event loop.
+- Multi-process deployments need shared coordination (e.g. Redis/event-log backing) to preserve ordering and optimistic concurrency semantics.
+
 ---
 
 ## Scoring System Overview

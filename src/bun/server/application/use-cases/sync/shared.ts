@@ -44,6 +44,14 @@ export class SyncError extends ApplicationError {
 export const isSyncError = (error: unknown): error is SyncError =>
   error instanceof SyncError;
 
+export const isNotFoundError = (error: unknown): boolean => {
+  if (error instanceof ApplicationError && error.status === 404) {
+    return true;
+  }
+
+  return error instanceof Error && /\bnot found\b/i.test(error.message);
+};
+
 export const throwSyncError = (
   code: string,
   status: 400 | 401 | 403 | 404 | 409 | 500,
@@ -311,4 +319,3 @@ export const validatePushResource = (input: {
 
   return warnings;
 };
-

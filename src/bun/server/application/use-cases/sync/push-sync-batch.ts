@@ -8,6 +8,7 @@ import {
   assertDefinitionVersion,
   buildRegisteredTeamSet,
   createStagedChangeSets,
+  isNotFoundError,
   REVIEW_WARNING_CODES,
   throwSyncError,
   validatePushResource,
@@ -38,13 +39,15 @@ export class PushSyncBatchUseCase {
         command.eventCode
       );
     } catch (error) {
-      throwSyncError(
-        "NOT_FOUND",
-        404,
-        error instanceof Error
-          ? error.message
-          : `Event "${command.eventCode}" data was not found.`
-      );
+      if (isNotFoundError(error)) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : `Event "${command.eventCode}" data was not found.`;
+        throwSyncError("NOT_FOUND", 404, message);
+      }
+
+      throw error;
     }
     const registeredTeams = buildRegisteredTeamSet(teamDirectory);
     const warnings = command.payload.resources.flatMap((resource) =>

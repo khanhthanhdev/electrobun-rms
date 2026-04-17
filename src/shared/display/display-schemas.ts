@@ -12,7 +12,7 @@ import { DISPLAY_SCENE_IDS } from "./display-scene-ids";
 
 /**
  * Valibot schema for display scene mode validation.
- * Union of all 17 documented scene IDs.
+ * Union of all documented scene IDs.
  */
 export const displaySceneModeSchema = union(
   DISPLAY_SCENE_IDS.map((id) => literal(id))

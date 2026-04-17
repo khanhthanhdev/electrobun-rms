@@ -37,9 +37,9 @@ export const REFEREE_BLUE_SCORING_PATTERN =
   /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
 export const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
 export const REFEREE_RED_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)\/(?:(practice|quals|elims)\/)?match\/(\d+)\/?$/;
 export const REFEREE_BLUE_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)\/match\/(\d+)\/?$/;
+  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)\/(?:(practice|quals|elims)\/)?match\/(\d+)\/?$/;
 export const HEAD_REFEREE_MATCH_PATTERN =
   /^\/event\/([^/]+)\/hr\/([^/]+)\/match\/(\d+)\/?$/;
 export const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;

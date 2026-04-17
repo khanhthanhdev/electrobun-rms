@@ -6,6 +6,19 @@ import {
   saveQualificationAllianceScoreApi,
 } from "../support/api-helpers";
 
+const API_BASE_URL = "http://127.0.0.1:3102/api";
+
+interface MatchControlStateApiResponse {
+  state: {
+    version: number;
+  };
+}
+
+interface MatchControlErrorResponse {
+  error?: string;
+  message?: string;
+}
+
 const setupControlEvent = async (
   request: APIRequestContext
 ): Promise<{ eventCode: string; token: string }> => {
@@ -20,6 +33,34 @@ const setupControlEvent = async (
 const findControlStatusRow = (page: Page, label: string) =>
   page.locator(".match-control-status-row", {
     hasText: label,
+  });
+
+const fetchMatchControlVersion = async (
+  request: APIRequestContext,
+  eventCode: string
+): Promise<number> => {
+  const response = await request.fetch(
+    `${API_BASE_URL}/events/${eventCode}/match-control/state`
+  );
+  expect(response.ok()).toBeTruthy();
+  const body = (await response.json()) as MatchControlStateApiResponse;
+  return body.state.version;
+};
+
+const postMatchControlTransitionApi = async (
+  request: APIRequestContext,
+  token: string,
+  eventCode: string,
+  path: string,
+  expectedVersion: number
+) =>
+  request.fetch(`${API_BASE_URL}/events/${eventCode}/match-control/${path}`, {
+    data: { expectedVersion },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
   });
 
 test("runs load->preview->ready->start->abort transitions from match control action bar", async ({
@@ -116,4 +157,72 @@ test("updates schedule row state from incomplete to committed as scores are post
   await expect(page.getByRole("cell", { exact: true, name: "Q1" })).toHaveCount(
     0
   );
+});
+
+test("allows loading next match while staged state is READY", async ({
+  page,
+  request,
+}) => {
+  const { eventCode } = await setupControlEvent(request);
+
+  await page.goto(`/event/${eventCode}/control`);
+  await expect(
+    page.getByRole("cell", { exact: true, name: "Q1" })
+  ).toBeVisible();
+
+  const loadedRow = findControlStatusRow(page, "Loaded Match:");
+  const loadNextButton = page.getByRole("button", { name: "Load Next Match" });
+
+  await loadNextButton.click();
+  await expect(loadedRow).toContainText("Q1");
+  await expect(loadedRow).toContainText("Not Started");
+
+  await page.getByRole("button", { name: "Show Preview" }).click();
+  await page.getByRole("button", { name: "Show Match" }).click();
+  await expect(loadedRow).toContainText("Ready");
+
+  await loadNextButton.click();
+  await expect(loadedRow).toContainText("Q2");
+  await expect(loadedRow).toContainText("Not Started");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("syncs UNLOAD transition from API to control page and rejects redundant UNLOAD", async ({
+  page,
+  request,
+}) => {
+  const { eventCode, token } = await setupControlEvent(request);
+
+  await page.goto(`/event/${eventCode}/control`);
+  await expect(
+    page.getByRole("cell", { exact: true, name: "Q1" })
+  ).toBeVisible();
+
+  const loadedRow = findControlStatusRow(page, "Loaded Match:");
+  await page.getByRole("button", { name: "Load Next Match" }).click();
+  await expect(loadedRow).toContainText("Q1");
+
+  const unloadVersion = await fetchMatchControlVersion(request, eventCode);
+  const unloadResponse = await postMatchControlTransitionApi(
+    request,
+    token,
+    eventCode,
+    "unload",
+    unloadVersion
+  );
+  expect(unloadResponse.ok()).toBeTruthy();
+  await expect(loadedRow).toContainText("No match loaded");
+
+  const unloadAgainVersion = await fetchMatchControlVersion(request, eventCode);
+  const unloadAgainResponse = await postMatchControlTransitionApi(
+    request,
+    token,
+    eventCode,
+    "unload",
+    unloadAgainVersion
+  );
+  expect(unloadAgainResponse.status()).toBe(409);
+  const body = (await unloadAgainResponse.json()) as MatchControlErrorResponse;
+  expect(body.error).toBe("INVALID_TRANSITION");
+  expect(body.message).toContain("No match is loaded to unload.");
 });

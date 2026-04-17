@@ -57,6 +57,15 @@
   border-bottom: 1px solid var(--border);
 }
 
+.match-control-table-row--selected td {
+  background: #fffbeb;
+}
+
+.match-control-table-row--selected td:first-child {
+  font-weight: var(--font-semibold);
+  box-shadow: inset 3px 0 0 #eab308;
+}
+
 .match-control-empty-cell {
   color: var(--muted-foreground);
   text-align: center;

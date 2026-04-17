@@ -10,6 +10,7 @@ import {
 
 export type MatchControlCommand =
   | { type: "LOAD"; match: DisplayMatchRef; expectedVersion: number }
+  | { type: "UNLOAD"; expectedVersion: number }
   | { type: "SHOW_PREVIEW"; expectedVersion: number }
   | { type: "SHOW_MATCH"; expectedVersion: number }
   | { type: "START"; expectedVersion: number }
@@ -34,6 +35,12 @@ export interface TransitionError {
 
 // ---------------------------------------------------------------------------
 // In-memory stores
+//
+// CONCURRENCY NOTE: The read-modify-write path in applyTransition is safe
+// only because Bun runs on a single event-loop thread and the critical
+// section (getState → compute next → set) is fully synchronous with no
+// `await`. If this server ever runs multiple workers or processes, the
+// state must be moved to a shared store with atomic operations.
 // ---------------------------------------------------------------------------
 
 const stateByEventCode = new Map<string, MatchControlState>();
@@ -55,12 +62,58 @@ const defaultState = (eventCode: string): MatchControlState => ({
   activeStartedAtMs: null,
 });
 
+const assertStateInvariants = (
+  state: MatchControlState,
+  context: string
+): void => {
+  if (state.loadedState === "IDLE" && state.loadedMatch !== null) {
+    throw new Error(
+      `Match control invariant failed (${context}): loadedState=IDLE requires loadedMatch=null.`
+    );
+  }
+
+  if (state.loadedState !== "IDLE" && state.loadedMatch === null) {
+    throw new Error(
+      `Match control invariant failed (${context}): loadedState=${state.loadedState} requires loadedMatch.`
+    );
+  }
+
+  if (state.activeState === "IDLE") {
+    if (state.activeMatch !== null || state.activeStartedAtMs !== null) {
+      throw new Error(
+        `Match control invariant failed (${context}): activeState=IDLE requires activeMatch=null and activeStartedAtMs=null.`
+      );
+    }
+    return;
+  }
+
+  if (state.activeMatch === null) {
+    throw new Error(
+      `Match control invariant failed (${context}): activeState=${state.activeState} requires activeMatch.`
+    );
+  }
+
+  if (state.activeStartedAtMs === null) {
+    throw new Error(
+      `Match control invariant failed (${context}): activeState=${state.activeState} requires activeStartedAtMs.`
+    );
+  }
+
+  if (state.loadedState !== "IDLE" || state.loadedMatch !== null) {
+    throw new Error(
+      `Match control invariant failed (${context}): activeState=${state.activeState} requires loadedState=IDLE and loadedMatch=null.`
+    );
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export const getMatchControlState = (eventCode: string): MatchControlState => {
-  return stateByEventCode.get(eventCode) ?? defaultState(eventCode);
+  const state = stateByEventCode.get(eventCode) ?? defaultState(eventCode);
+  assertStateInvariants(state, `read:${eventCode}`);
+  return state;
 };
 
 /**
@@ -86,7 +139,8 @@ export const scheduleAutoComplete = (
   const remaining = Math.max(0, MATCH_DURATION_MS - elapsed);
 
   const capturedStartedAtMs = state.activeStartedAtMs;
-  const capturedMatch = state.activeMatch;
+  const capturedMatchNumber = state.activeMatch?.matchNumber ?? null;
+  const capturedMatchType = state.activeMatch?.matchType ?? null;
 
   const timer = setTimeout(() => {
     timerByEventCode.delete(eventCode);
@@ -96,7 +150,8 @@ export const scheduleAutoComplete = (
     if (
       current.activeState !== "IN_PROGRESS" ||
       current.activeStartedAtMs !== capturedStartedAtMs ||
-      current.activeMatch !== capturedMatch
+      current.activeMatch?.matchNumber !== capturedMatchNumber ||
+      current.activeMatch?.matchType !== capturedMatchType
     ) {
       return;
     }
@@ -158,12 +213,39 @@ export const applyTransition = (
           currentState: state,
         };
       }
+      if (state.loadedState !== "IDLE" && state.loadedState !== "LOADED") {
+        return {
+          error: "INVALID_TRANSITION",
+          message: `Cannot load from loadedState "${state.loadedState}". Unload first.`,
+          currentState: state,
+        };
+      }
       const next: MatchControlState = {
         ...state,
         version: 0,
         loadedMatch: command.match,
         loadedState: "LOADED",
       };
+      assertStateInvariants(next, `LOAD:${eventCode}`);
+      stateByEventCode.set(eventCode, next);
+      return { state: next, version: 0 };
+    }
+
+    case "UNLOAD": {
+      if (state.loadedState === "IDLE") {
+        return {
+          error: "INVALID_TRANSITION",
+          message: "No match is loaded to unload.",
+          currentState: state,
+        };
+      }
+      const next: MatchControlState = {
+        ...state,
+        version: 0,
+        loadedMatch: null,
+        loadedState: "IDLE",
+      };
+      assertStateInvariants(next, `UNLOAD:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -181,6 +263,7 @@ export const applyTransition = (
         version: 0,
         loadedState: "PREVIEW",
       };
+      assertStateInvariants(next, `SHOW_PREVIEW:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -198,6 +281,7 @@ export const applyTransition = (
         version: 0,
         loadedState: "READY",
       };
+      assertStateInvariants(next, `SHOW_MATCH:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -219,6 +303,7 @@ export const applyTransition = (
         activeState: "IN_PROGRESS",
         activeStartedAtMs: Date.now(),
       };
+      assertStateInvariants(next, `START:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -236,6 +321,7 @@ export const applyTransition = (
         version: 0,
         activeState: "COMPLETED",
       };
+      assertStateInvariants(next, `AUTO_COMPLETE:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -258,6 +344,7 @@ export const applyTransition = (
         activeState: "IDLE",
         activeStartedAtMs: null,
       };
+      assertStateInvariants(next, `ABORT:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }
@@ -278,6 +365,7 @@ export const applyTransition = (
         activeState: "IDLE",
         activeStartedAtMs: null,
       };
+      assertStateInvariants(next, `COMMIT:${eventCode}`);
       stateByEventCode.set(eventCode, next);
       return { state: next, version: 0 };
     }

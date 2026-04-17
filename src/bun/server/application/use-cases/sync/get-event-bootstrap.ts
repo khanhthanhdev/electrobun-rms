@@ -11,7 +11,7 @@ import {
 } from "../../dtos/sync";
 import type { EventRepository } from "../../interfaces/event-repository";
 import type { SyncRepository } from "../../interfaces/sync-repository";
-import { throwSyncError } from "./shared";
+import { isNotFoundError, throwSyncError } from "./shared";
 
 export interface GetEventBootstrapQuery {
   eventCode: string;
@@ -43,13 +43,16 @@ export class GetEventBootstrapUseCase {
         query.eventCode
       );
     } catch (error) {
-      throwSyncError(
-        "NOT_FOUND",
-        404,
-        error instanceof Error
-          ? error.message
-          : `Event "${query.eventCode}" data was not found.`
-      );
+      if (isNotFoundError(error)) {
+        throwSyncError(
+          "NOT_FOUND",
+          404,
+          error instanceof Error
+            ? error.message
+            : `Event "${query.eventCode}" data was not found.`
+        );
+      }
+      throw error;
     }
 
     const scheduleOwner =

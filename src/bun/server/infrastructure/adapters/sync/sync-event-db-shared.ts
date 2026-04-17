@@ -51,6 +51,8 @@ export const withEventDb = <T>(
   }
 
   const eventDb = new Database(eventDbPath);
+  eventDb.exec("PRAGMA busy_timeout = 1000;");
+
   try {
     return operation(eventDb);
   } finally {

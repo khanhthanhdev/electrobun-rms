@@ -20,9 +20,8 @@ const FATAL_ERROR_FILES = [
 ] as const;
 
 const hasResetGuardIssue = (source: string): boolean => {
-  const hasMonotonicGuard = /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/.test(
-    source
-  );
+  const hasMonotonicGuard =
+    /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/.test(source);
   if (!hasMonotonicGuard) {
     return false;
   }

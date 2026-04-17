@@ -1,7 +1,7 @@
 /**
  * Display scene modes - re-exported from shared contract.
  *
- * The shared contract defines all 17 documented display scenes.
+ * The shared contract defines all documented display scenes.
  * This file re-exports the type for backward compatibility.
  *
  * @see docs/display-control-workflow.md

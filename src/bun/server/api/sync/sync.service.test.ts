@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { eq } from "drizzle-orm";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import {
   authenticateSyncClient,
   createEventDb,
@@ -21,7 +22,6 @@ import {
   TEST_DATA_DIR,
   waitFor,
 } from "./sync.test-support";
-import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 
 const EVENT_CODE = "SYNC01";
 const PUSH_WORKER_DIR = join(TEST_DATA_DIR, "sync-race");
@@ -40,9 +40,9 @@ const waitForCondition = async (
   throw new Error(`Timed out waiting for ${description}.`);
 };
 
-const startMockMachinePushServer = (handler: (
-  body: unknown
-) => { body: unknown; status?: number }) => {
+const startMockMachinePushServer = (
+  handler: (body: unknown) => { body: unknown; status?: number }
+) => {
   let requestCount = 0;
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -235,6 +235,7 @@ try {
         ...process.env,
         BARRIER_DIR: PUSH_WORKER_DIR,
         ELECTROBUN_DATA_DIR: TEST_DATA_DIR,
+        SYNC_TEST_RUN_ID: process.env.SYNC_TEST_RUN_ID ?? `${process.pid}`,
         WORKER_PAYLOAD: JSON.stringify(
           createInspectionResultPayload({
             batchId: "race-batch",
@@ -252,6 +253,7 @@ try {
         ...process.env,
         BARRIER_DIR: PUSH_WORKER_DIR,
         ELECTROBUN_DATA_DIR: TEST_DATA_DIR,
+        SYNC_TEST_RUN_ID: process.env.SYNC_TEST_RUN_ID ?? `${process.pid}`,
         WORKER_PAYLOAD: JSON.stringify(
           createInspectionResultPayload({
             batchId: "race-batch",
@@ -350,12 +352,14 @@ try {
       });
 
       outboundSyncPushService.start();
-      const retryResult = await outboundSyncPushService.requestImmediateRetry(
-        EVENT_CODE
-      );
+      const retryResult =
+        await outboundSyncPushService.requestImmediateRetry(EVENT_CODE);
       expect(typeof retryResult.batchId).toBe("string");
 
-      await waitForCondition(() => mockServer.getRequestCount() > 0, "push call");
+      await waitForCondition(
+        () => mockServer.getRequestCount() > 0,
+        "push call"
+      );
       await waitForCondition(async () => {
         const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
         return status.counts.succeeded > 0;
@@ -393,7 +397,10 @@ try {
       outboundSyncPushService.start();
       await outboundSyncPushService.requestImmediateRetry(EVENT_CODE);
 
-      await waitForCondition(() => mockServer.getRequestCount() > 0, "push call");
+      await waitForCondition(
+        () => mockServer.getRequestCount() > 0,
+        "push call"
+      );
       await waitForCondition(async () => {
         const status = await outboundSyncPushService.getEventStatus(EVENT_CODE);
         return status.counts.pending_review > 0;

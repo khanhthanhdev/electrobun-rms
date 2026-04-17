@@ -2,7 +2,7 @@
  * Shared display contract - single source of truth.
  *
  * This module exports:
- * - All 17 display scene IDs
+ * - All 18 display scene IDs
  * - Valibot schemas for validation
  * - TypeScript types for type safety
  *

@@ -33,6 +33,18 @@ export const publishDisplayFromMatchControl = (
       });
       break;
 
+    case "UNLOAD":
+      displaySyncHub.publish({
+        eventCode: state.eventCode,
+        kind: "COMMAND_ISSUED",
+        mode: "blank",
+        loadedMatch: null,
+        activeMatch: null,
+        message: latest?.message ?? null,
+        startedAtMs: null,
+      });
+      break;
+
     case "SHOW_PREVIEW":
       displaySyncHub.publish({
         eventCode: state.eventCode,
@@ -55,6 +67,20 @@ export const publishDisplayFromMatchControl = (
       break;
 
     case "START":
+      displaySyncHub.publish({
+        eventCode: state.eventCode,
+        kind: "COMMAND_ISSUED",
+        mode: "match-start",
+        loadedMatch: null,
+        activeMatch: state.activeMatch,
+        startedAtMs: state.activeStartedAtMs,
+      });
+      break;
+
+    // AUTO_COMPLETE keeps mode "match-start" — the display scene derives
+    // timer completion from startedAtMs + MATCH_DURATION_SECONDS and freezes
+    // at 0:00 automatically. Re-publishing ensures late-joining SSE clients
+    // receive the latest active match data.
     case "AUTO_COMPLETE":
       displaySyncHub.publish({
         eventCode: state.eventCode,

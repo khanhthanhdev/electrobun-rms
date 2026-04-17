@@ -7,6 +7,7 @@ interface ControlScheduleTableProps {
   onLoadMatch?: (matchNumber: number) => void;
   onNavigate: (path: string) => void;
   rows: ControlMatchRow[];
+  selectedMatch?: Pick<ControlMatchRow, "matchNumber" | "matchType"> | null;
 }
 
 const toTeamLabel = (
@@ -40,6 +41,14 @@ const toStateLabel = (state: ControlMatchRow["state"]): string => {
   }
   return "Unplayed";
 };
+
+const isSelectedRow = (
+  row: ControlMatchRow,
+  selectedMatch: Pick<ControlMatchRow, "matchNumber" | "matchType"> | null
+): boolean =>
+  selectedMatch !== null &&
+  row.matchNumber === selectedMatch.matchNumber &&
+  row.matchType === selectedMatch.matchType;
 
 const createClickHandler = (
   event: React.MouseEvent,
@@ -77,12 +86,20 @@ const MatchActions = ({
           [Replay]
         </button>
         <a
-          href={scoresheetPath}
+          href={redEntryPath}
           onClick={(event) =>
-            createClickHandler(event, onNavigate, scoresheetPath)
+            createClickHandler(event, onNavigate, redEntryPath)
           }
         >
-          [Edit]
+          [Edit Red]
+        </a>
+        <a
+          href={blueEntryPath}
+          onClick={(event) =>
+            createClickHandler(event, onNavigate, blueEntryPath)
+          }
+        >
+          [Edit Blue]
         </a>
         <button className="match-control-table-action" type="button">
           [Post]
@@ -153,6 +170,7 @@ export const ControlScheduleTable = ({
   onLoadMatch,
   onNavigate,
   rows,
+  selectedMatch = null,
 }: ControlScheduleTableProps): JSX.Element => (
   <div className="table-wrap">
     <table className="match-control-table">
@@ -178,7 +196,14 @@ export const ControlScheduleTable = ({
           </tr>
         ) : (
           rows.map((row) => (
-            <tr key={row.matchName}>
+            <tr
+              className={
+                isSelectedRow(row, selectedMatch)
+                  ? "match-control-table-row--selected"
+                  : undefined
+              }
+              key={row.matchName}
+            >
               <td>{row.matchName}</td>
               <td className="match-control-number">{row.roundNumber}</td>
               <td className="match-control-number">{row.fieldNumber}</td>

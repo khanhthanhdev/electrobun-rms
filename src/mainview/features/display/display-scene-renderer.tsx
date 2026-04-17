@@ -71,6 +71,15 @@ export const DisplaySceneRenderer = ({
           matchStartedAtMs={matchStartedAtMs}
         />
       );
+    case "match-complete":
+      return (
+        <DisplaySceneMatchStart
+          eventName={eventName}
+          isCompleted
+          match={data.loadedMatch}
+          matchStartedAtMs={matchStartedAtMs}
+        />
+      );
     case "match-winner":
       return (
         <DisplaySceneMatchWinner

@@ -6,12 +6,16 @@ import { Hono } from "hono";
 import { getDataDir, resetForTest } from "../../../db";
 
 const syncTestRunId = process.env.SYNC_TEST_RUN_ID ?? `${process.pid}`;
-process.env.SYNC_TEST_RUN_ID = syncTestRunId;
+const preconfiguredDataDir = process.env.ELECTROBUN_DATA_DIR?.trim();
 
-export const TEST_DATA_DIR = join(
-  tmpdir(),
-  `electrobun-sync-tests-${syncTestRunId}`
-);
+if (!process.env.SYNC_TEST_RUN_ID) {
+  process.env.SYNC_TEST_RUN_ID = syncTestRunId;
+}
+
+export const TEST_DATA_DIR =
+  preconfiguredDataDir && preconfiguredDataDir.length > 0
+    ? preconfiguredDataDir
+    : join(tmpdir(), `electrobun-sync-tests-${syncTestRunId}`);
 
 mkdirSync(TEST_DATA_DIR, { recursive: true });
 process.env.ELECTROBUN_DATA_DIR = TEST_DATA_DIR;

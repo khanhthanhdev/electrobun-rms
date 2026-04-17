@@ -31,6 +31,7 @@ const BLOCKED_LIFECYCLE_MODES = new Set([
   "next-match",
   "match-preview",
   "match-start",
+  "match-complete",
   "match-winner",
 ]);
 

@@ -100,7 +100,7 @@ export const postMatchControlLoad = (
 export const postMatchControlTransition = (
   eventCode: string,
   token: string,
-  action: "show-preview" | "show-match" | "start" | "abort" | "commit",
+  action: "unload" | "show-preview" | "show-match" | "start" | "abort" | "commit",
   expectedVersion: number
 ): Promise<MatchControlTransitionResponse> =>
   matchControlRequest<MatchControlTransitionResponse>(

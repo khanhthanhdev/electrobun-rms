@@ -1,8 +1,8 @@
 import type { MatchControlState } from "@shared/match-control";
 import {
   connectRealtimeStream,
-  RealtimeFatalError,
   type RealtimeConnectionState,
+  RealtimeFatalError,
 } from "../../../../shared/services/realtime-stream-service";
 
 export type MatchControlRealtimeConnectionState = RealtimeConnectionState;

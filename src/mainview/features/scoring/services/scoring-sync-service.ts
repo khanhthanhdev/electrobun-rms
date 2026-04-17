@@ -1,7 +1,7 @@
 import {
   connectRealtimeStream,
-  RealtimeFatalError,
   type RealtimeConnectionState,
+  RealtimeFatalError,
 } from "../../../shared/services/realtime-stream-service";
 import type {
   ScoringRealtimeChangeEvent,

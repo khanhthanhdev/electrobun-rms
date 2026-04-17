@@ -2,6 +2,10 @@ import { lazy } from "react";
 import { LoadingIndicator } from "@/shared/components/loading-indicator";
 import type { AuthUser, LoginCredentials } from "@/shared/types/auth";
 import type { EventItem } from "@/shared/types/event";
+import {
+  REFEREE_BLUE_SCORE_ENTRY_PATTERN,
+  REFEREE_RED_SCORE_ENTRY_PATTERN,
+} from "./route-patterns";
 
 const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
 const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
@@ -37,10 +41,6 @@ const REFEREE_RED_SCORING_PATTERN =
 const REFEREE_BLUE_SCORING_PATTERN =
   /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
 const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
-const REFEREE_RED_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/red\/scoring\/([^/]+)(?:\/(practice|quals|elims))?\/match\/(\d+)\/?$/;
-const REFEREE_BLUE_SCORE_ENTRY_PATTERN =
-  /^\/event\/([^/]+)\/ref\/blue\/scoring\/([^/]+)(?:\/(practice|quals|elims))?\/match\/(\d+)\/?$/;
 const HEAD_REFEREE_MATCH_PATTERN =
   /^\/event\/([^/]+)\/hr\/([^/]+)\/match\/(\d+)\/?$/;
 const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;

@@ -184,6 +184,7 @@ const ActionBar = ({
   onShowMatch,
   onShowPreview,
   onStartMatch,
+  onUnload,
 }: {
   activeState: ActiveMatchState;
   loadedState: LoadedMatchState;
@@ -193,10 +194,12 @@ const ActionBar = ({
   onShowMatch: () => void;
   onShowPreview: () => void;
   onStartMatch: () => void;
+  onUnload: () => void;
 }): JSX.Element => {
   const [showAbortDialog, setShowAbortDialog] = useState(false);
   const isInProgress = activeState === "in_progress";
   const canLoadNext = activeState === "idle";
+  const canUnload = loadedState !== "idle" && activeState === "idle";
   const canPreview = loadedState === "loaded";
   const canShowMatch = loadedState === "preview";
   const canStart = loadedState === "ready" && activeState === "idle";
@@ -214,6 +217,14 @@ const ActionBar = ({
             type="button"
           >
             Load Next Match
+          </button>
+          <button
+            className="button"
+            disabled={!canUnload}
+            onClick={onUnload}
+            type="button"
+          >
+            Unload
           </button>
           <button
             className={`button ${highlightShowPreview ? "match-control-action-btn--highlight" : ""}`}
@@ -642,9 +653,10 @@ export const EventControlPage = ({
   const versionRef = useRef(0);
 
   const applyServerState = useCallback((state: MatchControlState) => {
-    if (state.version > versionRef.current) {
-      versionRef.current = state.version;
+    if (state.version < versionRef.current) {
+      return;
     }
+    versionRef.current = state.version;
     setServerState(state);
   }, []);
 
@@ -807,6 +819,7 @@ export const EventControlPage = ({
     () => resolveMatchRow(data, activeMatchRef),
     [data, activeMatchRef]
   );
+  const selectedTableMatch = activeMatchRef ?? loadedMatchRef;
 
   // ---------------------------------------------------------------------------
   // Action handlers — POST to server, state comes back via SSE
@@ -817,9 +830,19 @@ export const EventControlPage = ({
       return;
     }
     const nextMatch = selectedRows.find(
-      (row) =>
-        row.state === "UNPLAYED" &&
-        !matchRefEquals(toMatchRef(row), activeMatchRef)
+      (row) => {
+        if (row.state !== "UNPLAYED") {
+          return false;
+        }
+        const ref = toMatchRef(row);
+        if (activeMatchRef && matchRefEquals(ref, activeMatchRef)) {
+          return false;
+        }
+        if (loadedMatchRef && matchRefEquals(ref, loadedMatchRef)) {
+          return false;
+        }
+        return true;
+      }
     );
     if (nextMatch) {
       postMatchControlLoad(
@@ -834,6 +857,7 @@ export const EventControlPage = ({
   }, [
     selectedRows,
     activeMatchRef,
+    loadedMatchRef,
     eventCode,
     token,
     applyServerState,
@@ -873,6 +897,9 @@ export const EventControlPage = ({
     ]
   );
 
+  // Display commands are published server-side via the match-control bridge
+  // (display-match-control-bridge.ts). Do not duplicate them here.
+
   const handleShowPreview = useCallback(() => {
     if (!token) {
       return;
@@ -881,6 +908,20 @@ export const EventControlPage = ({
       eventCode,
       token,
       "show-preview",
+      versionRef.current
+    )
+      .then((res) => applyServerState(res.state))
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
+
+  const handleUnloadMatch = useCallback(() => {
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(
+      eventCode,
+      token,
+      "unload",
       versionRef.current
     )
       .then((res) => applyServerState(res.state))
@@ -920,6 +961,7 @@ export const EventControlPage = ({
     postMatchControlTransition(eventCode, token, "abort", versionRef.current)
       .then((res) => {
         applyServerState(res.state);
+        setSelectedTab("schedule");
         refresh();
       })
       .catch(handleTransitionError);
@@ -993,6 +1035,7 @@ export const EventControlPage = ({
           onShowMatch={handleShowMatch}
           onShowPreview={handleShowPreview}
           onStartMatch={handleStartMatch}
+          onUnload={handleUnloadMatch}
         />
 
         {isLoading ? (
@@ -1039,6 +1082,7 @@ export const EventControlPage = ({
                 onLoadMatch={handleLoadMatch}
                 onNavigate={onNavigate}
                 rows={selectedRows}
+                selectedMatch={selectedTableMatch}
               />
             ) : null}
 
@@ -1049,6 +1093,7 @@ export const EventControlPage = ({
                 onLoadMatch={handleLoadMatch}
                 onNavigate={onNavigate}
                 rows={incompleteRows}
+                selectedMatch={selectedTableMatch}
               />
             ) : null}
 

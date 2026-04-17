@@ -9,7 +9,10 @@ import { useScoringRealtimeRefresh } from "@/features/scoring/hooks/use-scoring-
 import { requestJson } from "@/shared/api/http-client";
 import { fetchMatchScoresheet } from "@/shared/api/scoring";
 import type { EventItem } from "@/shared/types/event";
-import type { MatchControlData } from "@/shared/types/match-control";
+import type {
+  ControlMatchState,
+  MatchControlData,
+} from "@/shared/types/match-control";
 import type { MatchScoresheet, MatchType } from "@/shared/types/scoring";
 import type { DisplaySceneMode } from "./display-scene-types";
 import { useDisplayRealtimeRefresh } from "./hooks/use-display-realtime-refresh";
@@ -262,6 +265,42 @@ const unwrapSettled = <T>(result: PromiseSettledResult<T>): T | null =>
 const toMatchType = (value: string): MatchType | null =>
   value === "practice" || value === "quals" || value === "elims" ? value : null;
 
+const toControlMatchType = (
+  value: string
+): "practice" | "quals" | null =>
+  value === "practice" || value === "quals" ? value : null;
+
+const findControlRowForMatch = (
+  control: MatchControlData | null,
+  match: DisplayData["loadedMatch"]
+): { state: ControlMatchState } | null => {
+  if (!(control && match)) {
+    return null;
+  }
+
+  const matchType = toControlMatchType(match.matchType);
+  if (!matchType) {
+    return null;
+  }
+
+  return (
+    control.byType[matchType]?.find(
+      (row) =>
+        row.matchNumber === match.matchNumber &&
+        row.fieldNumber === match.fieldNumber
+    ) ?? null
+  );
+};
+
+const isReplayScene = (
+  sceneMode: DisplaySceneMode,
+  controlRowState: ControlMatchState | null
+): boolean =>
+  (sceneMode === "match-preview" ||
+    sceneMode === "match-start" ||
+    sceneMode === "match-complete") &&
+  controlRowState === "COMMITTED";
+
 const resolveDisplaySceneMatch = (
   control: MatchControlData | null,
   selection: DisplaySceneSelection
@@ -278,6 +317,7 @@ const resolveDisplaySceneMatch = (
     case "match-preview":
       return loadedMatch ?? activeMatch ?? fallbackMatch;
     case "match-start":
+    case "match-complete":
     case "match-winner":
       return activeMatch ?? loadedMatch ?? fallbackMatch;
     default:
@@ -287,10 +327,21 @@ const resolveDisplaySceneMatch = (
 
 const loadMatchWithScoresheet = async (
   eventCode: string,
-  match: DisplayData["loadedMatch"]
+  match: DisplayData["loadedMatch"],
+  useScoresheet = true
 ): Promise<DisplayData["loadedMatch"]> => {
   if (!match) {
     return null;
+  }
+
+  if (!useScoresheet) {
+    return {
+      ...match,
+      blueBreakdown: null,
+      blueScore: 0,
+      redBreakdown: null,
+      redScore: 0,
+    };
   }
 
   const matchType = toMatchType(match.matchType);
@@ -339,9 +390,15 @@ export const useDisplayData = (
       loadedMatch,
       sceneMode,
     });
+    const sceneControlRow = findControlRowForMatch(control, sceneMatch);
+    const showReplayAsZero = isReplayScene(
+      sceneMode,
+      sceneControlRow?.state ?? null
+    );
     const loadedSceneMatch = await loadMatchWithScoresheet(
       eventCode,
-      sceneMatch
+      sceneMatch,
+      !showReplayAsZero
     );
 
     if (rid !== requestIdRef.current) {

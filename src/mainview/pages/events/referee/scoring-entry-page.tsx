@@ -63,11 +63,6 @@ export const ScoringEntryPage = ({
   const matchLabel = `Match M${matchNumber}`;
   const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
   const accent = ALLIANCE_COLOR[alliance];
-  const selectionPath =
-    alliance === "red"
-      ? `/event/${eventCode}/ref/red/scoring`
-      : `/event/${eventCode}/ref/blue/scoring`;
-
   const handleSubmit = (score: Parameters<typeof submitScore>[0]): void => {
     setLastTotal(calcScoringTotal(score));
     submitScore(score);
@@ -177,7 +172,7 @@ export const ScoringEntryPage = ({
         initialScore={initialScore}
         key={`${matchNumber}-${alliance}`}
         matchLabel={matchLabel}
-        onBackClick={() => onNavigate(selectionPath)}
+        onBackClick={() => window.history.back()}
         onChange={onScoreChange}
         onSubmit={handleSubmit}
       />

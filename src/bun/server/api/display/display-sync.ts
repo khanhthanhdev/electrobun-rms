@@ -75,7 +75,12 @@ export const displaySyncHub: DisplaySyncPublisher = {
         startedAtMs: input.startedAtMs ?? null,
         version,
       };
-      latestByEventCode.set(input.eventCode, event);
+      // Only track COMMAND_ISSUED events as the latest display state.
+      // SCORE_UPDATE events have mode:null and would cause SNAPSHOT_HINT
+      // to lose the current scene on SSE reconnect.
+      if (input.kind === "COMMAND_ISSUED") {
+        latestByEventCode.set(input.eventCode, event);
+      }
       return event;
     }),
 

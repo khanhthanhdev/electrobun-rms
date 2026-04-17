@@ -22,6 +22,7 @@ interface MatchStartData {
 
 interface DisplaySceneMatchStartProps {
   eventName: string;
+  isCompleted?: boolean;
   match?: MatchStartData | null;
   matchStartedAtMs?: number | null;
 }
@@ -87,13 +88,16 @@ const AllianceLiveCard = ({
 
 export const DisplaySceneMatchStart = ({
   eventName,
+  isCompleted = false,
   match,
   matchStartedAtMs,
 }: DisplaySceneMatchStartProps): JSX.Element => {
   const now = useNow(1000);
   const elapsedMs = matchStartedAtMs ? now.getTime() - matchStartedAtMs : 0;
   const elapsed = Math.max(0, Math.floor(elapsedMs / 1000));
-  const timeRemaining = Math.max(0, MATCH_DURATION_SECONDS - elapsed);
+  const timeRemaining = isCompleted
+    ? 0
+    : Math.max(0, MATCH_DURATION_SECONDS - elapsed);
   const redScore = match?.redScore ?? 0;
   const blueScore = match?.blueScore ?? 0;
   const redBreakdown = match?.redBreakdown ?? null;
@@ -135,7 +139,7 @@ export const DisplaySceneMatchStart = ({
         <div className="display-match-preview-header-status">
           <div className="display-sponsors-live-badge">
             <span aria-hidden="true" className="display-sponsors-live-dot" />
-            <span>Live Feed</span>
+            <span>{isCompleted ? "Match Complete" : "Live Feed"}</span>
           </div>
         </div>
       </header>
