@@ -1,10 +1,4 @@
-import {
-  type RefObject,
-  useCallback,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useReducer, useRef, useState } from "react";
 import {
   clearPracticeSchedule,
   fetchPracticeSchedule,
@@ -12,30 +6,40 @@ import {
   generatePracticeSchedule,
   type PracticeScheduleResponse,
   printPracticeScheduleResults,
-  type SavePracticeSchedulePayload,
   savePracticeSchedule,
   setPracticeScheduleActivation,
 } from "@/features/events/schedule";
 import { type EventTeamItem, fetchEventTeams } from "@/features/events/teams";
 import type { PrintDestination } from "@/shared/services/print-service";
 import {
-  buildMatchesCsvFileContent,
-  type OneVsOneCsvMatch,
-  parseMatchesFromCsvText,
-} from "@/widgets/schedule/schedule-csv";
+  buildOneVsOneMatchRowsFromFirstBlock,
+  createOneVsOneActivationClickHandler,
+  createOneVsOneClearClickHandler,
+  createOneVsOneCsvImportClickHandler,
+  createScheduleAdminDispatchers,
+  exportOneVsOneMatchesCsv,
+  mapCsvMatchesToScheduleMatches,
+  mapScheduleMatchesToEditable,
+  type OneVsOneEditableMatch,
+  reduceOneVsOneScheduleAdminBaseAction,
+  resolveOneVsOneFirstBlockTiming,
+  updateOneVsOneCycleTime,
+} from "@/widgets/schedule/one-vs-one-schedule-admin-helpers";
+import { OneVsOneScheduleAdminOverview } from "@/widgets/schedule/one-vs-one-schedule-admin-overview";
 import { ScheduleCsvSection } from "@/widgets/schedule/schedule-csv-section";
 import { ScheduleManagementToolbar } from "@/widgets/schedule/schedule-management-toolbar";
-import type { ScheduleMatchRow } from "@/widgets/schedule/schedule-match-table";
 import { computeOneVsOneScheduleMetrics } from "@/widgets/schedule/schedule-metrics";
-import { OneVsOneScheduleOverview } from "@/widgets/schedule/schedule-overview-section";
 import type { MatchBlockState } from "@/widgets/schedule/schedule-utils";
 import {
-  getFirstBlockStartTime,
   type OneVsOneGenerateResult,
   type OneVsOneLoadResult,
   useOneVsOneScheduleController,
 } from "@/widgets/schedule/use-one-vs-one-schedule-controller";
 import { OneVsOneScheduleView } from "./components/one-vs-one-schedule-view";
+import {
+  buildTeamNamesByNumber,
+  type TeamNamesByNumber,
+} from "./team-names-by-number";
 
 interface PracticeSchedulePageProps {
   eventCode: string;
@@ -45,26 +49,7 @@ interface PracticeSchedulePageProps {
 const DEFAULT_CYCLE_MINUTES = 7;
 const DEFAULT_FIELD_START_OFFSET_SECONDS = 0;
 
-type TeamNamesByNumber = Record<number, string>;
-type EditablePracticeMatch = SavePracticeSchedulePayload["matches"][number] & {
-  blueTeamName?: string;
-  redTeamName?: string;
-};
-type SetMessage = (message: string | null) => void;
-
-const buildTeamNamesByNumber = (teams: EventTeamItem[]): TeamNamesByNumber => {
-  const namesByNumber: TeamNamesByNumber = {};
-  for (const team of teams) {
-    const trimmedName = team.teamName.trim();
-    if (!trimmedName) {
-      continue;
-    }
-
-    namesByNumber[team.teamNumber] = trimmedName;
-  }
-
-  return namesByNumber;
-};
+type EditablePracticeMatch = OneVsOneEditableMatch;
 
 interface PracticeState {
   fieldCount: number;
@@ -108,16 +93,8 @@ const practiceReducer = (
         ...state,
         fieldCount: Math.min(Math.max(1, action.payload), state.maxFieldCount),
       };
-    case "SET_FIELD_START_OFFSET":
-      return { ...state, fieldStartOffsetSeconds: Math.max(0, action.payload) };
     case "SET_IS_ACTIVE":
       return { ...state, isActive: action.payload };
-    case "SET_IS_CLEARING":
-      return { ...state, isClearing: action.payload };
-    case "SET_IS_IMPORTING":
-      return { ...state, isImporting: action.payload };
-    case "SET_IS_UPDATING_ACTIVATION":
-      return { ...state, isUpdatingActivation: action.payload };
     case "SET_MATCHES":
       return { ...state, matches: action.payload };
     case "SET_MAX_FIELD_COUNT": {
@@ -129,342 +106,8 @@ const practiceReducer = (
       };
     }
     default:
-      return state;
+      return reduceOneVsOneScheduleAdminBaseAction(state, action) ?? state;
   }
-};
-
-const mapEditablePracticeMatch = (
-  match: PracticeScheduleResponse["matches"][number]
-): EditablePracticeMatch => ({
-  matchNumber: match.matchNumber,
-  redTeam: match.redTeam,
-  redTeamName: match.redTeamName,
-  blueTeam: match.blueTeam,
-  blueTeamName: match.blueTeamName,
-  redSurrogate: match.redSurrogate,
-  blueSurrogate: match.blueSurrogate,
-});
-
-const mapPracticeMatches = (
-  schedule: PracticeScheduleResponse
-): EditablePracticeMatch[] =>
-  schedule.matches.map((match) => mapEditablePracticeMatch(match));
-
-const mapCsvMatchesToPracticeMatches = (
-  matches: OneVsOneCsvMatch[]
-): SavePracticeSchedulePayload["matches"] =>
-  matches.map((match) => ({
-    matchNumber: match.matchNumber,
-    redTeam: match.redTeam,
-    blueTeam: match.blueTeam,
-    redSurrogate: match.redSurrogate,
-    blueSurrogate: match.blueSurrogate,
-  }));
-
-const mapToMatchRow = (
-  match: EditablePracticeMatch,
-  startTime: number,
-  fieldCount: number,
-  teamNamesByNumber: TeamNamesByNumber
-): ScheduleMatchRow => ({
-  matchNumber: match.matchNumber,
-  startTime,
-  matchLabel: `Practice ${match.matchNumber}`,
-  fieldNumber: ((match.matchNumber - 1) % fieldCount) + 1,
-  redTeam: match.redTeam,
-  redTeamName: match.redTeamName ?? teamNamesByNumber[match.redTeam],
-  redSurrogate: match.redSurrogate ?? false,
-  blueTeam: match.blueTeam,
-  blueTeamName: match.blueTeamName ?? teamNamesByNumber[match.blueTeam],
-  blueSurrogate: match.blueSurrogate ?? false,
-});
-
-const buildPracticeMatchRows = ({
-  fieldCount,
-  fieldStartOffsetSeconds,
-  firstBlock,
-  matches,
-  scheduleDate,
-  teamNamesByNumber,
-}: {
-  fieldCount: number;
-  fieldStartOffsetSeconds: number;
-  firstBlock: MatchBlockState | undefined;
-  matches: EditablePracticeMatch[];
-  scheduleDate: string;
-  teamNamesByNumber: TeamNamesByNumber;
-}): ScheduleMatchRow[] =>
-  matches.map((match, index) => {
-    let computedStart = Date.now();
-
-    if (firstBlock) {
-      const blockDate = new Date(`${scheduleDate}T${firstBlock.startTimeText}`);
-      if (Number.isNaN(blockDate.getTime())) {
-        return mapToMatchRow(match, Date.now(), fieldCount, teamNamesByNumber);
-      }
-      const cycleTimeMs = firstBlock.cycleTimeMinutes * 60 * 1000;
-      const fieldOffsetMs = fieldStartOffsetSeconds * 1000;
-      const safeFieldCount = Math.max(1, fieldCount);
-      const roundIndex = Math.floor(index / safeFieldCount);
-      const fieldIndex = index % safeFieldCount;
-      computedStart =
-        blockDate.getTime() +
-        roundIndex * cycleTimeMs +
-        fieldIndex * fieldOffsetMs;
-    }
-
-    return mapToMatchRow(match, computedStart, fieldCount, teamNamesByNumber);
-  });
-
-const resolvePracticeScheduleTiming = ({
-  matchBlocks,
-  scheduleDate,
-  setErrorMessage,
-}: {
-  matchBlocks: MatchBlockState[];
-  scheduleDate: string;
-  setErrorMessage: SetMessage;
-}): {
-  cycleTimeSeconds: number;
-  startTime: number;
-} | null => {
-  let startTime: number;
-  try {
-    startTime = getFirstBlockStartTime(scheduleDate, matchBlocks);
-  } catch (error) {
-    setErrorMessage(
-      error instanceof Error ? error.message : "Invalid start time."
-    );
-    return null;
-  }
-
-  const firstBlock = matchBlocks[0];
-  if (!firstBlock) {
-    setErrorMessage("You must have at least one match block.");
-    return null;
-  }
-
-  return {
-    startTime,
-    cycleTimeSeconds: firstBlock.cycleTimeMinutes * 60,
-  };
-};
-
-interface CreatePracticeScheduleActionHandlersArgs {
-  dispatch: (action: PracticeAction) => void;
-  eventCode: string;
-  exportRows: ScheduleMatchRow[];
-  fileInputRef: RefObject<HTMLInputElement>;
-  hasMatches: boolean;
-  matchBlocks: MatchBlockState[];
-  scheduleDate: string;
-  setErrorMessage: SetMessage;
-  setSuccessMessage: SetMessage;
-  state: PracticeState;
-  token: string | null;
-}
-
-interface PracticeScheduleActionHandlers {
-  handleClearClick: () => void;
-  handleExportCsv: () => void;
-  handleImportCsvClick: () => void;
-  handleToggleActivationClick: () => void;
-}
-
-const createPracticeScheduleActionHandlers = ({
-  dispatch,
-  eventCode,
-  exportRows,
-  fileInputRef,
-  hasMatches,
-  matchBlocks,
-  scheduleDate,
-  setErrorMessage,
-  setSuccessMessage,
-  state,
-  token,
-}: CreatePracticeScheduleActionHandlersArgs): PracticeScheduleActionHandlers => {
-  const handleImportCsv = async (): Promise<void> => {
-    if (!token) {
-      setErrorMessage("You must be logged in to import practice schedule.");
-      return;
-    }
-
-    if (!fileInputRef.current?.files?.length) {
-      setErrorMessage("No file selected.");
-      return;
-    }
-
-    const timing = resolvePracticeScheduleTiming({
-      matchBlocks,
-      scheduleDate,
-      setErrorMessage,
-    });
-    if (!timing) {
-      return;
-    }
-
-    const file = fileInputRef.current.files[0];
-    const text = await file.text();
-
-    dispatch({ type: "SET_IS_IMPORTING", payload: true });
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const importedMatches = parseMatchesFromCsvText(text);
-      const result = await savePracticeSchedule(
-        eventCode,
-        {
-          startTime: timing.startTime,
-          cycleTimeSeconds: timing.cycleTimeSeconds,
-          matches: mapCsvMatchesToPracticeMatches(importedMatches),
-        },
-        token
-      );
-
-      const importedFieldCount = result.config.fieldCount || 1;
-      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: importedFieldCount });
-      dispatch({ type: "SET_FIELD_COUNT", payload: importedFieldCount });
-      dispatch({
-        type: "SET_FIELD_START_OFFSET",
-        payload:
-          result.config.fieldStartOffsetSeconds ??
-          DEFAULT_FIELD_START_OFFSET_SECONDS,
-      });
-      dispatch({ type: "SET_IS_ACTIVE", payload: result.isActive });
-      dispatch({
-        type: "SET_MATCHES",
-        payload: mapPracticeMatches(result),
-      });
-      setSuccessMessage(
-        `Imported and saved ${importedMatches.length} practice matches.`
-      );
-      fileInputRef.current.value = "";
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to import CSV."
-      );
-    } finally {
-      dispatch({ type: "SET_IS_IMPORTING", payload: false });
-    }
-  };
-
-  const handleExportCsv = (): void => {
-    const csvContent = buildMatchesCsvFileContent(exportRows);
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-    const objectUrl = URL.createObjectURL(blob);
-    const linkElement = document.createElement("a");
-    linkElement.href = objectUrl;
-    linkElement.download = `${eventCode}-practice-matches.csv`;
-    linkElement.click();
-    URL.revokeObjectURL(objectUrl);
-  };
-
-  const handleClear = async (): Promise<void> => {
-    if (!token) {
-      setErrorMessage("You must be logged in to clear practice schedule.");
-      return;
-    }
-
-    dispatch({ type: "SET_IS_CLEARING", payload: true });
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      await clearPracticeSchedule(eventCode, token);
-      const refreshed = await fetchPracticeSchedule(eventCode, token);
-      const clearedFieldCount = refreshed.config.fieldCount || 1;
-      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: clearedFieldCount });
-      dispatch({ type: "SET_FIELD_COUNT", payload: clearedFieldCount });
-      dispatch({
-        type: "SET_FIELD_START_OFFSET",
-        payload:
-          refreshed.config.fieldStartOffsetSeconds ??
-          DEFAULT_FIELD_START_OFFSET_SECONDS,
-      });
-      dispatch({ type: "SET_IS_ACTIVE", payload: refreshed.isActive });
-      dispatch({
-        type: "SET_MATCHES",
-        payload: mapPracticeMatches(refreshed),
-      });
-      setSuccessMessage("Practice schedule cleared.");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to clear practice schedule."
-      );
-    } finally {
-      dispatch({ type: "SET_IS_CLEARING", payload: false });
-    }
-  };
-
-  const handleToggleActivation = async (): Promise<void> => {
-    if (!token) {
-      setErrorMessage(
-        "You must be logged in to update practice schedule activation."
-      );
-      return;
-    }
-
-    if (!(hasMatches || state.isActive)) {
-      setErrorMessage("Generate or import matches before activating schedule.");
-      return;
-    }
-
-    dispatch({ type: "SET_IS_UPDATING_ACTIVATION", payload: true });
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const result = await setPracticeScheduleActivation(
-        eventCode,
-        !state.isActive,
-        token
-      );
-      const activationFieldCount = result.config.fieldCount || 1;
-      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: activationFieldCount });
-      dispatch({ type: "SET_FIELD_COUNT", payload: activationFieldCount });
-      dispatch({
-        type: "SET_FIELD_START_OFFSET",
-        payload:
-          result.config.fieldStartOffsetSeconds ??
-          DEFAULT_FIELD_START_OFFSET_SECONDS,
-      });
-      dispatch({ type: "SET_IS_ACTIVE", payload: result.isActive });
-      dispatch({
-        type: "SET_MATCHES",
-        payload: mapPracticeMatches(result),
-      });
-      setSuccessMessage(
-        result.isActive
-          ? "Practice schedule activated."
-          : "Practice schedule deactivated."
-      );
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to update schedule activation."
-      );
-    } finally {
-      dispatch({ type: "SET_IS_UPDATING_ACTIVATION", payload: false });
-    }
-  };
-
-  return {
-    handleClearClick: () => {
-      handleClear().catch(() => undefined);
-    },
-    handleExportCsv,
-    handleImportCsvClick: () => {
-      handleImportCsv().catch(() => undefined);
-    },
-    handleToggleActivationClick: () => {
-      handleToggleActivation().catch(() => undefined);
-    },
-  };
 };
 
 interface PracticeLoadContext {
@@ -483,47 +126,41 @@ export const PracticeSchedulePage = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLoadedSchedule = useCallback(
-    (
-      result: OneVsOneLoadResult<PracticeScheduleResponse, PracticeLoadContext>
-    ): void => {
-      const serverFieldCount = result.schedule.config.fieldCount || 1;
+  const applyPracticeSchedule = useCallback(
+    (schedule: PracticeScheduleResponse): void => {
+      const serverFieldCount = schedule.config.fieldCount || 1;
       dispatch({ type: "SET_MAX_FIELD_COUNT", payload: serverFieldCount });
       dispatch({ type: "SET_FIELD_COUNT", payload: serverFieldCount });
       dispatch({
         type: "SET_FIELD_START_OFFSET",
         payload:
-          result.schedule.config.fieldStartOffsetSeconds ??
+          schedule.config.fieldStartOffsetSeconds ??
           DEFAULT_FIELD_START_OFFSET_SECONDS,
       });
-      dispatch({ type: "SET_IS_ACTIVE", payload: result.schedule.isActive });
+      dispatch({ type: "SET_IS_ACTIVE", payload: schedule.isActive });
       dispatch({
         type: "SET_MATCHES",
-        payload: mapPracticeMatches(result.schedule),
+        payload: mapScheduleMatchesToEditable(schedule.matches),
       });
-      setTeamNamesByNumber(result.context?.teamNamesByNumber ?? {});
     },
     []
   );
 
+  const handleLoadedSchedule = useCallback(
+    (
+      result: OneVsOneLoadResult<PracticeScheduleResponse, PracticeLoadContext>
+    ): void => {
+      applyPracticeSchedule(result.schedule);
+      setTeamNamesByNumber(result.context?.teamNamesByNumber ?? {});
+    },
+    [applyPracticeSchedule]
+  );
+
   const handleGeneratedSchedule = useCallback(
     (result: OneVsOneGenerateResult<PracticeScheduleResponse>): void => {
-      const serverFieldCount = result.schedule.config.fieldCount || 1;
-      dispatch({ type: "SET_MAX_FIELD_COUNT", payload: serverFieldCount });
-      dispatch({ type: "SET_FIELD_COUNT", payload: serverFieldCount });
-      dispatch({
-        type: "SET_FIELD_START_OFFSET",
-        payload:
-          result.schedule.config.fieldStartOffsetSeconds ??
-          DEFAULT_FIELD_START_OFFSET_SECONDS,
-      });
-      dispatch({ type: "SET_IS_ACTIVE", payload: result.schedule.isActive });
-      dispatch({
-        type: "SET_MATCHES",
-        payload: mapPracticeMatches(result.schedule),
-      });
+      applyPracticeSchedule(result.schedule);
     },
-    []
+    [applyPracticeSchedule]
   );
 
   const loadPractice = useCallback(
@@ -639,6 +276,9 @@ export const PracticeSchedulePage = ({
     token,
   });
 
+  const { setIsClearing, setIsImporting, setIsUpdatingActivation } =
+    createScheduleAdminDispatchers(dispatch);
+
   const hasMatches = state.matches.length > 0;
   const totalMatchesRequired = Math.ceil((teamCount * matchesPerTeam) / 2);
   const firstBlock = matchBlocks[0];
@@ -647,36 +287,84 @@ export const PracticeSchedulePage = ({
 
   const handleCycleTimeChange = useCallback(
     (seconds: number) => {
-      const minutes = Math.max(1, seconds) / 60;
-      setMatchBlocks((prev) =>
-        prev.map((block) => ({ ...block, cycleTimeMinutes: minutes }))
-      );
+      updateOneVsOneCycleTime(setMatchBlocks, seconds);
     },
     [setMatchBlocks]
   );
 
   const metrics = computeOneVsOneScheduleMetrics(state.matches);
 
-  const tableRows = buildPracticeMatchRows({
+  const tableRows = buildOneVsOneMatchRowsFromFirstBlock({
     fieldCount: state.fieldCount,
     fieldStartOffsetSeconds: state.fieldStartOffsetSeconds,
+    fieldNumberForMatch: (match, _index, safeFieldCount) =>
+      ((match.matchNumber - 1) % safeFieldCount) + 1,
     firstBlock,
+    labelPrefix: "Practice",
     matches: state.matches,
     scheduleDate,
     teamNamesByNumber,
   });
 
-  const actionHandlers = createPracticeScheduleActionHandlers({
-    dispatch,
-    eventCode,
-    exportRows: tableRows,
+  const handleImportCsvClick = createOneVsOneCsvImportClickHandler({
     fileInputRef,
-    hasMatches,
-    matchBlocks,
-    scheduleDate,
+    missingTokenMessage: "You must be logged in to import practice schedule.",
+    onImportedScheduleSaved: applyPracticeSchedule,
+    resolveTiming: () =>
+      resolveOneVsOneFirstBlockTiming({
+        matchBlocks,
+        scheduleDate,
+        setErrorMessage,
+      }),
+    saveImportedSchedule: (importedMatches, timing, currentToken) =>
+      savePracticeSchedule(
+        eventCode,
+        {
+          startTime: timing.startTime,
+          cycleTimeSeconds: timing.cycleTimeSeconds,
+          matches: mapCsvMatchesToScheduleMatches(importedMatches),
+        },
+        currentToken
+      ),
     setErrorMessage,
+    setIsImporting,
     setSuccessMessage,
-    state,
+    successMessage: (importedMatches) =>
+      `Imported and saved ${importedMatches.length} practice matches.`,
+    token,
+  });
+
+  const handleClearClick = createOneVsOneClearClickHandler({
+    clearSchedule: (currentToken) =>
+      clearPracticeSchedule(eventCode, currentToken),
+    failureMessage: "Failed to clear practice schedule.",
+    fetchSchedule: (currentToken) =>
+      fetchPracticeSchedule(eventCode, currentToken),
+    missingTokenMessage: "You must be logged in to clear practice schedule.",
+    onScheduleCleared: applyPracticeSchedule,
+    setErrorMessage,
+    setIsClearing,
+    setSuccessMessage,
+    successMessage: "Practice schedule cleared.",
+    token,
+  });
+
+  const handleToggleActivationClick = createOneVsOneActivationClickHandler({
+    hasMatches,
+    isActive: state.isActive,
+    missingMatchesMessage: "Generate or import matches before activating schedule.",
+    missingTokenMessage:
+      "You must be logged in to update practice schedule activation.",
+    onActivationUpdated: applyPracticeSchedule,
+    setActivation: (active, currentToken) =>
+      setPracticeScheduleActivation(eventCode, active, currentToken),
+    setErrorMessage,
+    setIsUpdatingActivation,
+    setSuccessMessage,
+    successMessage: (result) =>
+      result.isActive
+        ? "Practice schedule activated."
+        : "Practice schedule deactivated.",
     token,
   });
 
@@ -732,34 +420,34 @@ export const PracticeSchedulePage = ({
           fileInputRef={fileInputRef}
           hasMatches={hasMatches}
           importDisabled={state.isImporting}
-          onExport={actionHandlers.handleExportCsv}
-          onImport={actionHandlers.handleImportCsvClick}
+          onExport={() =>
+            exportOneVsOneMatchesCsv({
+              eventCode,
+              fileSuffix: "practice-matches",
+              rows: tableRows,
+            })
+          }
+          onImport={handleImportCsvClick}
         />
       }
       configSection={
-        <OneVsOneScheduleOverview
+        <OneVsOneScheduleAdminOverview
           cycleTimeSeconds={cycleTimeSeconds}
-          editable={{
-            matchesPerTeam: { min: 1, onChange: setMatchesPerTeam },
-            fieldCount: {
-              min: 1,
-              max: state.maxFieldCount,
-              onChange: (v) =>
-                dispatch({ type: "SET_FIELD_COUNT", payload: v }),
-            },
-            cycleTimeSeconds: { min: 1, onChange: handleCycleTimeChange },
-            fieldStartOffsetSeconds: {
-              min: 0,
-              onChange: (v) =>
-                dispatch({ type: "SET_FIELD_START_OFFSET", payload: v }),
-            },
-          }}
           fieldCount={state.fieldCount}
+          fieldCountMax={state.maxFieldCount}
           fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
           generatedMatchCount={state.matches.length}
           isActive={state.isActive}
           matchesPerTeam={matchesPerTeam}
           metrics={metrics}
+          onCycleTimeSecondsChange={handleCycleTimeChange}
+          onFieldCountChange={(value) =>
+            dispatch({ type: "SET_FIELD_COUNT", payload: value })
+          }
+          onFieldStartOffsetSecondsChange={(value) =>
+            dispatch({ type: "SET_FIELD_START_OFFSET", payload: value })
+          }
+          onMatchesPerTeamChange={setMatchesPerTeam}
           teamCount={teamCount}
           totalMatchesRequired={totalMatchesRequired}
         />
@@ -789,9 +477,9 @@ export const PracticeSchedulePage = ({
           isClearing={state.isClearing}
           isGenerating={isGenerating}
           isUpdatingActivation={state.isUpdatingActivation}
-          onClear={actionHandlers.handleClearClick}
+          onClear={handleClearClick}
           onGenerate={handleGenerate}
-          onToggleActivation={actionHandlers.handleToggleActivationClick}
+          onToggleActivation={handleToggleActivationClick}
         />
       )}
     />

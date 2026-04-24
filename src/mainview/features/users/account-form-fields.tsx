@@ -1,31 +1,9 @@
-import { LoadingIndicator } from "../../shared/components/loading-indicator";
+import { LoadingIndicator } from "@/shared/components/loading-indicator";
 import {
   CREATE_ACCOUNT_ROLE_COLUMNS,
   type RoleValue,
-} from "../../shared/constants/roles";
-import type { EventItem } from "../../shared/types/event";
-
-export const ALL_EVENTS_CODE = "*" as const;
-
-export function roleKey(eventCode: string, role: RoleValue): string {
-  return `${eventCode}:${role}`;
-}
-
-export function parseRoleKey(value: string): {
-  event: string;
-  role: RoleValue;
-} {
-  const [event, role] = value.split(":", 2);
-  return {
-    event,
-    role: role as RoleValue,
-  };
-}
-
-export function buildEventRows(events: readonly EventItem[]): string[] {
-  const dedupedCodes = Array.from(new Set(events.map((event) => event.code)));
-  return [ALL_EVENTS_CODE, ...dedupedCodes];
-}
+} from "@/shared/constants/roles";
+import { ALL_EVENTS_CODE, roleKey } from "./account-form-controller";
 
 interface PasswordFieldProps {
   id: string;
@@ -39,7 +17,7 @@ interface PasswordFieldProps {
   visibilityToggleId: string;
 }
 
-export const PasswordField = ({
+const PasswordField = ({
   id,
   isVisible,
   label,
@@ -74,6 +52,56 @@ export const PasswordField = ({
       Show Password
     </label>
   </div>
+);
+
+interface AccountPasswordFieldsProps {
+  onPasswordChange: (value: string) => void;
+  onPasswordConfirmChange: (value: string) => void;
+  onShowPasswordChange: (checked: boolean) => void;
+  onShowPasswordConfirmChange: (checked: boolean) => void;
+  password: string;
+  passwordConfirm: string;
+  required?: boolean;
+  showPassword: boolean;
+  showPasswordConfirm: boolean;
+}
+
+export const AccountPasswordFields = ({
+  onPasswordChange,
+  onPasswordConfirmChange,
+  onShowPasswordChange,
+  onShowPasswordConfirmChange,
+  password,
+  passwordConfirm,
+  required = false,
+  showPassword,
+  showPasswordConfirm,
+}: AccountPasswordFieldsProps): JSX.Element => (
+  <>
+    <PasswordField
+      id="password"
+      isVisible={showPassword}
+      label="Password:"
+      onValueChange={onPasswordChange}
+      onVisibilityChange={onShowPasswordChange}
+      placeholder="Password"
+      required={required}
+      value={password}
+      visibilityToggleId="showPassword"
+    />
+
+    <PasswordField
+      id="passwordConfirm"
+      isVisible={showPasswordConfirm}
+      label="Re-enter Password:"
+      onValueChange={onPasswordConfirmChange}
+      onVisibilityChange={onShowPasswordConfirmChange}
+      placeholder="Re-enter Password"
+      required={required}
+      value={passwordConfirm}
+      visibilityToggleId="showPasswordConfirm"
+    />
+  </>
 );
 
 interface RoleMatrixProps {
@@ -120,9 +148,7 @@ export const RoleMatrix = ({
           ) : (
             eventRows.map((eventCode) => (
               <tr key={eventCode}>
-                <td>
-                  {eventCode === ALL_EVENTS_CODE ? "All Events" : eventCode}
-                </td>
+                <td>{eventCode === ALL_EVENTS_CODE ? "All Events" : eventCode}</td>
                 {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
                   <td key={`${eventCode}-${column.value}`}>
                     <label htmlFor={`${eventCode}-${column.value}`}>
@@ -150,29 +176,5 @@ export const RoleMatrix = ({
         </tbody>
       </table>
     </div>
-  </>
-);
-
-interface StatusMessagesProps {
-  errorMessage: string | null;
-  successMessage: string | null;
-}
-
-export const StatusMessages = ({
-  errorMessage,
-  successMessage,
-}: StatusMessagesProps): JSX.Element => (
-  <>
-    {errorMessage ? (
-      <p className="message-block" data-variant="danger" role="alert">
-        {errorMessage}
-      </p>
-    ) : null}
-
-    {successMessage ? (
-      <p className="message-block" data-variant="success" role="alert">
-        {successMessage}
-      </p>
-    ) : null}
   </>
 );

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { safeParse } from "valibot";
-import { ApplicationError } from "../../application/common/application-error";
+import type { Context } from "hono";
+import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   ActivateScheduleUseCase,
   ClearQualificationScheduleUseCase,
@@ -17,7 +17,12 @@ import { outboundSyncPushService } from "../../infrastructure/services/outbound-
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
-import { parseJsonBody } from "../common/http";
+import {
+  getEventCodeWithGuard,
+  parseJsonBodyOrResponse,
+  safeParseOrResponse,
+  toApplicationErrorResponse,
+} from "../common/route-handler-helpers";
 import { formatValidationIssues } from "../common/validation";
 import {
   generatePracticeScheduleBodySchema,
@@ -55,8 +60,77 @@ const clearQualificationScheduleUseCase = new ClearQualificationScheduleUseCase(
 );
 const activateScheduleUseCase = new ActivateScheduleUseCase(scheduleRepository);
 
-const isApplicationError = (error: unknown): error is ApplicationError =>
-  error instanceof ApplicationError;
+const INVALID_JSON_BODY = { error: "Body must be valid JSON" } as const;
+
+const getScheduleWriteEventCode = (c: Context<AppEnv>) =>
+  getEventCodeWithGuard(c, requireEventAdmin);
+
+const parseScheduleBodyOrResponse = (c: Context) =>
+  parseJsonBodyOrResponse(c, INVALID_JSON_BODY, 400);
+
+const parseScheduleBodyWithFallbackOrResponse = (
+  c: Context,
+  fallbackBody: Record<string, never>
+) => parseJsonBodyOrResponse(c, INVALID_JSON_BODY, 400, fallbackBody);
+
+const safeParseScheduleBodyOrResponse = <
+  TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+>(
+  c: Context,
+  schema: TSchema,
+  input: unknown
+) =>
+  safeParseOrResponse(c, schema, input, (issues) => ({
+    error: "Validation failed",
+    message: formatValidationIssues(issues),
+  }));
+
+const getScheduleMutationInput = async <
+  TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+>(
+  c: Context<AppEnv>,
+  schema: TSchema,
+  fallbackBody?: Record<string, never>
+): Promise<
+  | {
+      ok: true;
+      value: {
+        eventCode: string;
+        payload: InferOutput<TSchema>;
+      };
+    }
+  | { ok: false; response: Response }
+> => {
+  const eventCodeResult = getScheduleWriteEventCode(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult;
+  }
+
+  const bodyResult =
+    fallbackBody === undefined
+      ? await parseScheduleBodyOrResponse(c)
+      : await parseScheduleBodyWithFallbackOrResponse(c, fallbackBody);
+  if (!bodyResult.ok) {
+    return bodyResult;
+  }
+
+  const parsedBodyResult = safeParseScheduleBodyOrResponse(
+    c,
+    schema,
+    bodyResult.value
+  );
+  if (!parsedBodyResult.ok) {
+    return parsedBodyResult;
+  }
+
+  return {
+    ok: true,
+    value: {
+      eventCode: eventCodeResult.value,
+      payload: parsedBodyResult.value,
+    },
+  };
+};
 
 scheduleRoutes.get("/:eventCode/schedule/practice", async (c) => {
   const eventCode = c.req.param("eventCode");
@@ -65,54 +139,35 @@ scheduleRoutes.get("/:eventCode/schedule/practice", async (c) => {
     const schedule = await listPracticeMatchesUseCase.execute({ eventCode });
     return c.json(schedule);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        { error: "Failed to load practice schedule", message: error.message },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to load practice schedule",
+      message: applicationError.message,
+    }));
   }
 });
 
 scheduleRoutes.put("/:eventCode/schedule/practice", requireAuth, async (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const mutationInputResult = await getScheduleMutationInput(
+    c,
+    savePracticeScheduleBodySchema
+  );
+  if (!mutationInputResult.ok) {
+    return mutationInputResult.response;
   }
-
-  const body = await parseJsonBody(c);
-  if (body === null) {
-    return c.json({ error: "Body must be valid JSON" }, 400);
-  }
-
-  const bodyResult = safeParse(savePracticeScheduleBodySchema, body);
-  if (!bodyResult.success) {
-    return c.json(
-      {
-        error: "Validation failed",
-        message: formatValidationIssues(bodyResult.issues),
-      },
-      400
-    );
-  }
+  const { eventCode, payload } = mutationInputResult.value;
 
   try {
     const schedule = await createPracticeMatchUseCase.execute({
       eventCode,
-      payload: bodyResult.output,
+      payload,
     });
     outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        { error: "Failed to save practice schedule", message: error.message },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to save practice schedule",
+      message: applicationError.message,
+    }));
   }
 });
 
@@ -120,46 +175,27 @@ scheduleRoutes.post(
   "/:eventCode/schedule/practice/generate",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireEventAdmin(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const mutationInputResult = await getScheduleMutationInput(
+      c,
+      generatePracticeScheduleBodySchema
+    );
+    if (!mutationInputResult.ok) {
+      return mutationInputResult.response;
     }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(generatePracticeScheduleBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload } = mutationInputResult.value;
 
     try {
       const schedule = await generatePracticeScheduleUseCase.execute({
         eventCode,
-        payload: bodyResult.output,
+        payload,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule, 201);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to generate practice schedule",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to generate practice schedule",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -168,27 +204,21 @@ scheduleRoutes.delete(
   "/:eventCode/schedule/practice",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireEventAdmin(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const eventCodeResult = getScheduleWriteEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
+    const eventCode = eventCodeResult.value;
 
     try {
       const schedule = await deletePracticeMatchUseCase.execute({ eventCode });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to clear practice schedule",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to clear practice schedule",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -202,60 +232,35 @@ scheduleRoutes.get("/:eventCode/schedule/quals", async (c) => {
     });
     return c.json(schedule);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        {
-          error: "Failed to load qualification schedule",
-          message: error.message,
-        },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to load qualification schedule",
+      message: applicationError.message,
+    }));
   }
 });
 
 scheduleRoutes.put("/:eventCode/schedule/quals", requireAuth, async (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const mutationInputResult = await getScheduleMutationInput(
+    c,
+    saveQualificationScheduleBodySchema
+  );
+  if (!mutationInputResult.ok) {
+    return mutationInputResult.response;
   }
-
-  const body = await parseJsonBody(c);
-  if (body === null) {
-    return c.json({ error: "Body must be valid JSON" }, 400);
-  }
-
-  const bodyResult = safeParse(saveQualificationScheduleBodySchema, body);
-  if (!bodyResult.success) {
-    return c.json(
-      {
-        error: "Validation failed",
-        message: formatValidationIssues(bodyResult.issues),
-      },
-      400
-    );
-  }
+  const { eventCode, payload } = mutationInputResult.value;
 
   try {
     const schedule = await saveQualificationScheduleUseCase.execute({
       eventCode,
-      payload: bodyResult.output,
+      payload,
     });
     outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        {
-          error: "Failed to save qualification schedule",
-          message: error.message,
-        },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to save qualification schedule",
+      message: applicationError.message,
+    }));
   }
 });
 
@@ -263,53 +268,38 @@ scheduleRoutes.post(
   "/:eventCode/schedule/quals/generate",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireEventAdmin(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const mutationInputResult = await getScheduleMutationInput(
+      c,
+      generateQualificationScheduleBodySchema,
+      {}
+    );
+    if (!mutationInputResult.ok) {
+      return mutationInputResult.response;
     }
-
-    const body = (await parseJsonBody(c)) ?? {};
-
-    const bodyResult = safeParse(generateQualificationScheduleBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload } = mutationInputResult.value;
 
     try {
       const schedule = await generateQualificationScheduleUseCase.execute({
         eventCode,
-        payload: bodyResult.output,
+        payload,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule, 201);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to generate qualification schedule",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to generate qualification schedule",
+        message: applicationError.message,
+      }));
     }
   }
 );
 
 scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, async (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireEventAdmin(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const eventCodeResult = getScheduleWriteEventCode(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult.response;
   }
+  const eventCode = eventCodeResult.value;
 
   try {
     const schedule = await clearQualificationScheduleUseCase.execute({
@@ -318,16 +308,10 @@ scheduleRoutes.delete("/:eventCode/schedule/quals", requireAuth, async (c) => {
     outboundSyncPushService.requestEventSync(eventCode);
     return c.json(schedule);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        {
-          error: "Failed to clear qualification schedule",
-          message: error.message,
-        },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to clear qualification schedule",
+      message: applicationError.message,
+    }));
   }
 });
 
@@ -335,47 +319,28 @@ scheduleRoutes.put(
   "/:eventCode/schedule/practice/active",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireEventAdmin(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const mutationInputResult = await getScheduleMutationInput(
+      c,
+      setScheduleActivationBodySchema
+    );
+    if (!mutationInputResult.ok) {
+      return mutationInputResult.response;
     }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(setScheduleActivationBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload } = mutationInputResult.value;
 
     try {
       const schedule = await activateScheduleUseCase.execute({
         eventCode,
         scheduleType: "practice",
-        active: bodyResult.output.active,
+        active: payload.active,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to update practice schedule activation",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to update practice schedule activation",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -384,47 +349,28 @@ scheduleRoutes.put(
   "/:eventCode/schedule/quals/active",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireEventAdmin(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const mutationInputResult = await getScheduleMutationInput(
+      c,
+      setScheduleActivationBodySchema
+    );
+    if (!mutationInputResult.ok) {
+      return mutationInputResult.response;
     }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(setScheduleActivationBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload } = mutationInputResult.value;
 
     try {
       const schedule = await activateScheduleUseCase.execute({
         eventCode,
         scheduleType: "quals",
-        active: bodyResult.output.active,
+        active: payload.active,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(schedule);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to update qualification schedule activation",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to update qualification schedule activation",
+        message: applicationError.message,
+      }));
     }
   }
 );

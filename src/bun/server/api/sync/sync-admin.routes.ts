@@ -1,10 +1,15 @@
 import { Hono } from "hono";
-import { safeParse } from "valibot";
+import type { Context } from "hono";
+import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin, requireGlobalAdmin } from "../common/guards";
-import { parseJsonBody } from "../common/http";
+import {
+  getSeasonEventCodeWithGuard,
+  parseJsonBodyOrResponse,
+  safeParseOrResponse,
+} from "../common/route-handler-helpers";
 import {
   createSyncClientRequestSchema,
   DEFAULT_ALLOWED_PUSH_RESOURCES,
@@ -27,21 +32,57 @@ import {
 
 export const syncAdminRoutes = new Hono<AppEnv>();
 
+const getSyncAdminEventCode = (c: Context<AppEnv>) =>
+  getSeasonEventCodeWithGuard(
+    c,
+    SYNC_SEASON,
+    requireEventAdmin,
+    { error: "Unsupported season" }
+  );
+
+const parseSyncAdminSchemaBody = async <
+  TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+>(
+  c: Context<AppEnv>,
+  schema: TSchema,
+  mergeFields: Record<string, unknown>
+): Promise<
+  | { ok: true; value: InferOutput<TSchema> }
+  | { ok: false; response: Response }
+> => {
+  const bodyResult = await parseJsonBodyOrResponse(
+    c,
+    { error: "Validation failed", message: "Body must be valid JSON." },
+    400
+  );
+  if (!bodyResult.ok) {
+    return bodyResult;
+  }
+
+  return safeParseOrResponse(
+    c,
+    schema,
+    {
+      ...(bodyResult.value as Record<string, unknown>),
+      ...mergeFields,
+    },
+    (issues) => ({ error: "Validation failed", issues })
+  );
+};
+
 // List Clients
 syncAdminRoutes.get(
   "/admin/seasons/:season/events/:eventCode/clients",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
-    const clients = await listSyncClientsUseCase.execute({ eventCode });
+    const clients = await listSyncClientsUseCase.execute({
+      eventCode: eventCodeResult.value,
+    });
     return c.json({ clients });
   }
 );
@@ -51,38 +92,26 @@ syncAdminRoutes.post(
   "/admin/seasons/:season/events/:eventCode/clients",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json(
-        { error: "Validation failed", message: "Body must be valid JSON." },
-        400
-      );
-    }
-
-    const result = safeParse(createSyncClientRequestSchema, {
-      ...(body as Record<string, unknown>),
-      eventCode,
-      season,
-    });
-    if (!result.success) {
-      return c.json({ error: "Validation failed", issues: result.issues }, 400);
+    const result = await parseSyncAdminSchemaBody(
+      c,
+      createSyncClientRequestSchema,
+      { eventCode: eventCodeResult.value, season: SYNC_SEASON }
+    );
+    if (!result.ok) {
+      return result.response;
     }
 
     const createdClient = await createSyncClientUseCase.execute({
       allowedResources:
-        result.output.allowedResources ?? DEFAULT_ALLOWED_PUSH_RESOURCES,
-      eventCode,
-      expiresAt: result.output.expiresAt,
-      name: result.output.name,
+        result.value.allowedResources ?? DEFAULT_ALLOWED_PUSH_RESOURCES,
+      eventCode: eventCodeResult.value,
+      expiresAt: result.value.expiresAt,
+      name: result.value.name,
     });
     return c.json(createdClient);
   }
@@ -112,16 +141,14 @@ syncAdminRoutes.get(
   "/admin/seasons/:season/events/:eventCode/policy",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
-    const policy = await getSyncPolicyUseCase.execute({ eventCode });
+    const policy = await getSyncPolicyUseCase.execute({
+      eventCode: eventCodeResult.value,
+    });
     return c.json(policy);
   }
 );
@@ -131,16 +158,14 @@ syncAdminRoutes.get(
   "/admin/seasons/:season/events/:eventCode/outbound-status",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
-    const status = await outboundSyncPushService.getEventStatus(eventCode);
+    const status = await outboundSyncPushService.getEventStatus(
+      eventCodeResult.value
+    );
     return c.json(status);
   }
 );
@@ -150,21 +175,18 @@ syncAdminRoutes.post(
   "/admin/seasons/:season/events/:eventCode/outbound-retry",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
     try {
-      const result =
-        await outboundSyncPushService.requestImmediateRetry(eventCode);
+      const result = await outboundSyncPushService.requestImmediateRetry(
+        eventCodeResult.value
+      );
       return c.json({
         batchId: result.batchId,
-        eventCode,
+        eventCode: eventCodeResult.value,
         success: true,
       });
     } catch (error) {
@@ -179,40 +201,28 @@ syncAdminRoutes.post(
   "/admin/seasons/:season/events/:eventCode/policy",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
     const auth = c.get("auth");
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json(
-        { error: "Validation failed", message: "Body must be valid JSON." },
-        400
-      );
-    }
-
-    const result = safeParse(updateSyncPolicyRequestSchema, {
-      ...(body as Record<string, unknown>),
-      eventCode,
-      season,
-    });
-    if (!result.success) {
-      return c.json({ error: "Validation failed", issues: result.issues }, 400);
+    const result = await parseSyncAdminSchemaBody(
+      c,
+      updateSyncPolicyRequestSchema,
+      { eventCode: eventCodeResult.value, season: SYNC_SEASON }
+    );
+    if (!result.ok) {
+      return result.response;
     }
 
     const updatedPolicy = await updateSyncPolicyUseCase.execute({
       allowedPushResources:
-        result.output.allowedPushResources ?? DEFAULT_ALLOWED_PUSH_RESOURCES,
-      eventCode,
-      isSyncEnabled: result.output.isSyncEnabled,
-      reviewMode: result.output.reviewMode,
-      scheduleOwner: result.output.scheduleOwner,
+        result.value.allowedPushResources ?? DEFAULT_ALLOWED_PUSH_RESOURCES,
+      eventCode: eventCodeResult.value,
+      isSyncEnabled: result.value.isSyncEnabled,
+      reviewMode: result.value.reviewMode,
+      scheduleOwner: result.value.scheduleOwner,
       updatedBy: auth.sub,
     });
     return c.json({ success: true, policy: updatedPolicy });
@@ -224,22 +234,18 @@ syncAdminRoutes.get(
   "/admin/seasons/:season/events/:eventCode/batches",
   requireAuth,
   async (c) => {
-    const { season, eventCode } = c.req.param();
     const status = c.req.query("status");
     const limit = Math.min(
       Number.parseInt(c.req.query("limit") ?? "25", 10),
       100
     );
-    if (season !== SYNC_SEASON) {
-      return c.json({ error: "Unsupported season" }, 400);
-    }
-    const forbidden = requireEventAdmin(c, eventCode);
-    if (forbidden) {
-      return forbidden;
+    const eventCodeResult = getSyncAdminEventCode(c);
+    if (!eventCodeResult.ok) {
+      return eventCodeResult.response;
     }
 
     const batches = await listSyncBatchesUseCase.execute({
-      eventCode,
+      eventCode: eventCodeResult.value,
       limit,
       status,
     });
@@ -282,27 +288,20 @@ syncAdminRoutes.post(
       return forbidden;
     }
 
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json(
-        { error: "Validation failed", message: "Body must be valid JSON." },
-        400
-      );
-    }
-
-    const result = safeParse(reviewSyncBatchRequestSchema, {
-      ...(body as Record<string, unknown>),
-      changeSetId,
-    });
-    if (!result.success) {
-      return c.json({ error: "Validation failed", issues: result.issues }, 400);
+    const result = await parseSyncAdminSchemaBody(
+      c,
+      reviewSyncBatchRequestSchema,
+      { changeSetId }
+    );
+    if (!result.ok) {
+      return result.response;
     }
 
     try {
       const reviewResult = await applySyncBatchReviewUseCase.execute({
         changeSetId,
-        decision: result.output.decision,
-        reason: result.output.reason,
+        decision: result.value.decision,
+        reason: result.value.reason,
         reviewerId: auth.sub,
       });
       return c.json(reviewResult);

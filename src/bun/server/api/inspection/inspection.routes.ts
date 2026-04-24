@@ -1,7 +1,7 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
-import { safeParse } from "valibot";
-import { ApplicationError } from "../../application/common/application-error";
+import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   ApplyOverrideUseCase,
   GetChecklistUseCase,
@@ -18,8 +18,13 @@ import { outboundSyncPushService } from "../../infrastructure/services/outbound-
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireInspector, requireLeadInspector } from "../common/guards";
-import { parseJsonBody } from "../common/http";
-import { awaitStreamClose } from "../common/sse";
+import {
+  getEventCodeWithGuard,
+  parseJsonBodyOrResponse,
+  safeParseOrResponse,
+  toApplicationErrorResponse,
+} from "../common/route-handler-helpers";
+import { runQueuedHeartbeatSse } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import {
   overrideStatusBodySchema,
@@ -55,9 +60,6 @@ const getInspectionHistoryUseCase = new GetInspectionHistoryUseCase(
 const applyOverrideUseCase = new ApplyOverrideUseCase(inspectionRepository);
 const getPublicStatusUseCase = new GetPublicStatusUseCase(inspectionRepository);
 
-const isApplicationError = (error: unknown): error is ApplicationError =>
-  error instanceof ApplicationError;
-
 const parseTeamNumberParam = (
   value: string
 ): { teamNumber: number } | { error: string } => {
@@ -70,6 +72,120 @@ const parseTeamNumberParam = (
 
 const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
+const INVALID_JSON_BODY = { error: "Body must be valid JSON" } as const;
+
+const getInspectorEventCode = (c: Context<AppEnv>) =>
+  getEventCodeWithGuard(c, requireInspector);
+
+const getLeadInspectorEventCode = (c: Context<AppEnv>) =>
+  getEventCodeWithGuard(c, requireLeadInspector);
+
+const parseInspectionBodyOrResponse = (c: Context) =>
+  parseJsonBodyOrResponse(c, INVALID_JSON_BODY, 400);
+
+const safeParseInspectionBodyOrResponse = <
+  TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+>(
+  c: Context,
+  schema: TSchema,
+  input: unknown
+) =>
+  safeParseOrResponse(c, schema, input, (issues) => ({
+    error: "Validation failed",
+    message: formatValidationIssues(issues),
+  }));
+
+const getTeamNumberOrResponse = (
+  c: Context
+): { ok: true; value: number } | { ok: false; response: Response } => {
+  const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
+  if ("error" in teamNumberResult) {
+    return {
+      ok: false,
+      response: c.json(
+        { error: "Validation failed", message: teamNumberResult.error },
+        400
+      ),
+    };
+  }
+  return { ok: true, value: teamNumberResult.teamNumber };
+};
+
+type EventCodeResult =
+  | { ok: true; value: string }
+  | { ok: false; response: Response };
+
+const getInspectionTeamContext = (
+  c: Context<AppEnv>,
+  eventCodeResolver: (ctx: Context<AppEnv>) => EventCodeResult
+): { ok: true; value: { eventCode: string; teamNumber: number } } | {
+  ok: false;
+  response: Response;
+} => {
+  const eventCodeResult = eventCodeResolver(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult;
+  }
+
+  const teamNumberResult = getTeamNumberOrResponse(c);
+  if (!teamNumberResult.ok) {
+    return teamNumberResult;
+  }
+
+  return {
+    ok: true,
+    value: {
+      eventCode: eventCodeResult.value,
+      teamNumber: teamNumberResult.value,
+    },
+  };
+};
+
+const getInspectionTeamPayload = async <
+  TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+>(
+  c: Context<AppEnv>,
+  schema: TSchema,
+  eventCodeResolver: (ctx: Context<AppEnv>) => EventCodeResult
+): Promise<
+  | {
+      ok: true;
+      value: {
+        eventCode: string;
+        teamNumber: number;
+        payload: InferOutput<TSchema>;
+      };
+    }
+  | { ok: false; response: Response }
+> => {
+  const teamContextResult = getInspectionTeamContext(c, eventCodeResolver);
+  if (!teamContextResult.ok) {
+    return teamContextResult;
+  }
+
+  const bodyResult = await parseInspectionBodyOrResponse(c);
+  if (!bodyResult.ok) {
+    return bodyResult;
+  }
+
+  const parsedBodyResult = safeParseInspectionBodyOrResponse(
+    c,
+    schema,
+    bodyResult.value
+  );
+  if (!parsedBodyResult.ok) {
+    return parsedBodyResult;
+  }
+
+  return {
+    ok: true,
+    value: {
+      eventCode: teamContextResult.value.eventCode,
+      teamNumber: teamContextResult.value.teamNumber,
+      payload: parsedBodyResult.value,
+    },
+  };
+};
 
 const writeInspectionSyncEvent = async (
   stream: SSEStreamingApi,
@@ -84,87 +200,41 @@ const writeInspectionSyncEvent = async (
 };
 
 inspectionRoutes.get("/:eventCode/inspection/checklist", requireAuth, (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireInspector(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const eventCodeResult = getInspectorEventCode(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult.response;
   }
 
   return c.json(getChecklistUseCase.execute());
 });
 
 inspectionRoutes.get("/:eventCode/inspection/stream", requireAuth, (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireInspector(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const eventCodeResult = getInspectorEventCode(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult.response;
   }
+  const eventCode = eventCodeResult.value;
 
   return streamSSE(c, async (stream) => {
-    let queuedWrite = Promise.resolve();
-
-    const enqueueWrite = (
-      writeOperation: (streamApi: SSEStreamingApi) => Promise<void>
-    ): void => {
-      queuedWrite = queuedWrite
-        .then(async () => {
-          if (stream.aborted || stream.closed) {
-            return;
-          }
-          await writeOperation(stream);
-        })
-        .catch(() => {
-          // Ignore write failures after disconnect.
-        });
-    };
-
     const snapshotEvent = createInspectionSnapshotHintEvent(
       eventCode,
       inspectionSyncHub.getCurrentVersion(eventCode)
     );
-    enqueueWrite((streamApi) =>
-      writeInspectionSyncEvent(streamApi, snapshotEvent)
-    );
-
-    const unsubscribe = inspectionSyncHub.subscribe(eventCode, (event) => {
-      enqueueWrite((streamApi) => writeInspectionSyncEvent(streamApi, event));
+    await runQueuedHeartbeatSse<InspectionSyncEvent>(stream, {
+      heartbeatMs: SSE_HEARTBEAT_MS,
+      writeInitial: () => writeInspectionSyncEvent(stream, snapshotEvent),
+      subscribe: (onEvent) => inspectionSyncHub.subscribe(eventCode, onEvent),
+      writeEvent: (event) => writeInspectionSyncEvent(stream, event),
     });
-
-    const heartbeatIntervalId = setInterval(() => {
-      enqueueWrite(async (streamApi) => {
-        await streamApi.write(": heartbeat\n\n");
-      });
-    }, SSE_HEARTBEAT_MS);
-
-    let isCleanedUp = false;
-    const cleanup = (): void => {
-      if (isCleanedUp) {
-        return;
-      }
-      isCleanedUp = true;
-      clearInterval(heartbeatIntervalId);
-      unsubscribe();
-    };
-
-    stream.onAbort(() => {
-      cleanup();
-    });
-
-    try {
-      await awaitStreamClose(stream);
-    } finally {
-      cleanup();
-      await queuedWrite;
-    }
   });
 });
 
 inspectionRoutes.get("/:eventCode/inspection/teams", requireAuth, (c) => {
-  const eventCode = c.req.param("eventCode");
-  const forbiddenResponse = requireInspector(c, eventCode);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const eventCodeResult = getInspectorEventCode(c);
+  if (!eventCodeResult.ok) {
+    return eventCodeResult.response;
   }
+  const eventCode = eventCodeResult.value;
 
   const search = c.req.query("search");
 
@@ -172,13 +242,10 @@ inspectionRoutes.get("/:eventCode/inspection/teams", requireAuth, (c) => {
     const result = getTeamListUseCase.execute({ eventCode, search });
     return c.json(result);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        { error: "Failed to load inspection teams", message: error.message },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to load inspection teams",
+      message: applicationError.message,
+    }));
   }
 });
 
@@ -186,37 +253,22 @@ inspectionRoutes.get(
   "/:eventCode/inspection/teams/:teamNumber",
   requireAuth,
   (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
-    }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
+    const teamContextResult = getInspectionTeamContext(c, getInspectorEventCode);
+    if (!teamContextResult.ok) {
+      return teamContextResult.response;
     }
 
     try {
       const detail = getTeamDetailUseCase.execute({
-        eventCode,
-        teamNumber: teamNumberResult.teamNumber,
+        eventCode: teamContextResult.value.eventCode,
+        teamNumber: teamContextResult.value.teamNumber,
       });
       return c.json(detail);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to load inspection detail",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to load inspection detail",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -225,60 +277,34 @@ inspectionRoutes.patch(
   "/:eventCode/inspection/teams/:teamNumber/items",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const payloadResult = await getInspectionTeamPayload(
+      c,
+      updateItemsBodySchema,
+      getInspectorEventCode
+    );
+    if (!payloadResult.ok) {
+      return payloadResult.response;
     }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
-    }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(updateItemsBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload, teamNumber } = payloadResult.value;
 
     try {
       const detail = updateInspectionItemsUseCase.execute({
         eventCode,
-        teamNumber: teamNumberResult.teamNumber,
-        items: bodyResult.output.items,
+        teamNumber,
+        items: payload.items,
       });
       inspectionSyncHub.publish({
         eventCode,
         kind: "ITEMS_UPDATED",
-        teamNumber: teamNumberResult.teamNumber,
+        teamNumber,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to update inspection items",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to update inspection items",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -287,62 +313,36 @@ inspectionRoutes.patch(
   "/:eventCode/inspection/teams/:teamNumber/status",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const payloadResult = await getInspectionTeamPayload(
+      c,
+      updateStatusBodySchema,
+      getInspectorEventCode
+    );
+    if (!payloadResult.ok) {
+      return payloadResult.response;
     }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
-    }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(updateStatusBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload, teamNumber } = payloadResult.value;
 
     try {
       const auth = c.get("auth");
       const detail = updateInspectionStatusUseCase.execute({
         eventCode,
-        teamNumber: teamNumberResult.teamNumber,
-        status: bodyResult.output.status,
+        teamNumber,
+        status: payload.status,
         changedBy: auth.sub,
       });
       inspectionSyncHub.publish({
         eventCode,
         kind: "STATUS_UPDATED",
-        teamNumber: teamNumberResult.teamNumber,
+        teamNumber,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to update inspection status",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to update inspection status",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -351,60 +351,34 @@ inspectionRoutes.post(
   "/:eventCode/inspection/teams/:teamNumber/comment",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const payloadResult = await getInspectionTeamPayload(
+      c,
+      saveCommentBodySchema,
+      getInspectorEventCode
+    );
+    if (!payloadResult.ok) {
+      return payloadResult.response;
     }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
-    }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(saveCommentBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload, teamNumber } = payloadResult.value;
 
     try {
       saveInspectionCommentUseCase.execute({
         eventCode,
-        teamNumber: teamNumberResult.teamNumber,
-        comment: bodyResult.output.comment,
+        teamNumber,
+        comment: payload.comment,
       });
       inspectionSyncHub.publish({
         eventCode,
         kind: "COMMENT_UPDATED",
-        teamNumber: teamNumberResult.teamNumber,
+        teamNumber,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json({ success: true });
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to save inspection comment",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to save inspection comment",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -413,37 +387,22 @@ inspectionRoutes.get(
   "/:eventCode/inspection/teams/:teamNumber/history",
   requireAuth,
   (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
-    }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
+    const teamContextResult = getInspectionTeamContext(c, getInspectorEventCode);
+    if (!teamContextResult.ok) {
+      return teamContextResult.response;
     }
 
     try {
       const result = getInspectionHistoryUseCase.execute({
-        eventCode,
-        teamNumber: teamNumberResult.teamNumber,
+        eventCode: teamContextResult.value.eventCode,
+        teamNumber: teamContextResult.value.teamNumber,
       });
       return c.json(result);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to load inspection history",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to load inspection history",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -452,62 +411,36 @@ inspectionRoutes.post(
   "/:eventCode/inspection/teams/:teamNumber/override",
   requireAuth,
   async (c) => {
-    const eventCode = c.req.param("eventCode");
-    const forbiddenResponse = requireLeadInspector(c, eventCode);
-    if (forbiddenResponse) {
-      return forbiddenResponse;
+    const payloadResult = await getInspectionTeamPayload(
+      c,
+      overrideStatusBodySchema,
+      getLeadInspectorEventCode
+    );
+    if (!payloadResult.ok) {
+      return payloadResult.response;
     }
-
-    const teamNumberResult = parseTeamNumberParam(c.req.param("teamNumber"));
-    if ("error" in teamNumberResult) {
-      return c.json(
-        { error: "Validation failed", message: teamNumberResult.error },
-        400
-      );
-    }
-
-    const body = await parseJsonBody(c);
-    if (body === null) {
-      return c.json({ error: "Body must be valid JSON" }, 400);
-    }
-
-    const bodyResult = safeParse(overrideStatusBodySchema, body);
-    if (!bodyResult.success) {
-      return c.json(
-        {
-          error: "Validation failed",
-          message: formatValidationIssues(bodyResult.issues),
-        },
-        400
-      );
-    }
+    const { eventCode, payload, teamNumber } = payloadResult.value;
 
     try {
       const auth = c.get("auth");
       const detail = applyOverrideUseCase.execute({
         eventCode,
-        teamNumber: teamNumberResult.teamNumber,
-        comment: bodyResult.output.comment,
+        teamNumber,
+        comment: payload.comment,
         changedBy: auth.sub,
       });
       inspectionSyncHub.publish({
         eventCode,
         kind: "OVERRIDE_APPLIED",
-        teamNumber: teamNumberResult.teamNumber,
+        teamNumber,
       });
       outboundSyncPushService.requestEventSync(eventCode);
       return c.json(detail);
     } catch (error) {
-      if (isApplicationError(error)) {
-        return c.json(
-          {
-            error: "Failed to override inspection status",
-            message: error.message,
-          },
-          error.status as 400 | 404 | 500
-        );
-      }
-      throw error;
+      return toApplicationErrorResponse(c, error, (applicationError) => ({
+        error: "Failed to override inspection status",
+        message: applicationError.message,
+      }));
     }
   }
 );
@@ -519,15 +452,9 @@ inspectionRoutes.get("/:eventCode/inspection/public-status", (c) => {
     const result = getPublicStatusUseCase.execute({ eventCode });
     return c.json(result);
   } catch (error) {
-    if (isApplicationError(error)) {
-      return c.json(
-        {
-          error: "Failed to load public inspection status",
-          message: error.message,
-        },
-        error.status as 400 | 404 | 500
-      );
-    }
-    throw error;
+    return toApplicationErrorResponse(c, error, (applicationError) => ({
+      error: "Failed to load public inspection status",
+      message: applicationError.message,
+    }));
   }
 });

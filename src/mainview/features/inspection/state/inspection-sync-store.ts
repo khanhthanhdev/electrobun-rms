@@ -1,138 +1,43 @@
-import { createStore } from "tinybase";
 import type { InspectionRealtimeChangeEvent } from "../../../shared/types/inspection";
+import {
+  createRealtimeVersionStore,
+  type GenericRealtimeConnectionState,
+} from "../../../shared/state/create-realtime-version-store";
 
-const INSPECTION_REALTIME_TABLE_ID = "inspectionRealtime";
-const CONNECTION_STATE_CELL_ID = "connectionState";
-const LAST_ERROR_CELL_ID = "lastError";
-const LAST_EVENT_AT_CELL_ID = "lastEventAt";
-const LAST_EVENT_ID_CELL_ID = "lastEventId";
-const LATEST_VERSION_CELL_ID = "latestVersion";
+const realtimeStore = createRealtimeVersionStore<InspectionRealtimeChangeEvent>(
+  "inspectionRealtime"
+);
 
-export type InspectionRealtimeConnectionState =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "error"
-  | "stopped";
+export type InspectionRealtimeConnectionState = GenericRealtimeConnectionState;
 
-const inspectionRealtimeStore = createStore();
-
-const ensureInspectionRealtimeRow = (eventCode: string): void => {
-  if (inspectionRealtimeStore.hasRow(INSPECTION_REALTIME_TABLE_ID, eventCode)) {
-    return;
-  }
-
-  inspectionRealtimeStore.setRow(INSPECTION_REALTIME_TABLE_ID, eventCode, {
-    [CONNECTION_STATE_CELL_ID]: "idle",
-    [LAST_ERROR_CELL_ID]: "",
-    [LAST_EVENT_AT_CELL_ID]: "",
-    [LAST_EVENT_ID_CELL_ID]: "",
-    [LATEST_VERSION_CELL_ID]: 0,
-  });
-};
-
-const readNumberCell = (
-  eventCode: string,
-  cellId: string,
-  defaultValue = 0
-): number => {
-  const value = inspectionRealtimeStore.getCell(
-    INSPECTION_REALTIME_TABLE_ID,
-    eventCode,
-    cellId
-  );
-  return typeof value === "number" ? value : defaultValue;
-};
-
-export const getInspectionRealtimeVersion = (eventCode: string): number => {
-  ensureInspectionRealtimeRow(eventCode);
-  return readNumberCell(eventCode, LATEST_VERSION_CELL_ID, 0);
-};
+export const getInspectionRealtimeVersion = (eventCode: string): number =>
+  realtimeStore.getVersion(eventCode);
 
 export const setInspectionRealtimeConnectionState = (
   eventCode: string,
   state: InspectionRealtimeConnectionState
 ): void => {
-  ensureInspectionRealtimeRow(eventCode);
-  inspectionRealtimeStore.setCell(
-    INSPECTION_REALTIME_TABLE_ID,
-    eventCode,
-    CONNECTION_STATE_CELL_ID,
-    state
-  );
+  realtimeStore.setConnectionState(eventCode, state);
 };
 
 export const setInspectionRealtimeError = (
   eventCode: string,
   message: string
 ): void => {
-  ensureInspectionRealtimeRow(eventCode);
-  inspectionRealtimeStore.setCell(
-    INSPECTION_REALTIME_TABLE_ID,
-    eventCode,
-    LAST_ERROR_CELL_ID,
-    message
-  );
+  realtimeStore.setError(eventCode, message);
 };
 
 export const applyInspectionRealtimeEvent = (
   event: InspectionRealtimeChangeEvent
 ): void => {
-  ensureInspectionRealtimeRow(event.eventCode);
-
-  inspectionRealtimeStore.transaction(() => {
-    const currentVersion = readNumberCell(
-      event.eventCode,
-      LATEST_VERSION_CELL_ID,
-      0
-    );
-
-    if (event.version > currentVersion) {
-      inspectionRealtimeStore.setCell(
-        INSPECTION_REALTIME_TABLE_ID,
-        event.eventCode,
-        LAST_EVENT_AT_CELL_ID,
-        event.changedAt
-      );
-      inspectionRealtimeStore.setCell(
-        INSPECTION_REALTIME_TABLE_ID,
-        event.eventCode,
-        LAST_EVENT_ID_CELL_ID,
-        `${event.eventCode}:${event.version}`
-      );
-      inspectionRealtimeStore.setCell(
-        INSPECTION_REALTIME_TABLE_ID,
-        event.eventCode,
-        LATEST_VERSION_CELL_ID,
-        event.version
-      );
-    }
-  });
+  realtimeStore.applyEvent(event);
 };
 
 export const resetInspectionRealtimeVersion = (eventCode: string): void => {
-  ensureInspectionRealtimeRow(eventCode);
-  inspectionRealtimeStore.setCell(
-    INSPECTION_REALTIME_TABLE_ID,
-    eventCode,
-    LATEST_VERSION_CELL_ID,
-    0
-  );
+  realtimeStore.resetVersion(eventCode);
 };
 
 export const subscribeToInspectionRealtimeVersion = (
   eventCode: string,
   listener: () => void
-): (() => void) => {
-  ensureInspectionRealtimeRow(eventCode);
-  const listenerId = inspectionRealtimeStore.addCellListener(
-    INSPECTION_REALTIME_TABLE_ID,
-    eventCode,
-    LATEST_VERSION_CELL_ID,
-    listener
-  );
-  return () => {
-    inspectionRealtimeStore.delListener(listenerId);
-  };
-};
+): (() => void) => realtimeStore.subscribeToVersion(eventCode, listener);

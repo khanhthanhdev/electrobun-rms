@@ -16,6 +16,7 @@ import {
 } from "../schedule/qualification-schedule-service";
 
 const MATCH_TYPE_ORDER: ControlMatchType[] = ["practice", "quals"];
+const MATCH_CONTROL_REQUEST_TIMEOUT_MS = 7_000;
 const MATCH_NAME_PREFIX: Record<ControlMatchType, string> = {
   practice: "P",
   quals: "Q",
@@ -105,6 +106,29 @@ const readSettledError = (
   return "Unknown request error.";
 };
 
+const withTimeout = <T>(
+  request: Promise<T>,
+  requestLabel: string
+): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `${requestLabel} timed out after ${MATCH_CONTROL_REQUEST_TIMEOUT_MS}ms.`
+        )
+      );
+    }, MATCH_CONTROL_REQUEST_TIMEOUT_MS);
+  });
+  // Prevent unhandled rejections when timeout wins the race.
+  void request.catch(() => undefined);
+  return Promise.race([request, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+};
+
 const toActiveScheduleType = (
   practiceSchedule: ScheduleResponse | null,
   qualificationSchedule: ScheduleResponse | null,
@@ -129,10 +153,19 @@ export const fetchMatchControlData = async (
     practiceResultsResult,
     qualificationResultsResult,
   ] = await Promise.allSettled([
-    fetchPracticeSchedule(eventCode, token),
-    fetchQualificationSchedule(eventCode, token),
-    fetchMatchResults(eventCode, "practice", token),
-    fetchMatchResults(eventCode, "quals", token),
+    withTimeout(fetchPracticeSchedule(eventCode, token), "Practice schedule"),
+    withTimeout(
+      fetchQualificationSchedule(eventCode, token),
+      "Qualification schedule"
+    ),
+    withTimeout(
+      fetchMatchResults(eventCode, "practice", token),
+      "Practice results"
+    ),
+    withTimeout(
+      fetchMatchResults(eventCode, "quals", token),
+      "Qualification results"
+    ),
   ]);
 
   const practiceSchedule = readSettledValue(practiceScheduleResult);

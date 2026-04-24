@@ -177,6 +177,7 @@ const StatusBar = ({
 
 const ActionBar = ({
   activeState,
+  canLoadNext,
   loadedState,
   onAbort,
   onCommit,
@@ -187,6 +188,7 @@ const ActionBar = ({
   onUnload,
 }: {
   activeState: ActiveMatchState;
+  canLoadNext: boolean;
   loadedState: LoadedMatchState;
   onAbort: () => void;
   onCommit: () => void;
@@ -198,7 +200,7 @@ const ActionBar = ({
 }): JSX.Element => {
   const [showAbortDialog, setShowAbortDialog] = useState(false);
   const isInProgress = activeState === "in_progress";
-  const canLoadNext = activeState === "idle";
+  const canLoadNextAction = canLoadNext && activeState === "idle";
   const canUnload = loadedState !== "idle" && activeState === "idle";
   const canPreview = loadedState === "loaded";
   const canShowMatch = loadedState === "preview";
@@ -212,7 +214,7 @@ const ActionBar = ({
         <div className="match-control-action-row">
           <button
             className="button"
-            disabled={!canLoadNext}
+            disabled={!canLoadNextAction}
             onClick={onLoadNext}
             type="button"
           >
@@ -820,17 +822,9 @@ export const EventControlPage = ({
     [data, activeMatchRef]
   );
   const selectedTableMatch = activeMatchRef ?? loadedMatchRef;
-
-  // ---------------------------------------------------------------------------
-  // Action handlers — POST to server, state comes back via SSE
-  // ---------------------------------------------------------------------------
-
-  const handleLoadNextMatch = useCallback(() => {
-    if (!token) {
-      return;
-    }
-    const nextMatch = selectedRows.find(
-      (row) => {
+  const nextLoadableMatch = useMemo(
+    () =>
+      selectedRows.find((row) => {
         if (row.state !== "UNPLAYED") {
           return false;
         }
@@ -842,21 +836,46 @@ export const EventControlPage = ({
           return false;
         }
         return true;
-      }
-    );
-    if (nextMatch) {
+      }) ?? null,
+    [selectedRows, activeMatchRef, loadedMatchRef]
+  );
+  const canLoadNext =
+    Boolean(token) &&
+    Boolean(data) &&
+    !isLoading &&
+    !error &&
+    nextLoadableMatch !== null;
+
+  // ---------------------------------------------------------------------------
+  // Action handlers — POST to server, state comes back via SSE
+  // ---------------------------------------------------------------------------
+
+  const handleLoadNextMatch = useCallback(() => {
+    if (!token || !nextLoadableMatch) {
+      return;
+    }
+    const loadFn = () =>
       postMatchControlLoad(
         eventCode,
         token,
-        toDisplayMatchRef(nextMatch),
+        toDisplayMatchRef(nextLoadableMatch),
         versionRef.current
       )
         .then((res) => applyServerState(res.state))
         .catch(handleTransitionError);
+
+    if (loadedMatchRef) {
+      postMatchControlTransition(eventCode, token, "unload", versionRef.current)
+        .then((res) => {
+          applyServerState(res.state);
+          return loadFn();
+        })
+        .catch(handleTransitionError);
+    } else {
+      loadFn();
     }
   }, [
-    selectedRows,
-    activeMatchRef,
+    nextLoadableMatch,
     loadedMatchRef,
     eventCode,
     token,
@@ -877,17 +896,30 @@ export const EventControlPage = ({
       if (matchRefEquals(ref, activeMatchRef)) {
         return;
       }
-      postMatchControlLoad(
-        eventCode,
-        token,
-        toDisplayMatchRef(row),
-        versionRef.current
-      )
-        .then((res) => applyServerState(res.state))
-        .catch(handleTransitionError);
+      const loadFn = () =>
+        postMatchControlLoad(
+          eventCode,
+          token,
+          toDisplayMatchRef(row),
+          versionRef.current
+        )
+          .then((res) => applyServerState(res.state))
+          .catch(handleTransitionError);
+
+      if (loadedMatchRef) {
+        postMatchControlTransition(eventCode, token, "unload", versionRef.current)
+          .then((res) => {
+            applyServerState(res.state);
+            return loadFn();
+          })
+          .catch(handleTransitionError);
+      } else {
+        loadFn();
+      }
     },
     [
       activeMatchRef,
+      loadedMatchRef,
       selectedMatchType,
       selectedRows,
       eventCode,
@@ -1028,6 +1060,7 @@ export const EventControlPage = ({
 
         <ActionBar
           activeState={activeState}
+          canLoadNext={canLoadNext}
           loadedState={loadedState}
           onAbort={handleAbortMatch}
           onCommit={handleCommitMatch}

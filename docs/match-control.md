@@ -8,9 +8,10 @@ The Match Control page (URL: `/event/$eventcode/control/`) serves as the central
 
 ### Transition guardrails
 
-- `LOAD` is allowed when `activeState === "IDLE"` and replaces any staged loaded state (`LOADED`, `PREVIEW`, or `READY`) back to `LOADED`.
+- `LOAD` requires both `activeState === "IDLE"` **and** `loadedState === "IDLE"`. A staged match must be unloaded first; an active match must be aborted or committed first.
 - `UNLOAD` clears the staged match (`loadedMatch = null`, `loadedState = "IDLE"`).
 - `UNLOAD` is rejected when no staged match exists (`loadedState === "IDLE"`).
+- The frontend auto-chains `UNLOAD → LOAD` when the operator clicks "Load Next Match" while a match is already staged.
 
 ### Runtime invariants
 

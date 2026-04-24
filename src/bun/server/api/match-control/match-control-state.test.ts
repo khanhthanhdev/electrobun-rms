@@ -17,8 +17,8 @@ const nextEventCode = (suffix: string): string =>
   `TEST_MATCH_CONTROL_${suffix}_${Math.random().toString(36).slice(2, 8)}`;
 
 describe("match control state transitions", () => {
-  it("allows LOAD from PREVIEW state and resets loaded state to LOADED", () => {
-    const eventCode = nextEventCode("load_preview_allowed");
+  it("rejects LOAD when a match is already staged in PREVIEW", () => {
+    const eventCode = nextEventCode("load_preview_rejected");
 
     const load = applyTransition(
       eventCode,
@@ -39,15 +39,15 @@ describe("match control state transitions", () => {
       { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
       0
     );
-    expect("state" in loadAgain).toBe(true);
-    if ("state" in loadAgain) {
-      expect(loadAgain.state.loadedState).toBe("LOADED");
-      expect(loadAgain.state.loadedMatch?.matchNumber).toBe(2);
+    expect("error" in loadAgain).toBe(true);
+    if ("error" in loadAgain) {
+      expect(loadAgain.error).toBe("INVALID_TRANSITION");
+      expect(loadAgain.message).toContain("Unload");
     }
   });
 
-  it("allows LOAD from READY state and replaces staged match", () => {
-    const eventCode = nextEventCode("load_ready_allowed");
+  it("rejects LOAD when a match is already staged in READY", () => {
+    const eventCode = nextEventCode("load_ready_rejected");
 
     const load = applyTransition(
       eventCode,
@@ -75,10 +75,101 @@ describe("match control state transitions", () => {
       { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
       0
     );
-    expect("state" in loadAgain).toBe(true);
-    if ("state" in loadAgain) {
-      expect(loadAgain.state.loadedState).toBe("LOADED");
-      expect(loadAgain.state.loadedMatch?.matchNumber).toBe(2);
+    expect("error" in loadAgain).toBe(true);
+    if ("error" in loadAgain) {
+      expect(loadAgain.error).toBe("INVALID_TRANSITION");
+      expect(loadAgain.message).toContain("Unload");
+    }
+  });
+
+  it("rejects LOAD when activeState is IN_PROGRESS", () => {
+    const eventCode = nextEventCode("load_in_progress_rejected");
+
+    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
+
+    const loadAttempt = applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
+      0
+    );
+    expect("error" in loadAttempt).toBe(true);
+    if ("error" in loadAttempt) {
+      expect(loadAttempt.error).toBe("INVALID_TRANSITION");
+      expect(loadAttempt.message).toContain("active");
+    }
+  });
+
+  it("rejects LOAD when activeState is COMPLETED", () => {
+    const eventCode = nextEventCode("load_completed_rejected");
+
+    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "AUTO_COMPLETE" }, 0);
+
+    const loadAttempt = applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
+      0
+    );
+    expect("error" in loadAttempt).toBe(true);
+    if ("error" in loadAttempt) {
+      expect(loadAttempt.error).toBe("INVALID_TRANSITION");
+      expect(loadAttempt.message).toContain("active");
+    }
+  });
+
+  it("allows LOAD after UNLOAD clears staged match", () => {
+    const eventCode = nextEventCode("unload_then_load");
+
+    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "UNLOAD", expectedVersion: 0 }, 0);
+
+    const loadNew = applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
+      0
+    );
+    expect("state" in loadNew).toBe(true);
+    if ("state" in loadNew) {
+      expect(loadNew.state.loadedState).toBe("LOADED");
+      expect(loadNew.state.loadedMatch?.matchNumber).toBe(2);
+    }
+  });
+
+  it("allows LOAD after ABORT and UNLOAD sequence", () => {
+    const eventCode = nextEventCode("abort_unload_load");
+
+    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
+
+    // ABORT returns match to LOADED
+    const abort = applyTransition(eventCode, { type: "ABORT", expectedVersion: 0 }, 0);
+    expect("state" in abort).toBe(true);
+    if ("state" in abort) {
+      expect(abort.state.loadedState).toBe("LOADED");
+      expect(abort.state.activeState).toBe("IDLE");
+    }
+
+    // Must UNLOAD before LOAD
+    applyTransition(eventCode, { type: "UNLOAD", expectedVersion: 0 }, 0);
+
+    const loadNew = applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(2) },
+      0
+    );
+    expect("state" in loadNew).toBe(true);
+    if ("state" in loadNew) {
+      expect(loadNew.state.loadedState).toBe("LOADED");
+      expect(loadNew.state.loadedMatch?.matchNumber).toBe(2);
     }
   });
 

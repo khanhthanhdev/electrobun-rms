@@ -77,15 +77,11 @@ export const publishDisplayFromMatchControl = (
       });
       break;
 
-    // AUTO_COMPLETE keeps mode "match-start" — the display scene derives
-    // timer completion from startedAtMs + MATCH_DURATION_SECONDS and freezes
-    // at 0:00 automatically. Re-publishing ensures late-joining SSE clients
-    // receive the latest active match data.
     case "AUTO_COMPLETE":
       displaySyncHub.publish({
         eventCode: state.eventCode,
         kind: "COMMAND_ISSUED",
-        mode: "match-start",
+        mode: "match-complete",
         loadedMatch: null,
         activeMatch: state.activeMatch,
         startedAtMs: state.activeStartedAtMs,

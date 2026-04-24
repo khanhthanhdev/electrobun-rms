@@ -159,7 +159,7 @@ test("updates schedule row state from incomplete to committed as scores are post
   );
 });
 
-test("allows loading next match while staged state is READY", async ({
+test("auto-unloads staged READY match then loads next match", async ({
   page,
   request,
 }) => {
@@ -181,6 +181,7 @@ test("allows loading next match while staged state is READY", async ({
   await page.getByRole("button", { name: "Show Match" }).click();
   await expect(loadedRow).toContainText("Ready");
 
+  // Frontend auto-unloads Q1 before loading Q2
   await loadNextButton.click();
   await expect(loadedRow).toContainText("Q2");
   await expect(loadedRow).toContainText("Not Started");

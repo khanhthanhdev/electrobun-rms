@@ -209,14 +209,14 @@ export const applyTransition = (
       if (state.activeState !== "IDLE") {
         return {
           error: "INVALID_TRANSITION",
-          message: "Cannot load a match while another is active.",
+          message: "Cannot load a match while another is active. Abort or commit first.",
           currentState: state,
         };
       }
-      if (state.loadedState !== "IDLE" && state.loadedState !== "LOADED") {
+      if (state.loadedState !== "IDLE") {
         return {
           error: "INVALID_TRANSITION",
-          message: `Cannot load from loadedState "${state.loadedState}". Unload first.`,
+          message: "A match is already staged. Unload it before loading a new one.",
           currentState: state,
         };
       }

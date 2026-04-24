@@ -124,6 +124,7 @@ When you run `bun run dev` (without HMR):
 ## Documentation
 
 - [Realtime Sync Architecture](./docs/realtime-sync-architecture.md) - SSE pattern for live data
+- [Local App Pull / Push API](./docs/local-app-sync-api.md) - local app bootstrap and outbound sync endpoints
 - [Match Control Workflow](./docs/match-control.md) - Match execution flow
 - [Display Control](./docs/display-control.md) - Audience display configuration
 - [Match Scheduling Algorithms](./docs/match-scheduling-algorithms.md) - Schedule generation

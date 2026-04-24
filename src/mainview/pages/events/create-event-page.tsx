@@ -1,8 +1,13 @@
-import { type FormEvent, useState } from "react";
 import {
   type CreateManualEventPayload,
   createManualEvent,
 } from "@/features/events/event-admin";
+import {
+  type EventFormFieldChangeHandler,
+  EventFormFields,
+  type EventFormCommonFields,
+} from "@/features/events/event-form-fields";
+import { useEventFormController } from "@/features/events/use-event-form-controller";
 
 const MAX_EVENT_CODE_LENGTH = 8;
 const EVENT_CODE_INPUT_TITLE = "Event code must be 1-8 letters or digits.";
@@ -11,7 +16,9 @@ interface CreateEventPageProps {
   token: string | null;
 }
 
-const INITIAL_FORM: CreateManualEventPayload = {
+type CreateEventForm = CreateManualEventPayload & EventFormCommonFields;
+
+const INITIAL_FORM: CreateEventForm = {
   divisions: 1,
   endDate: "",
   eventCode: "",
@@ -25,44 +32,43 @@ const INITIAL_FORM: CreateManualEventPayload = {
 export const CreateEventPage = ({
   token,
 }: CreateEventPageProps): JSX.Element => {
-  const [form, setForm] = useState<CreateManualEventPayload>(INITIAL_FORM);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const updateField = <K extends keyof CreateManualEventPayload>(
-    key: K,
-    value: CreateManualEventPayload[K]
-  ): void => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    if (!token) {
-      setErrorMessage("You must be logged in.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      const result = await createManualEvent(form, token);
-
+  const { handleSubmit, state, updateField } = useEventFormController<
+    CreateEventForm,
+    Awaited<ReturnType<typeof createManualEvent>>
+  >({
+    initialForm: INITIAL_FORM,
+    onSubmit: createManualEvent,
+    onSubmitSuccess: (result) => {
       window.history.pushState(
         {},
         "",
         `/event/${result.event.code}/dashboard/defaultaccounts`
       );
       window.dispatchEvent(new PopStateEvent("popstate"));
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to create event."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    },
+    submitErrorMessage: "Failed to create event.",
+    token,
+  });
+
+  const handleCommonFieldChange: EventFormFieldChangeHandler = (
+    key,
+    value
+  ) => {
+    updateField(
+      key as keyof CreateEventForm,
+      value as CreateEventForm[keyof CreateEventForm]
+    );
   };
+
+  if (!state.form) {
+    return (
+      <main className="page-shell page-shell--center">
+        <p className="message-block" data-variant="danger" role="alert">
+          Failed to load form.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main className="page-shell page-shell--top">
@@ -79,9 +85,9 @@ export const CreateEventPage = ({
           </p>
         </header>
 
-        {errorMessage ? (
+        {state.errorMessage ? (
           <p className="message-block" data-variant="danger" role="alert">
-            {errorMessage}
+            {state.errorMessage}
           </p>
         ) : null}
 
@@ -103,116 +109,25 @@ export const CreateEventPage = ({
               required
               title={EVENT_CODE_INPUT_TITLE}
               type="text"
-              value={form.eventCode}
+              value={state.form.eventCode}
             />
             <p className="form-help" data-hint>
               1-8 characters: letters and digits only.
             </p>
           </div>
 
-          <div className="form-row" data-field>
-            <label htmlFor="eventName">Event Name</label>
-            <input
-              id="eventName"
-              onChange={(e) => {
-                updateField("eventName", e.target.value);
-              }}
-              placeholder="e.g. National Robotics Competition 2026"
-              required
-              type="text"
-              value={form.eventName}
-            />
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="region">Region</label>
-            <input
-              id="region"
-              onChange={(e) => {
-                updateField("region", e.target.value);
-              }}
-              placeholder="e.g. Vietnam"
-              required
-              type="text"
-              value={form.region}
-            />
-          </div>
-
-          <div className="form-grid-2">
-            <div>
-              <label htmlFor="startDate">Start Date</label>
-              <input
-                id="startDate"
-                onChange={(e) => {
-                  updateField("startDate", e.target.value);
-                }}
-                required
-                type="date"
-                value={form.startDate}
-              />
-            </div>
-            <div>
-              <label htmlFor="endDate">End Date</label>
-              <input
-                id="endDate"
-                min={form.startDate || undefined}
-                onChange={(e) => {
-                  updateField("endDate", e.target.value);
-                }}
-                required
-                type="date"
-                value={form.endDate}
-              />
-            </div>
-          </div>
-
-          <div className="form-grid-2">
-            <div>
-              <label htmlFor="eventType">Event Type</label>
-              <input
-                id="eventType"
-                min={0}
-                onChange={(e) => {
-                  updateField("eventType", Number(e.target.value));
-                }}
-                required
-                type="number"
-                value={form.eventType}
-              />
-            </div>
-            <div>
-              <label htmlFor="divisions">Divisions</label>
-              <input
-                id="divisions"
-                min={1}
-                onChange={(e) => {
-                  updateField("divisions", Number(e.target.value));
-                }}
-                required
-                type="number"
-                value={form.divisions}
-              />
-            </div>
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="fields">Number of Fields</label>
-            <input
-              id="fields"
-              max={100}
-              min={1}
-              onChange={(e) => {
-                updateField("fields", Number(e.target.value));
-              }}
-              required
-              type="number"
-              value={form.fields}
-            />
-          </div>
+          <EventFormFields
+            endDateMin={state.form.startDate || undefined}
+            eventNamePlaceholder="e.g. National Robotics Competition 2026"
+            fieldsMax={100}
+            form={state.form}
+            onFieldChange={handleCommonFieldChange}
+            regionPlaceholder="e.g. Vietnam"
+          />
         </div>
 
-        <button className="form-submit" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Creating Event..." : "Create Event"}
+        <button className="form-submit" disabled={state.isSubmitting} type="submit">
+          {state.isSubmitting ? "Creating Event..." : "Create Event"}
         </button>
       </form>
     </main>

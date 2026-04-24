@@ -44,15 +44,17 @@ const AlliancePreviewCard = ({
 }: AlliancePreviewCardProps): JSX.Element => (
   <article
     aria-label={`${alliance}: ${teamName?.trim() || "Team pending"}`}
-    className={`display-match-preview-card ${className}`}
+    className={`display-match-preview-card display-match-preview-card--preview ${className}`}
   >
     <span className="display-match-preview-team-chip">
       {formatTeamId(teamNumber)}
     </span>
-    <p className="display-match-preview-team-name">
-      {teamName?.trim() || "Team pending"}
-    </p>
-    <span className="display-match-preview-team-score">0</span>
+    <div className="display-match-preview-card-body">
+      <p className="display-match-preview-team-name">
+        {teamName?.trim() || "Team pending"}
+      </p>
+      <span className="display-match-preview-team-score">0</span>
+    </div>
   </article>
 );
 

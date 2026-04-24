@@ -1,64 +1,22 @@
-import { type FormEvent, useEffect, useReducer } from "react";
+import { useEffect, useState } from "react";
 import {
   fetchEvent,
   type UpdateEventPayload,
   updateEvent,
 } from "@/features/events/event-admin";
-import { LoadingIndicator } from "../../shared/components/loading-indicator";
+import {
+  EventFormFields,
+  type EventFormCommonFields,
+} from "@/features/events/event-form-fields";
+import { useEventFormController } from "@/features/events/use-event-form-controller";
+import { LoadingIndicator } from "@/shared/components/loading-indicator";
 
 interface EditEventPageProps {
   eventCode: string;
   token: string | null;
 }
 
-interface EditEventPageState {
-  errorMessage: string | null;
-  form: UpdateEventPayload | null;
-  isLoading: boolean;
-  isSubmitting: boolean;
-  successMessage: string | null;
-}
-
-type EditEventPageAction =
-  | {
-      type: "set";
-      payload: Partial<EditEventPageState>;
-    }
-  | {
-      type: "updateField";
-      key: keyof UpdateEventPayload;
-      value: UpdateEventPayload[keyof UpdateEventPayload];
-    };
-
-const editEventPageInitialState: EditEventPageState = {
-  form: null,
-  isLoading: true,
-  isSubmitting: false,
-  errorMessage: null,
-  successMessage: null,
-};
-
-const editEventPageReducer = (
-  state: EditEventPageState,
-  action: EditEventPageAction
-): EditEventPageState => {
-  switch (action.type) {
-    case "set":
-      return { ...state, ...action.payload };
-    case "updateField":
-      return {
-        ...state,
-        form: state.form
-          ? {
-              ...state.form,
-              [action.key]: action.value,
-            }
-          : state.form,
-      };
-    default:
-      return state;
-  }
-};
+type EditableEventForm = UpdateEventPayload & EventFormCommonFields;
 
 const timestampToDateString = (ts: number): string => {
   const date = new Date(ts);
@@ -72,138 +30,78 @@ export const EditEventPage = ({
   eventCode,
   token,
 }: EditEventPageProps): JSX.Element => {
-  const [state, dispatch] = useReducer(
-    editEventPageReducer,
-    editEventPageInitialState
-  );
+  const { dispatch, handleSubmit, setForm, state, updateField } =
+    useEventFormController<EditableEventForm, Awaited<ReturnType<typeof updateEvent>>>(
+      {
+        initialForm: null,
+        onSubmit: (form, authToken) => updateEvent(eventCode, form, authToken),
+        submitErrorMessage: "Failed to update event.",
+        successMessage: "Event updated successfully.",
+        token,
+      }
+    );
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
     if (!token) {
       dispatch({
-        type: "set",
         payload: {
           errorMessage: "You must be logged in to edit this event.",
-          isLoading: false,
         },
+        type: "set",
       });
+      setIsLoading(false);
       return;
     }
 
     fetchEvent(eventCode, token)
       .then((result) => {
-        if (!isCancelled) {
-          const event = result.event;
-          dispatch({
-            type: "set",
-            payload: {
-              form: {
-                eventName: event.name,
-                region: event.region,
-                eventType: event.type,
-                startDate: timestampToDateString(event.start),
-                endDate: timestampToDateString(event.end),
-                divisions: event.divisions,
-                fields: event.fields ?? 1,
-                finals: event.finals,
-                status: event.status,
-              },
-            },
-          });
+        if (isCancelled) {
+          return;
         }
+
+        const event = result.event;
+        setForm({
+          divisions: event.divisions,
+          endDate: timestampToDateString(event.end),
+          eventName: event.name,
+          eventType: event.type,
+          fields: event.fields ?? 1,
+          finals: event.finals,
+          region: event.region,
+          startDate: timestampToDateString(event.start),
+          status: event.status,
+        });
       })
       .catch((error) => {
-        if (!isCancelled) {
-          dispatch({
-            type: "set",
-            payload: {
-              errorMessage:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load event details.",
-            },
-          });
+        if (isCancelled) {
+          return;
         }
+
+        dispatch({
+          payload: {
+            errorMessage:
+              error instanceof Error
+                ? error.message
+                : "Failed to load event details.",
+          },
+          type: "set",
+        });
       })
       .finally(() => {
         if (!isCancelled) {
-          dispatch({
-            type: "set",
-            payload: {
-              isLoading: false,
-            },
-          });
+          setIsLoading(false);
         }
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [eventCode, token]);
+  }, [dispatch, eventCode, setForm, token]);
 
-  const updateField = <K extends keyof UpdateEventPayload>(
-    key: K,
-    value: UpdateEventPayload[K]
-  ): void => {
-    dispatch({
-      type: "updateField",
-      key,
-      value,
-    });
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    if (!token) {
-      dispatch({
-        type: "set",
-        payload: {
-          errorMessage: "You must be logged in.",
-        },
-      });
-      return;
-    }
-    if (!state.form) {
-      return;
-    }
-
-    dispatch({
-      type: "set",
-      payload: {
-        isSubmitting: true,
-        errorMessage: null,
-        successMessage: null,
-      },
-    });
-
-    try {
-      await updateEvent(eventCode, state.form, token);
-      dispatch({
-        type: "set",
-        payload: {
-          successMessage: "Event updated successfully.",
-        },
-      });
-    } catch (error) {
-      dispatch({
-        type: "set",
-        payload: {
-          errorMessage:
-            error instanceof Error ? error.message : "Failed to update event.",
-        },
-      });
-    } finally {
-      dispatch({
-        type: "set",
-        payload: {
-          isSubmitting: false,
-        },
-      });
-    }
-  };
-
-  if (state.isLoading) {
+  if (isLoading) {
     return (
       <main className="page-shell page-shell--center">
         <LoadingIndicator />
@@ -257,101 +155,7 @@ export const EditEventPage = ({
             <input disabled id="eventCode" type="text" value={eventCode} />
           </div>
 
-          <div className="form-row" data-field>
-            <label htmlFor="eventName">Event Name</label>
-            <input
-              id="eventName"
-              onChange={(e) => {
-                updateField("eventName", e.target.value);
-              }}
-              required
-              type="text"
-              value={state.form.eventName}
-            />
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="region">Region</label>
-            <input
-              id="region"
-              onChange={(e) => {
-                updateField("region", e.target.value);
-              }}
-              required
-              type="text"
-              value={state.form.region}
-            />
-          </div>
-
-          <div className="form-grid-2">
-            <div>
-              <label htmlFor="startDate">Start Date</label>
-              <input
-                id="startDate"
-                onChange={(e) => {
-                  updateField("startDate", e.target.value);
-                }}
-                required
-                type="date"
-                value={state.form.startDate}
-              />
-            </div>
-            <div>
-              <label htmlFor="endDate">End Date</label>
-              <input
-                id="endDate"
-                onChange={(e) => {
-                  updateField("endDate", e.target.value);
-                }}
-                required
-                type="date"
-                value={state.form.endDate}
-              />
-            </div>
-          </div>
-
-          <div className="form-grid-2">
-            <div>
-              <label htmlFor="eventType">Event Type</label>
-              <input
-                id="eventType"
-                min={0}
-                onChange={(e) => {
-                  updateField("eventType", Number(e.target.value));
-                }}
-                required
-                type="number"
-                value={state.form.eventType}
-              />
-            </div>
-            <div>
-              <label htmlFor="divisions">Divisions</label>
-              <input
-                id="divisions"
-                min={1}
-                onChange={(e) => {
-                  updateField("divisions", Number(e.target.value));
-                }}
-                required
-                type="number"
-                value={state.form.divisions}
-              />
-            </div>
-          </div>
-
-          <div className="form-row" data-field>
-            <label htmlFor="fields">Number of Fields</label>
-            <input
-              id="fields"
-              min={1}
-              onChange={(e) => {
-                updateField("fields", Number(e.target.value));
-              }}
-              required
-              type="number"
-              value={state.form.fields}
-            />
-          </div>
+          <EventFormFields form={state.form} onFieldChange={updateField} />
         </div>
 
         <button
