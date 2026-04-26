@@ -69,6 +69,30 @@ export function requireInspector(
   );
 }
 
+function hasScorerRole(c: Context<AppEnv>, eventCode: string): boolean {
+  const auth = c.get("auth");
+  const scorerRoles = new Set(["ADMIN", "TSO", "HEAD_REFEREE", "REFEREE"]);
+  return auth.roles.some(
+    (role) =>
+      scorerRoles.has(role.role) &&
+      (role.event === "*" || role.event === eventCode)
+  );
+}
+
+export function requireScorer(
+  c: Context<AppEnv>,
+  eventCode: string
+): Response | null {
+  if (hasScorerRole(c, eventCode)) {
+    return null;
+  }
+
+  return c.json(
+    { error: "Forbidden", message: "Scorer access required." },
+    403
+  );
+}
+
 function hasLeadInspectorRole(c: Context<AppEnv>, eventCode: string): boolean {
   const auth = c.get("auth");
   const leadRoles = new Set(["ADMIN", "LEAD_INSPECTOR"]);
