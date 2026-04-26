@@ -1,5 +1,10 @@
 import type React from "react";
-import { useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import {
+  getMatchControlRealtimeState,
+  subscribeToMatchControlRealtimeState,
+  useMatchControlRealtime,
+} from "@/features/events/control";
 import {
   fetchPracticeSchedule,
   fetchQualificationSchedule,
@@ -1277,6 +1282,43 @@ export const HeadRefereePage = ({
     fieldNumber,
     token
   );
+
+  // Subscribe to match-control SSE so we auto-select the loaded/active match
+  useMatchControlRealtime(eventCode, token);
+
+  const findMatchIdx = useCallback(
+    (matchNumber: number, matchType: string): number => {
+      const normalizedType = matchType === "quals" ? "qual" : matchType;
+      return matches.findIndex(
+        (mb) =>
+          mb.match.matchNumber === matchNumber && mb.type === normalizedType
+      );
+    },
+    [matches]
+  );
+
+  useEffect(() => {
+    const syncFromControlState = (): void => {
+      const controlState = getMatchControlRealtimeState(eventCode);
+      if (!controlState) {
+        return;
+      }
+      const target = controlState.activeMatch ?? controlState.loadedMatch;
+      if (!target) {
+        return;
+      }
+      const idx = findMatchIdx(target.matchNumber, target.matchType);
+      if (idx >= 0) {
+        setActiveMatchIdx(idx);
+      }
+    };
+    syncFromControlState();
+    return subscribeToMatchControlRealtimeState(
+      eventCode,
+      syncFromControlState
+    );
+  }, [eventCode, findMatchIdx]);
+
   const activeMatch = matches[activeMatchIdx] ?? null;
 
   const matchType: MatchType = activeMatch
