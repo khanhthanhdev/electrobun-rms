@@ -44,6 +44,19 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
+const renderLiveBadge = (isVisible: boolean): JSX.Element | null => {
+  if (!isVisible) {
+    return null;
+  }
+
+  return (
+    <span aria-hidden className="match-control-live-badge">
+      {" "}
+      LIVE
+    </span>
+  );
+};
+
 export const ControlActiveMatchPanel = ({
   activeMatch,
   activeMatchRef,
@@ -102,7 +115,6 @@ export const ControlActiveMatchPanel = ({
 
   const isActiveMatch =
     activeState === "in_progress" &&
-    selectedMatch != null &&
     matchRefEquals(toMatchRef(selectedMatch), activeMatchRef);
   const matchLabel = `M${selectedMatch.matchNumber}`;
   const fieldLabel = `Field ${selectedMatch.fieldNumber}`;
@@ -147,12 +159,7 @@ export const ControlActiveMatchPanel = ({
           </p>
           <p className="match-control-active-score-value">
             {blueScore}
-            {isLiveScoring ? (
-              <span aria-hidden className="match-control-live-badge">
-                {" "}
-                LIVE
-              </span>
-            ) : null}
+            {renderLiveBadge(isLiveScoring)}
           </p>
         </div>
         <div className="match-control-active-alliance match-control-red-team">
@@ -161,12 +168,7 @@ export const ControlActiveMatchPanel = ({
           </p>
           <p className="match-control-active-score-value">
             {redScore}
-            {isLiveScoring ? (
-              <span aria-hidden className="match-control-live-badge">
-                {" "}
-                LIVE
-              </span>
-            ) : null}
+            {renderLiveBadge(isLiveScoring)}
           </p>
         </div>
       </div>

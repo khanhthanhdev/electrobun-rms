@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import type { Context } from "hono";
+import { Hono } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
@@ -118,10 +118,12 @@ type EventCodeResult =
 const getInspectionTeamContext = (
   c: Context<AppEnv>,
   eventCodeResolver: (ctx: Context<AppEnv>) => EventCodeResult
-): { ok: true; value: { eventCode: string; teamNumber: number } } | {
-  ok: false;
-  response: Response;
-} => {
+):
+  | { ok: true; value: { eventCode: string; teamNumber: number } }
+  | {
+      ok: false;
+      response: Response;
+    } => {
   const eventCodeResult = eventCodeResolver(c);
   if (!eventCodeResult.ok) {
     return eventCodeResult;
@@ -253,7 +255,10 @@ inspectionRoutes.get(
   "/:eventCode/inspection/teams/:teamNumber",
   requireAuth,
   (c) => {
-    const teamContextResult = getInspectionTeamContext(c, getInspectorEventCode);
+    const teamContextResult = getInspectionTeamContext(
+      c,
+      getInspectorEventCode
+    );
     if (!teamContextResult.ok) {
       return teamContextResult.response;
     }
@@ -387,7 +392,10 @@ inspectionRoutes.get(
   "/:eventCode/inspection/teams/:teamNumber/history",
   requireAuth,
   (c) => {
-    const teamContextResult = getInspectionTeamContext(c, getInspectorEventCode);
+    const teamContextResult = getInspectionTeamContext(
+      c,
+      getInspectorEventCode
+    );
     if (!teamContextResult.ok) {
       return teamContextResult.response;
     }

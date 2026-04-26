@@ -85,7 +85,11 @@ describe("match control state transitions", () => {
   it("rejects LOAD when activeState is IN_PROGRESS", () => {
     const eventCode = nextEventCode("load_in_progress_rejected");
 
-    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
     applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
@@ -105,7 +109,11 @@ describe("match control state transitions", () => {
   it("rejects LOAD when activeState is COMPLETED", () => {
     const eventCode = nextEventCode("load_completed_rejected");
 
-    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
     applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
@@ -126,7 +134,11 @@ describe("match control state transitions", () => {
   it("allows LOAD after UNLOAD clears staged match", () => {
     const eventCode = nextEventCode("unload_then_load");
 
-    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
     applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "UNLOAD", expectedVersion: 0 }, 0);
 
@@ -145,13 +157,21 @@ describe("match control state transitions", () => {
   it("allows LOAD after ABORT and UNLOAD sequence", () => {
     const eventCode = nextEventCode("abort_unload_load");
 
-    applyTransition(eventCode, { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) }, 0);
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
     applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
     applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
 
     // ABORT returns match to LOADED
-    const abort = applyTransition(eventCode, { type: "ABORT", expectedVersion: 0 }, 0);
+    const abort = applyTransition(
+      eventCode,
+      { type: "ABORT", expectedVersion: 0 },
+      0
+    );
     expect("state" in abort).toBe(true);
     if ("state" in abort) {
       expect(abort.state.loadedState).toBe("LOADED");

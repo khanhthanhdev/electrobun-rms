@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   type AccountFormState,
   beginAccountFormSubmit,
@@ -59,12 +59,15 @@ export const ManageUserPage = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const setField = (payload: Partial<AccountFormState>): void => {
-    dispatch({
-      payload,
-      type: "set",
-    });
-  };
+  const setField = useCallback(
+    (payload: Partial<AccountFormState>): void => {
+      dispatch({
+        payload,
+        type: "set",
+      });
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -103,7 +106,9 @@ export const ManageUserPage = ({
 
         setField({
           errorMessage:
-            error instanceof Error ? error.message : "Failed to load user details.",
+            error instanceof Error
+              ? error.message
+              : "Failed to load user details.",
         });
       })
       .finally(() => {
@@ -117,7 +122,7 @@ export const ManageUserPage = ({
     return () => {
       isCancelled = true;
     };
-  }, [token, username]);
+  }, [token, username, setField]);
 
   const handleUpdate = async (
     event: FormEvent<HTMLFormElement>

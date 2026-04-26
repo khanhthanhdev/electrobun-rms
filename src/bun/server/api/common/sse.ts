@@ -11,9 +11,9 @@ export const awaitStreamClose = (stream: SSEStreamingApi): Promise<void> =>
 
 interface QueuedHeartbeatSseOptions<TEvent> {
   heartbeatMs: number;
-  writeInitial: () => Promise<void>;
   subscribe: (onEvent: (event: TEvent) => void) => () => void;
   writeEvent: (event: TEvent) => Promise<void>;
+  writeInitial: () => Promise<void>;
 }
 
 export const runQueuedHeartbeatSse = async <TEvent>(

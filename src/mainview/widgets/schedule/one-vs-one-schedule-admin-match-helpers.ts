@@ -1,4 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
+import type {
+  OneVsOneEditableMatch,
+  OneVsOneSaveMatch,
+  ScheduleMessageSetter,
+  TeamNamesByNumber,
+} from "./one-vs-one-schedule-admin-types";
 import {
   buildMatchesCsvFileContent,
   type OneVsOneCsvMatch,
@@ -6,12 +12,6 @@ import {
 import type { ScheduleMatchRow } from "./schedule-match-table";
 import type { MatchBlockState } from "./schedule-utils";
 import { getFirstBlockStartTime } from "./use-one-vs-one-schedule-controller";
-import type {
-  OneVsOneEditableMatch,
-  OneVsOneSaveMatch,
-  ScheduleMessageSetter,
-  TeamNamesByNumber,
-} from "./one-vs-one-schedule-admin-types";
 
 const MS_IN_SECOND = 1000;
 
@@ -102,9 +102,7 @@ interface BuildOneVsOneMatchRowsArgs<TMatch extends OneVsOneEditableMatch> {
   teamNamesByNumber: TeamNamesByNumber;
 }
 
-export const buildOneVsOneMatchRows = <
-  TMatch extends OneVsOneEditableMatch,
->({
+export const buildOneVsOneMatchRows = <TMatch extends OneVsOneEditableMatch>({
   baseStartTime,
   cycleTimeSeconds,
   fieldCount,

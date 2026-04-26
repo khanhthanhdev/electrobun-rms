@@ -32,9 +32,7 @@ export interface RealtimeVersionStore<TEvent extends RealtimeVersionEvent> {
   subscribeToVersion: (eventCode: string, listener: () => void) => () => void;
 }
 
-export const createRealtimeVersionStore = <
-  TEvent extends RealtimeVersionEvent,
->(
+export const createRealtimeVersionStore = <TEvent extends RealtimeVersionEvent>(
   tableId: string
 ): RealtimeVersionStore<TEvent> => {
   const store = createStore();
@@ -66,17 +64,31 @@ export const createRealtimeVersionStore = <
     ensureRow(event.eventCode);
 
     store.transaction(() => {
-      const currentVersion = readNumberCell(event.eventCode, LATEST_VERSION_CELL_ID, 0);
+      const currentVersion = readNumberCell(
+        event.eventCode,
+        LATEST_VERSION_CELL_ID,
+        0
+      );
 
       if (event.version > currentVersion) {
-        store.setCell(tableId, event.eventCode, LAST_EVENT_AT_CELL_ID, event.changedAt);
+        store.setCell(
+          tableId,
+          event.eventCode,
+          LAST_EVENT_AT_CELL_ID,
+          event.changedAt
+        );
         store.setCell(
           tableId,
           event.eventCode,
           LAST_EVENT_ID_CELL_ID,
           `${event.eventCode}:${event.version}`
         );
-        store.setCell(tableId, event.eventCode, LATEST_VERSION_CELL_ID, event.version);
+        store.setCell(
+          tableId,
+          event.eventCode,
+          LATEST_VERSION_CELL_ID,
+          event.version
+        );
       }
     });
   };

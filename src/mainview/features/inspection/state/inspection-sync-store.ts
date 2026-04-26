@@ -1,12 +1,13 @@
-import type { InspectionRealtimeChangeEvent } from "../../../shared/types/inspection";
 import {
   createRealtimeVersionStore,
   type GenericRealtimeConnectionState,
 } from "../../../shared/state/create-realtime-version-store";
+import type { InspectionRealtimeChangeEvent } from "../../../shared/types/inspection";
 
-const realtimeStore = createRealtimeVersionStore<InspectionRealtimeChangeEvent>(
-  "inspectionRealtime"
-);
+const realtimeStore =
+  createRealtimeVersionStore<InspectionRealtimeChangeEvent>(
+    "inspectionRealtime"
+  );
 
 export type InspectionRealtimeConnectionState = GenericRealtimeConnectionState;
 

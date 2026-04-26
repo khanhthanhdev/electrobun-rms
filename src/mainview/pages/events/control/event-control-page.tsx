@@ -851,7 +851,7 @@ export const EventControlPage = ({
   // ---------------------------------------------------------------------------
 
   const handleLoadNextMatch = useCallback(() => {
-    if (!token || !nextLoadableMatch) {
+    if (!(token && nextLoadableMatch)) {
       return;
     }
     const loadFn = () =>
@@ -907,7 +907,12 @@ export const EventControlPage = ({
           .catch(handleTransitionError);
 
       if (loadedMatchRef) {
-        postMatchControlTransition(eventCode, token, "unload", versionRef.current)
+        postMatchControlTransition(
+          eventCode,
+          token,
+          "unload",
+          versionRef.current
+        )
           .then((res) => {
             applyServerState(res.state);
             return loadFn();
@@ -950,12 +955,7 @@ export const EventControlPage = ({
     if (!token) {
       return;
     }
-    postMatchControlTransition(
-      eventCode,
-      token,
-      "unload",
-      versionRef.current
-    )
+    postMatchControlTransition(eventCode, token, "unload", versionRef.current)
       .then((res) => applyServerState(res.state))
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, handleTransitionError]);

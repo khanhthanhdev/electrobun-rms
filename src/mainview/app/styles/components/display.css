@@ -376,10 +376,14 @@
   gap: 1rem;
   align-items: center;
   justify-content: center;
-  min-height: 3.5rem;
   min-width: min(100%, 28.75rem);
+  min-height: 3.5rem;
   padding: 0.625rem 2rem;
-  background: linear-gradient(180deg, rgba(26, 25, 77, 0.92), rgba(19, 18, 63, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(26, 25, 77, 0.92),
+    rgba(19, 18, 63, 0.92)
+  );
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1.35rem;
   box-shadow:
@@ -430,7 +434,11 @@
   inset: 14% 40% 18%;
   pointer-events: none;
   content: "";
-  background: radial-gradient(circle, rgba(57, 210, 255, 0.18) 0%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgba(57, 210, 255, 0.18) 0%,
+    transparent 72%
+  );
   filter: blur(2rem);
 }
 
@@ -459,10 +467,10 @@
 }
 
 .display-match-preview-card--preview {
+  justify-content: flex-start;
   min-height: clamp(32rem, 56vh, 36.5rem);
   padding: clamp(1.75rem, 4vh, 3rem) clamp(1.75rem, 2vw, 2.5rem)
     clamp(2rem, 4vh, 3.25rem);
-  justify-content: flex-start;
   border-radius: 3rem;
 }
 
@@ -489,13 +497,21 @@
 }
 
 .display-match-preview-card--red {
-  background: linear-gradient(180deg, rgba(48, 12, 42, 0.9), rgba(32, 11, 39, 0.88));
+  background: linear-gradient(
+    180deg,
+    rgba(48, 12, 42, 0.9),
+    rgba(32, 11, 39, 0.88)
+  );
   border: 1px solid rgba(251, 44, 54, 0.38);
   box-shadow: 0 0 6.25rem -1.25rem rgba(239, 68, 68, 0.28);
 }
 
 .display-match-preview-card--blue {
-  background: linear-gradient(180deg, rgba(19, 35, 96, 0.9), rgba(15, 21, 61, 0.88));
+  background: linear-gradient(
+    180deg,
+    rgba(19, 35, 96, 0.9),
+    rgba(15, 21, 61, 0.88)
+  );
   border: 1px solid rgba(43, 127, 255, 0.42);
   box-shadow: 0 0 6.25rem -1.25rem rgba(59, 130, 246, 0.28);
 }
@@ -608,8 +624,7 @@
   display: block;
   width: min(100%, 24rem);
   height: auto;
-  filter:
-    drop-shadow(0 0 1rem rgba(255, 255, 255, 0.28))
+  filter: drop-shadow(0 0 1rem rgba(255, 255, 255, 0.28))
     drop-shadow(0 0 2.75rem rgba(80, 205, 255, 0.45));
 }
 

@@ -352,7 +352,8 @@ export const PracticeSchedulePage = ({
   const handleToggleActivationClick = createOneVsOneActivationClickHandler({
     hasMatches,
     isActive: state.isActive,
-    missingMatchesMessage: "Generate or import matches before activating schedule.",
+    missingMatchesMessage:
+      "Generate or import matches before activating schedule.",
     missingTokenMessage:
       "You must be logged in to update practice schedule activation.",
     onActivationUpdated: applyPracticeSchedule,

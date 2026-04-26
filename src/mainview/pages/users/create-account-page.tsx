@@ -51,7 +51,9 @@ export const CreateAccountPage = ({
     }
 
     try {
-      const normalizedUsername = normalizeAccountUsername(state.accountUsername);
+      const normalizedUsername = normalizeAccountUsername(
+        state.accountUsername
+      );
       const result = await createUserAccount(
         {
           password: state.password,

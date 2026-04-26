@@ -1,7 +1,6 @@
 import {
   connectRealtimeStream,
   type RealtimeConnectionState,
-  RealtimeFatalError,
 } from "../../../shared/services/realtime-stream-service";
 import type {
   InspectionRealtimeChangeEvent,
@@ -20,7 +19,7 @@ const VALID_CHANGE_KINDS = new Set<InspectionRealtimeChangeKind>([
   "SNAPSHOT_HINT",
 ]);
 
-export { RealtimeFatalError as InspectionRealtimeFatalError };
+export { RealtimeFatalError as InspectionRealtimeFatalError } from "../../../shared/services/realtime-stream-service";
 
 interface ConnectInspectionRealtimeOptions {
   eventCode: string;

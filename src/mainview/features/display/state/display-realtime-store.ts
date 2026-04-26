@@ -12,9 +12,8 @@ export interface DisplayRealtimeChangeEvent {
   version: number;
 }
 
-const realtimeStore = createRealtimeVersionStore<DisplayRealtimeChangeEvent>(
-  "displayRealtime"
-);
+const realtimeStore =
+  createRealtimeVersionStore<DisplayRealtimeChangeEvent>("displayRealtime");
 
 export type DisplayRealtimeConnectionState = GenericRealtimeConnectionState;
 

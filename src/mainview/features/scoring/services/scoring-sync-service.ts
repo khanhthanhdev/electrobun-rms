@@ -1,7 +1,6 @@
 import {
   connectRealtimeStream,
   type RealtimeConnectionState,
-  RealtimeFatalError,
 } from "../../../shared/services/realtime-stream-service";
 import type {
   ScoringRealtimeChangeEvent,
@@ -17,7 +16,7 @@ const VALID_CHANGE_KINDS = new Set<ScoringRealtimeChangeKind>([
   "SNAPSHOT_HINT",
 ]);
 
-export { RealtimeFatalError as ScoringRealtimeFatalError };
+export { RealtimeFatalError as ScoringRealtimeFatalError } from "../../../shared/services/realtime-stream-service";
 
 interface ConnectScoringRealtimeOptions {
   eventCode: string;

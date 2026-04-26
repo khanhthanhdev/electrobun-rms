@@ -38,7 +38,9 @@ export const accountFormErrorMessages = {
 export const roleKey = (eventCode: string, role: RoleValue): string =>
   `${eventCode}:${role}`;
 
-export const parseRoleKey = (value: string): { event: string; role: RoleValue } => {
+export const parseRoleKey = (
+  value: string
+): { event: string; role: RoleValue } => {
   const [event, role] = value.split(":", 2);
   return {
     event,
@@ -99,7 +101,10 @@ export const validateAccountFormForSubmit = ({
   state,
 }: {
   mode: AccountFormMode;
-  state: Pick<AccountFormState, "accountUsername" | "password" | "passwordConfirm" | "selectedRoles">;
+  state: Pick<
+    AccountFormState,
+    "accountUsername" | "password" | "passwordConfirm" | "selectedRoles"
+  >;
 }): string | null => {
   if (mode === "manage") {
     if (state.selectedRoles.size === 0) {

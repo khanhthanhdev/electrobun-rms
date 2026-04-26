@@ -19,24 +19,29 @@ const FATAL_ERROR_FILES = [
   "src/mainview/features/events/control/services/match-control-sync-service.ts",
 ] as const;
 
+const MONOTONIC_GUARD_REGEX =
+  /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/;
+const RESET_VERSION_REGEX =
+  /realtimeVersion\s*<\s*lastAppliedRef\.current\.version/;
+const RESET_ASSIGNMENT_REGEX =
+  /lastAppliedRef\.current\s*=\s*\{\s*eventCode\s*,\s*version:\s*0\s*\}/;
+const FATAL_ERROR_CLASS_REGEX =
+  /export\s+class\s+\w+FatalError\s+extends\s+Error\s*\{\s*\}/;
+
 const hasResetGuardIssue = (source: string): boolean => {
-  const hasMonotonicGuard =
-    /realtimeVersion\s*<=\s*lastAppliedRef\.current\.version/.test(source);
+  const hasMonotonicGuard = MONOTONIC_GUARD_REGEX.test(source);
   if (!hasMonotonicGuard) {
     return false;
   }
 
   const hasResetHandling =
-    /realtimeVersion\s*<\s*lastAppliedRef\.current\.version/.test(source) &&
-    /lastAppliedRef\.current\s*=\s*\{\s*eventCode\s*,\s*version:\s*0\s*\}/.test(
-      source
-    );
+    RESET_VERSION_REGEX.test(source) && RESET_ASSIGNMENT_REGEX.test(source);
 
   return !hasResetHandling;
 };
 
 const hasFatalErrorClassIssue = (source: string): boolean =>
-  /export\s+class\s+\w+FatalError\s+extends\s+Error\s*\{\s*\}/.test(source);
+  FATAL_ERROR_CLASS_REGEX.test(source);
 
 const runScan = (
   files: readonly string[],

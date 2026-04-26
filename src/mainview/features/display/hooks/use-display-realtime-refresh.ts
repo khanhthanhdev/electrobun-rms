@@ -1,5 +1,5 @@
-import { useDisplayRealtimeVersion } from "./use-display-realtime-version";
 import { useRealtimeVersionRefresh } from "../../../shared/hooks/use-realtime-version-refresh";
+import { useDisplayRealtimeVersion } from "./use-display-realtime-version";
 
 /**
  * Hook to refresh display data when SCORE_UPDATE events are received.

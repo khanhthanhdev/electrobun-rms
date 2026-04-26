@@ -1,12 +1,11 @@
-import type { ScoringRealtimeChangeEvent } from "../../../shared/types/scoring";
 import {
   createRealtimeVersionStore,
   type GenericRealtimeConnectionState,
 } from "../../../shared/state/create-realtime-version-store";
+import type { ScoringRealtimeChangeEvent } from "../../../shared/types/scoring";
 
-const realtimeStore = createRealtimeVersionStore<ScoringRealtimeChangeEvent>(
-  "scoringRealtime"
-);
+const realtimeStore =
+  createRealtimeVersionStore<ScoringRealtimeChangeEvent>("scoringRealtime");
 
 export type ScoringRealtimeConnectionState = GenericRealtimeConnectionState;
 

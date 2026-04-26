@@ -1,5 +1,5 @@
-import { useInspectionRealtimeVersion } from "./use-inspection-realtime-version";
 import { useRealtimeVersionRefresh } from "../../../shared/hooks/use-realtime-version-refresh";
+import { useInspectionRealtimeVersion } from "./use-inspection-realtime-version";
 
 export const useRealtimeRefresh = (
   eventCode: string,

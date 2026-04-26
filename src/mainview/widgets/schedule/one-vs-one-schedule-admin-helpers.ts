@@ -14,16 +14,16 @@ export {
   updateOneVsOneCycleTime,
 } from "./one-vs-one-schedule-admin-match-helpers";
 export type {
-  OneVsOneEditableMatch,
-  OneVsOneSaveMatch,
-  ScheduleMessageSetter,
-  TeamNamesByNumber,
-} from "./one-vs-one-schedule-admin-types";
+  OneVsOneScheduleAdminBaseAction,
+  OneVsOneScheduleAdminBaseState,
+} from "./one-vs-one-schedule-admin-page-helpers";
 export {
   createScheduleAdminDispatchers,
   reduceOneVsOneScheduleAdminBaseAction,
 } from "./one-vs-one-schedule-admin-page-helpers";
 export type {
-  OneVsOneScheduleAdminBaseAction,
-  OneVsOneScheduleAdminBaseState,
-} from "./one-vs-one-schedule-admin-page-helpers";
+  OneVsOneEditableMatch,
+  OneVsOneSaveMatch,
+  ScheduleMessageSetter,
+  TeamNamesByNumber,
+} from "./one-vs-one-schedule-admin-types";

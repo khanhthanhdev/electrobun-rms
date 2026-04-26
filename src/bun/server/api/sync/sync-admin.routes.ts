@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import type { Context } from "hono";
+import { Hono } from "hono";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
@@ -33,12 +33,9 @@ import {
 export const syncAdminRoutes = new Hono<AppEnv>();
 
 const getSyncAdminEventCode = (c: Context<AppEnv>) =>
-  getSeasonEventCodeWithGuard(
-    c,
-    SYNC_SEASON,
-    requireEventAdmin,
-    { error: "Unsupported season" }
-  );
+  getSeasonEventCodeWithGuard(c, SYNC_SEASON, requireEventAdmin, {
+    error: "Unsupported season",
+  });
 
 const parseSyncAdminSchemaBody = async <
   TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
@@ -47,8 +44,7 @@ const parseSyncAdminSchemaBody = async <
   schema: TSchema,
   mergeFields: Record<string, unknown>
 ): Promise<
-  | { ok: true; value: InferOutput<TSchema> }
-  | { ok: false; response: Response }
+  { ok: true; value: InferOutput<TSchema> } | { ok: false; response: Response }
 > => {
   const bodyResult = await parseJsonBodyOrResponse(
     c,

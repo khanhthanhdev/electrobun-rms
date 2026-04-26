@@ -3,9 +3,9 @@ import {
   createManualEvent,
 } from "@/features/events/event-admin";
 import {
+  type EventFormCommonFields,
   type EventFormFieldChangeHandler,
   EventFormFields,
-  type EventFormCommonFields,
 } from "@/features/events/event-form-fields";
 import { useEventFormController } from "@/features/events/use-event-form-controller";
 
@@ -50,10 +50,7 @@ export const CreateEventPage = ({
     token,
   });
 
-  const handleCommonFieldChange: EventFormFieldChangeHandler = (
-    key,
-    value
-  ) => {
+  const handleCommonFieldChange: EventFormFieldChangeHandler = (key, value) => {
     updateField(
       key as keyof CreateEventForm,
       value as CreateEventForm[keyof CreateEventForm]
@@ -126,7 +123,11 @@ export const CreateEventPage = ({
           />
         </div>
 
-        <button className="form-submit" disabled={state.isSubmitting} type="submit">
+        <button
+          className="form-submit"
+          disabled={state.isSubmitting}
+          type="submit"
+        >
           {state.isSubmitting ? "Creating Event..." : "Create Event"}
         </button>
       </form>

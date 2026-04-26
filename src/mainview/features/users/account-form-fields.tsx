@@ -148,7 +148,9 @@ export const RoleMatrix = ({
           ) : (
             eventRows.map((eventCode) => (
               <tr key={eventCode}>
-                <td>{eventCode === ALL_EVENTS_CODE ? "All Events" : eventCode}</td>
+                <td>
+                  {eventCode === ALL_EVENTS_CODE ? "All Events" : eventCode}
+                </td>
                 {CREATE_ACCOUNT_ROLE_COLUMNS.map((column) => (
                   <td key={`${eventCode}-${column.value}`}>
                     <label htmlFor={`${eventCode}-${column.value}`}>

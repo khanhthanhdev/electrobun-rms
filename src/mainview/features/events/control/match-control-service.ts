@@ -16,7 +16,7 @@ import {
 } from "../schedule/qualification-schedule-service";
 
 const MATCH_TYPE_ORDER: ControlMatchType[] = ["practice", "quals"];
-const MATCH_CONTROL_REQUEST_TIMEOUT_MS = 7_000;
+const MATCH_CONTROL_REQUEST_TIMEOUT_MS = 7000;
 const MATCH_NAME_PREFIX: Record<ControlMatchType, string> = {
   practice: "P",
   quals: "Q",
@@ -121,7 +121,7 @@ const withTimeout = <T>(
     }, MATCH_CONTROL_REQUEST_TIMEOUT_MS);
   });
   // Prevent unhandled rejections when timeout wins the race.
-  void request.catch(() => undefined);
+  request.catch(() => undefined);
   return Promise.race([request, timeoutPromise]).finally(() => {
     if (timeoutId) {
       clearTimeout(timeoutId);

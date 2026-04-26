@@ -265,9 +265,7 @@ const unwrapSettled = <T>(result: PromiseSettledResult<T>): T | null =>
 const toMatchType = (value: string): MatchType | null =>
   value === "practice" || value === "quals" || value === "elims" ? value : null;
 
-const toControlMatchType = (
-  value: string
-): "practice" | "quals" | null =>
+const toControlMatchType = (value: string): "practice" | "quals" | null =>
   value === "practice" || value === "quals" ? value : null;
 
 const findControlRowForMatch = (

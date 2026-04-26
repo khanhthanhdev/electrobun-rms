@@ -1,10 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import type { RoleValue } from "@/shared/constants/roles";
 import type { AccountFormState } from "./account-form-controller";
-import {
-  AccountPasswordFields,
-  RoleMatrix,
-} from "./account-form-fields";
+import { AccountPasswordFields, RoleMatrix } from "./account-form-fields";
 
 export const AccountFormSubmitArea = ({
   children,

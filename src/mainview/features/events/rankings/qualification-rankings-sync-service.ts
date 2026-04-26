@@ -1,7 +1,6 @@
 import {
   connectRealtimeStream,
   type RealtimeConnectionState,
-  RealtimeFatalError,
 } from "@/shared/services/realtime-stream-service";
 import type { QualificationRankingRealtimeChangeEvent } from "@/shared/types/ranking";
 export type QualificationRankingsRealtimeConnectionState =
@@ -13,7 +12,7 @@ const VALID_CHANGE_KINDS = new Set<
   QualificationRankingRealtimeChangeEvent["kind"]
 >(["RANKINGS_UPDATED", "SNAPSHOT_HINT"]);
 
-export { RealtimeFatalError as QualificationRankingsRealtimeFatalError };
+export { RealtimeFatalError as QualificationRankingsRealtimeFatalError } from "@/shared/services/realtime-stream-service";
 
 interface ConnectQualificationRankingsRealtimeOptions {
   eventCode: string;

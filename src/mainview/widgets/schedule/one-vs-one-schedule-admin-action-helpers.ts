@@ -1,9 +1,6 @@
 import type { RefObject } from "react";
-import {
-  type OneVsOneCsvMatch,
-  parseMatchesFromCsvText,
-} from "./schedule-csv";
 import type { ScheduleMessageSetter } from "./one-vs-one-schedule-admin-types";
+import { type OneVsOneCsvMatch, parseMatchesFromCsvText } from "./schedule-csv";
 
 export const wrapAsyncScheduleAction =
   (action: () => Promise<void>): (() => void) =>
@@ -63,11 +60,7 @@ export const createOneVsOneCsvImportClickHandler = <TTiming, TResult>({
 
     try {
       const importedMatches = parseMatchesFromCsvText(text);
-      const result = await saveImportedSchedule(
-        importedMatches,
-        timing,
-        token
-      );
+      const result = await saveImportedSchedule(importedMatches, timing, token);
       onImportedScheduleSaved(result);
       setSuccessMessage(successMessage(importedMatches, result));
       fileInputRef.current.value = "";
@@ -174,9 +167,7 @@ export const createOneVsOneClearClickHandler = <TResult>({
       onScheduleCleared(refreshed);
       setSuccessMessage(successMessage);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : failureMessage
-      );
+      setErrorMessage(error instanceof Error ? error.message : failureMessage);
     } finally {
       setIsClearing(false);
     }

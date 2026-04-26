@@ -24,6 +24,8 @@ export const RESOURCE_MODE_BY_TYPE: Record<
 
 export const REVIEW_WARNING_CODES = new Set(["UNKNOWN_TEAM_REFERENCE"]);
 
+const NOT_FOUND_REGEX = /\bnot found\b/i;
+
 export class SyncError extends ApplicationError {
   readonly code: string;
   readonly issues?: unknown;
@@ -49,7 +51,7 @@ export const isNotFoundError = (error: unknown): boolean => {
     return true;
   }
 
-  return error instanceof Error && /\bnot found\b/i.test(error.message);
+  return error instanceof Error && NOT_FOUND_REGEX.test(error.message);
 };
 
 export const throwSyncError = (

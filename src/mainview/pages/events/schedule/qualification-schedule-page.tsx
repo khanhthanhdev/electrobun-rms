@@ -380,7 +380,8 @@ export const QualificationSchedulePage = ({
   const handleToggleActivationClick = createOneVsOneActivationClickHandler({
     hasMatches,
     isActive,
-    missingMatchesMessage: "Generate or import matches before activating schedule.",
+    missingMatchesMessage:
+      "Generate or import matches before activating schedule.",
     missingTokenMessage:
       "You must be logged in to update qualification schedule activation.",
     onActivationUpdated: applyQualificationSchedule,
@@ -416,43 +417,43 @@ export const QualificationSchedulePage = ({
       }
       configSection={
         <OneVsOneScheduleAdminOverview
-          onCycleTimeSecondsChange={handleCycleTimeChange}
-          onMatchesPerTeamChange={(value) =>
-            dispatch({ type: "SET_MATCHES_PER_TEAM", payload: value })
-          }
           cycleTimeSeconds={cycleTimeSeconds}
-          totalMatchesRequired={totalMatchesRequired}
-          metrics={metrics}
-          isActive={isActive}
-          fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
-          onFieldStartOffsetSecondsChange={(value) =>
-            dispatch({ type: "SET_FIELD_START_OFFSET", payload: value })
-          }
-          generatedMatchCount={state.schedule?.matches.length ?? 0}
-          matchesPerTeam={matchesPerTeam}
-          teamCount={teamCount}
           fieldCount={state.fieldCount}
+          fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+          generatedMatchCount={state.schedule?.matches.length ?? 0}
+          isActive={isActive}
+          matchesPerTeam={matchesPerTeam}
+          metrics={metrics}
+          onCycleTimeSecondsChange={handleCycleTimeChange}
           onFieldCountChange={(value) =>
             dispatch({ type: "SET_FIELD_COUNT", payload: value })
           }
+          onFieldStartOffsetSecondsChange={(value) =>
+            dispatch({ type: "SET_FIELD_START_OFFSET", payload: value })
+          }
+          onMatchesPerTeamChange={(value) =>
+            dispatch({ type: "SET_MATCHES_PER_TEAM", payload: value })
+          }
+          teamCount={teamCount}
+          totalMatchesRequired={totalMatchesRequired}
         />
       }
-      title="Qualification Match Schedule"
-      teamCount={teamCount}
-      successMessage={successMessage}
-      scheduleDate={scheduleDate}
-      onScheduleDateChange={setScheduleDate}
+      defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
+      errorMessage={errorMessage}
+      eventCode={eventCode}
+      fieldCount={state.fieldCount}
+      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+      generatedEmptyMessage="No qualification matches available."
+      generatedMatches={tableRows}
+      hasMatches={hasMatches}
+      isLoading={isLoading}
       matchBlocks={matchBlocks}
       onMatchBlocksChange={setMatchBlocks}
-      isLoading={isLoading}
-      hasMatches={hasMatches}
-      generatedMatches={tableRows}
-      generatedEmptyMessage="No qualification matches available."
-      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
-      fieldCount={state.fieldCount}
-      eventCode={eventCode}
-      errorMessage={errorMessage}
-      defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
+      onScheduleDateChange={setScheduleDate}
+      scheduleDate={scheduleDate}
+      successMessage={successMessage}
+      teamCount={teamCount}
+      title="Qualification Match Schedule"
       toolbar={() => (
         <ScheduleManagementToolbar
           hasMatches={hasMatches}

@@ -185,198 +185,252 @@ export const clearAutoCompleteTimer = (eventCode: string): void => {
  * The returned `state.version` is a placeholder (0); the real version is
  * assigned by the sync hub when the event is published.
  */
+type LoadCommand = Extract<MatchControlCommand, { type: "LOAD" }>;
+
+const toInvalidTransitionError = (
+  state: MatchControlState,
+  message: string
+): TransitionError => ({
+  currentState: state,
+  error: "INVALID_TRANSITION",
+  message,
+});
+
+const persistTransitionState = (
+  eventCode: string,
+  next: MatchControlState,
+  context: string
+): TransitionResult => {
+  assertStateInvariants(next, context);
+  stateByEventCode.set(eventCode, next);
+  return { state: next, version: 0 };
+};
+
+const getVersionConflict = (
+  state: MatchControlState,
+  command: MatchControlCommand,
+  currentVersion: number
+): TransitionError | null => {
+  if (command.type === "AUTO_COMPLETE") {
+    return null;
+  }
+
+  if (command.expectedVersion === currentVersion) {
+    return null;
+  }
+
+  return {
+    error: "STATE_CONFLICT",
+    message: `Expected version ${command.expectedVersion} but current is ${currentVersion}. Refresh state.`,
+    currentState: state,
+  };
+};
+
+const applyLoadTransition = (
+  eventCode: string,
+  state: MatchControlState,
+  command: LoadCommand
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "IDLE") {
+    return toInvalidTransitionError(
+      state,
+      "Cannot load a match while another is active. Abort or commit first."
+    );
+  }
+
+  if (state.loadedState !== "IDLE") {
+    return toInvalidTransitionError(
+      state,
+      "A match is already staged. Unload it before loading a new one."
+    );
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedMatch: command.match,
+    loadedState: "LOADED",
+  };
+  return persistTransitionState(eventCode, next, `LOAD:${eventCode}`);
+};
+
+const applyUnloadTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.loadedState === "IDLE") {
+    return toInvalidTransitionError(state, "No match is loaded to unload.");
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedMatch: null,
+    loadedState: "IDLE",
+  };
+  return persistTransitionState(eventCode, next, `UNLOAD:${eventCode}`);
+};
+
+const applyShowPreviewTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.loadedState !== "LOADED") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot show preview from loadedState "${state.loadedState}".`
+    );
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedState: "PREVIEW",
+  };
+  return persistTransitionState(eventCode, next, `SHOW_PREVIEW:${eventCode}`);
+};
+
+const applyShowMatchTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.loadedState !== "PREVIEW") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot show match from loadedState "${state.loadedState}".`
+    );
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedState: "READY",
+  };
+  return persistTransitionState(eventCode, next, `SHOW_MATCH:${eventCode}`);
+};
+
+const applyStartTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.loadedState !== "READY" || state.activeState !== "IDLE") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot start: loadedState="${state.loadedState}", activeState="${state.activeState}".`
+    );
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedMatch: null,
+    loadedState: "IDLE",
+    activeMatch: state.loadedMatch,
+    activeState: "IN_PROGRESS",
+    activeStartedAtMs: Date.now(),
+  };
+  return persistTransitionState(eventCode, next, `START:${eventCode}`);
+};
+
+const applyAutoCompleteTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "IN_PROGRESS") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot auto-complete: activeState="${state.activeState}".`
+    );
+  }
+
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    activeState: "COMPLETED",
+  };
+  return persistTransitionState(eventCode, next, `AUTO_COMPLETE:${eventCode}`);
+};
+
+const applyAbortTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "IN_PROGRESS") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot abort: activeState="${state.activeState}".`
+    );
+  }
+
+  clearAutoCompleteTimer(eventCode);
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    loadedMatch: state.activeMatch,
+    loadedState: "LOADED",
+    activeMatch: null,
+    activeState: "IDLE",
+    activeStartedAtMs: null,
+  };
+  return persistTransitionState(eventCode, next, `ABORT:${eventCode}`);
+};
+
+const applyCommitTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "COMPLETED") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot commit: activeState="${state.activeState}".`
+    );
+  }
+
+  clearAutoCompleteTimer(eventCode);
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    activeMatch: null,
+    activeState: "IDLE",
+    activeStartedAtMs: null,
+  };
+  return persistTransitionState(eventCode, next, `COMMIT:${eventCode}`);
+};
+
 export const applyTransition = (
   eventCode: string,
   command: MatchControlCommand,
   currentVersion: number
 ): TransitionResult | TransitionError => {
   const state = getMatchControlState(eventCode);
-
-  // Version check for client-initiated commands
-  if (
-    command.type !== "AUTO_COMPLETE" &&
-    command.expectedVersion !== currentVersion
-  ) {
-    return {
-      error: "STATE_CONFLICT",
-      message: `Expected version ${command.expectedVersion} but current is ${currentVersion}. Refresh state.`,
-      currentState: state,
-    };
+  const versionConflict = getVersionConflict(state, command, currentVersion);
+  if (versionConflict) {
+    return versionConflict;
   }
 
   switch (command.type) {
-    case "LOAD": {
-      if (state.activeState !== "IDLE") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: "Cannot load a match while another is active. Abort or commit first.",
-          currentState: state,
-        };
-      }
-      if (state.loadedState !== "IDLE") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: "A match is already staged. Unload it before loading a new one.",
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedMatch: command.match,
-        loadedState: "LOADED",
-      };
-      assertStateInvariants(next, `LOAD:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "UNLOAD": {
-      if (state.loadedState === "IDLE") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: "No match is loaded to unload.",
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedMatch: null,
-        loadedState: "IDLE",
-      };
-      assertStateInvariants(next, `UNLOAD:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "SHOW_PREVIEW": {
-      if (state.loadedState !== "LOADED") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot show preview from loadedState "${state.loadedState}".`,
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedState: "PREVIEW",
-      };
-      assertStateInvariants(next, `SHOW_PREVIEW:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "SHOW_MATCH": {
-      if (state.loadedState !== "PREVIEW") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot show match from loadedState "${state.loadedState}".`,
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedState: "READY",
-      };
-      assertStateInvariants(next, `SHOW_MATCH:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "START": {
-      if (state.loadedState !== "READY" || state.activeState !== "IDLE") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot start: loadedState="${state.loadedState}", activeState="${state.activeState}".`,
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedMatch: null,
-        loadedState: "IDLE",
-        activeMatch: state.loadedMatch,
-        activeState: "IN_PROGRESS",
-        activeStartedAtMs: Date.now(),
-      };
-      assertStateInvariants(next, `START:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "AUTO_COMPLETE": {
-      if (state.activeState !== "IN_PROGRESS") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot auto-complete: activeState="${state.activeState}".`,
-          currentState: state,
-        };
-      }
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        activeState: "COMPLETED",
-      };
-      assertStateInvariants(next, `AUTO_COMPLETE:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "ABORT": {
-      if (state.activeState !== "IN_PROGRESS") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot abort: activeState="${state.activeState}".`,
-          currentState: state,
-        };
-      }
-      clearAutoCompleteTimer(eventCode);
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        loadedMatch: state.activeMatch,
-        loadedState: "LOADED",
-        activeMatch: null,
-        activeState: "IDLE",
-        activeStartedAtMs: null,
-      };
-      assertStateInvariants(next, `ABORT:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
-    case "COMMIT": {
-      if (state.activeState !== "COMPLETED") {
-        return {
-          error: "INVALID_TRANSITION",
-          message: `Cannot commit: activeState="${state.activeState}".`,
-          currentState: state,
-        };
-      }
-      clearAutoCompleteTimer(eventCode);
-      const next: MatchControlState = {
-        ...state,
-        version: 0,
-        activeMatch: null,
-        activeState: "IDLE",
-        activeStartedAtMs: null,
-      };
-      assertStateInvariants(next, `COMMIT:${eventCode}`);
-      stateByEventCode.set(eventCode, next);
-      return { state: next, version: 0 };
-    }
-
+    case "LOAD":
+      return applyLoadTransition(eventCode, state, command);
+    case "UNLOAD":
+      return applyUnloadTransition(eventCode, state);
+    case "SHOW_PREVIEW":
+      return applyShowPreviewTransition(eventCode, state);
+    case "SHOW_MATCH":
+      return applyShowMatchTransition(eventCode, state);
+    case "START":
+      return applyStartTransition(eventCode, state);
+    case "AUTO_COMPLETE":
+      return applyAutoCompleteTransition(eventCode, state);
+    case "ABORT":
+      return applyAbortTransition(eventCode, state);
+    case "COMMIT":
+      return applyCommitTransition(eventCode, state);
     default: {
       const exhaustiveCheck: never = command;
-      return {
-        error: "INVALID_TRANSITION",
-        message: `Unknown transition command: ${exhaustiveCheck}`,
-        currentState: state,
-      };
+      return toInvalidTransitionError(
+        state,
+        `Unknown transition command: ${exhaustiveCheck}`
+      );
     }
   }
 };

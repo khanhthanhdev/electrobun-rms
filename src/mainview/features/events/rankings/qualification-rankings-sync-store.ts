@@ -1,8 +1,8 @@
-import type { QualificationRankingRealtimeChangeEvent } from "@/shared/types/ranking";
 import {
   createRealtimeVersionStore,
   type GenericRealtimeConnectionState,
 } from "@/shared/state/create-realtime-version-store";
+import type { QualificationRankingRealtimeChangeEvent } from "@/shared/types/ranking";
 
 const realtimeStore =
   createRealtimeVersionStore<QualificationRankingRealtimeChangeEvent>(

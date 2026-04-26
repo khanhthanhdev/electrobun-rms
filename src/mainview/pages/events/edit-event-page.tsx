@@ -5,8 +5,8 @@ import {
   updateEvent,
 } from "@/features/events/event-admin";
 import {
-  EventFormFields,
   type EventFormCommonFields,
+  EventFormFields,
 } from "@/features/events/event-form-fields";
 import { useEventFormController } from "@/features/events/use-event-form-controller";
 import { LoadingIndicator } from "@/shared/components/loading-indicator";
@@ -31,15 +31,16 @@ export const EditEventPage = ({
   token,
 }: EditEventPageProps): JSX.Element => {
   const { dispatch, handleSubmit, setForm, state, updateField } =
-    useEventFormController<EditableEventForm, Awaited<ReturnType<typeof updateEvent>>>(
-      {
-        initialForm: null,
-        onSubmit: (form, authToken) => updateEvent(eventCode, form, authToken),
-        submitErrorMessage: "Failed to update event.",
-        successMessage: "Event updated successfully.",
-        token,
-      }
-    );
+    useEventFormController<
+      EditableEventForm,
+      Awaited<ReturnType<typeof updateEvent>>
+    >({
+      initialForm: null,
+      onSubmit: (form, authToken) => updateEvent(eventCode, form, authToken),
+      submitErrorMessage: "Failed to update event.",
+      successMessage: "Event updated successfully.",
+      token,
+    });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
