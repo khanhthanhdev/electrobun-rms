@@ -1,4 +1,10 @@
-import { useEffect, useReducer } from "react";
+import type { MatchControlState } from "@shared/match-control";
+import { useEffect, useReducer, useState } from "react";
+import {
+  getMatchControlRealtimeState,
+  subscribeToMatchControlRealtimeState,
+  useMatchControlRealtime,
+} from "@/features/events/control";
 import {
   fetchPracticeSchedule,
   fetchQualificationSchedule,
@@ -157,6 +163,22 @@ const useMatchSchedule = (
   };
 };
 
+const isActiveMatch = (
+  mb: MatchBlock,
+  controlState: MatchControlState | null
+): boolean => {
+  if (!controlState) {
+    return false;
+  }
+  const target = controlState.activeMatch ?? controlState.loadedMatch;
+  if (!target) {
+    return false;
+  }
+  return (
+    mb.match.matchNumber === target.matchNumber && mb.type === target.matchType
+  );
+};
+
 export const MatchSelectionPage = ({
   eventCode,
   fieldNumber,
@@ -169,6 +191,20 @@ export const MatchSelectionPage = ({
     fieldNumber,
     token
   );
+
+  useMatchControlRealtime(eventCode, token);
+
+  const [controlState, setControlState] = useState<MatchControlState | null>(
+    null
+  );
+
+  useEffect(() => {
+    const sync = (): void => {
+      setControlState(getMatchControlRealtimeState(eventCode));
+    };
+    sync();
+    return subscribeToMatchControlRealtimeState(eventCode, sync);
+  }, [eventCode]);
 
   const roleStyles = {
     red: {
@@ -273,37 +309,54 @@ export const MatchSelectionPage = ({
               No matches found for this selection.
             </div>
           ) : null}
-          {matches.map((mb) => (
-            <button
-              key={`${mb.type}-${mb.match.matchNumber}`}
-              onClick={() => {
-                const matchPath =
-                  refereeRole === "hr"
-                    ? `/event/${eventCode}/hr/${fieldNumber}/match/${mb.match.matchNumber}`
-                    : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/${mb.type}/match/${mb.match.matchNumber}`;
-                onNavigate(matchPath);
-              }}
-              style={{
-                width: "100%",
-                padding: "0.875rem",
-                backgroundColor: "white",
-                border: "1px solid #3b82f6",
-                borderRadius: "0.25rem",
-                fontSize: "1rem",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "center",
-                gap: "1.5rem",
-                transition: "background-color 0.2s",
-                color: "#3b82f6",
-              }}
-              type="button"
-            >
-              <span>{mb.label}</span>
-              <span>Red Team: {mb.match.redTeam}</span>
-              <span>Blue Team: {mb.match.blueTeam}</span>
-            </button>
-          ))}
+          {matches.map((mb) => {
+            const active = isActiveMatch(mb, controlState);
+            return (
+              <button
+                key={`${mb.type}-${mb.match.matchNumber}`}
+                onClick={() => {
+                  const matchPath =
+                    refereeRole === "hr"
+                      ? `/event/${eventCode}/hr/${fieldNumber}/match/${mb.match.matchNumber}`
+                      : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/${mb.type}/match/${mb.match.matchNumber}`;
+                  onNavigate(matchPath);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "0.875rem",
+                  backgroundColor: active ? "#eff6ff" : "white",
+                  border: active ? "2px solid #2563eb" : "1px solid #3b82f6",
+                  borderRadius: "0.25rem",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "1.5rem",
+                  transition: "background-color 0.2s",
+                  color: "#3b82f6",
+                }}
+                type="button"
+              >
+                <span>{mb.label}</span>
+                <span>Red Team: {mb.match.redTeam}</span>
+                <span>Blue Team: {mb.match.blueTeam}</span>
+                {active ? (
+                  <span
+                    style={{
+                      backgroundColor: "#2563eb",
+                      color: "white",
+                      padding: "0.15rem 0.5rem",
+                      borderRadius: "0.25rem",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Active
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </div>
     </main>
