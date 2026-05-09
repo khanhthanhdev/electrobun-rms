@@ -44,7 +44,7 @@ describe("sync routes", () => {
           eventCode: EVENT_CODE,
         },
       },
-      schemaVersion: "2026-03-08",
+      schemaVersion: "2026-05-09",
     });
 
     const pushBody = createInspectionResultPayload({
@@ -119,9 +119,9 @@ describe("sync routes", () => {
       },
       body: JSON.stringify({
         batchId: "route-batch-mismatch",
-        definitionVersion: "2025.1",
+        definitionVersion: "2026.1",
         producedAt: "2026-03-23T10:00:00.000Z",
-        schemaVersion: "2026-03-08",
+        schemaVersion: "2026-05-09",
         resources: [
           {
             resourceType: "match_results",
@@ -189,7 +189,7 @@ describe("sync routes", () => {
     const app = createSyncTestApp();
 
     const statusResponse = await app.request(
-      `http://localhost/admin/seasons/2025/events/${EVENT_CODE}/outbound-status`,
+      `http://localhost/admin/seasons/2026/events/${EVENT_CODE}/outbound-status`,
       {
         headers: { authorization: `Bearer ${adminToken}` },
       }
@@ -202,7 +202,7 @@ describe("sync routes", () => {
     });
 
     const retryResponse = await app.request(
-      `http://localhost/admin/seasons/2025/events/${EVENT_CODE}/outbound-retry`,
+      `http://localhost/admin/seasons/2026/events/${EVENT_CODE}/outbound-retry`,
       {
         method: "POST",
         headers: {

@@ -108,7 +108,7 @@ export const getRecordBusinessKey = (
     return String(record.teamNumber);
   }
 
-  return String(record.awardCode);
+  return String(record.awardKey);
 };
 
 export const assertSchemaRef = (

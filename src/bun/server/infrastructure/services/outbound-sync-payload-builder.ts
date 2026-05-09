@@ -270,42 +270,43 @@ const loadTeamAwardRecords = (eventDb: Database) => {
     )
     .all() as Record<string, number | string | null>[];
 
-  const byAwardCode = new Map<
+  const byAwardKey = new Map<
     string,
     {
       assignedAt?: string;
-      awardCode: string;
+      awardKey: string;
       awardName: string;
       comment?: string;
       displayOrder: number;
       isPublic: boolean;
-      recipient?: string;
+      recipientName?: string;
       teamNumber?: string;
     }
   >();
   for (const row of rows) {
-    const awardCode = String(row.awardId ?? row.fmsAwardId ?? "");
-    if (!awardCode || byAwardCode.has(awardCode)) {
+    const awardKey = String(row.awardId ?? row.fmsAwardId ?? "");
+    if (!awardKey || byAwardKey.has(awardKey)) {
       continue;
     }
 
     const modifiedAt = parseTimestamp(row.modifiedOn, 0);
     const createdAt = parseTimestamp(row.createdOn, 0);
     const assignedAt = modifiedAt > 0 ? modifiedAt : createdAt;
-    byAwardCode.set(awardCode, {
-      awardCode,
-      awardName: String(row.awardName ?? awardCode),
+    byAwardKey.set(awardKey, {
+      awardKey,
+      awardName: String(row.awardName ?? awardKey),
       comment: typeof row.comment === "string" ? row.comment : undefined,
       displayOrder: parsePositiveInteger(row.displayOrder, 0),
       isPublic: parsePositiveInteger(row.isPublic, 0) > 0,
-      recipient: typeof row.recipient === "string" ? row.recipient : undefined,
+      recipientName:
+        typeof row.recipient === "string" ? row.recipient : undefined,
       teamNumber: parseTeamNumberFromId(row.fmsTeamId),
       assignedAt:
         assignedAt > 0 ? new Date(assignedAt).toISOString() : undefined,
     });
   }
 
-  return [...byAwardCode.values()];
+  return [...byAwardKey.values()];
 };
 
 export const buildOutboundSyncPayload = async (input: {
