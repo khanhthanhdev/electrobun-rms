@@ -21,9 +21,9 @@ import {
 } from "./sync.schema.records";
 
 // Version Literals
-export const SYNC_SCHEMA_VERSION = "2026-03-08" as const;
-export const SYNC_DEFINITION_VERSION = "2025.1" as const;
-export const SYNC_SEASON = "2025" as const;
+export const SYNC_SCHEMA_VERSION = "2026-05-09" as const;
+export const SYNC_DEFINITION_VERSION = "2026.1" as const;
+export const SYNC_SEASON = "2026" as const;
 
 export const schemaVersionLiteral = literal(SYNC_SCHEMA_VERSION);
 export const definitionVersionLiteral = literal(SYNC_DEFINITION_VERSION);

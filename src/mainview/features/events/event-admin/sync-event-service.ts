@@ -72,7 +72,7 @@ export const fetchOutboundSyncStatus = async (
   token: string
 ): Promise<OutboundSyncStatusResponse> =>
   requestJson<OutboundSyncStatusResponse>(
-    `/sync/admin/seasons/2025/events/${eventCode}/outbound-status`,
+    `/sync/admin/seasons/2026/events/${eventCode}/outbound-status`,
     {
       token,
     }
@@ -83,7 +83,7 @@ export const retryOutboundSync = async (
   token: string
 ): Promise<RetryOutboundSyncResponse> =>
   requestJson<RetryOutboundSyncResponse>(
-    `/sync/admin/seasons/2025/events/${eventCode}/outbound-retry`,
+    `/sync/admin/seasons/2026/events/${eventCode}/outbound-retry`,
     {
       body: JSON.stringify({}),
       headers: { "Content-Type": "application/json" },

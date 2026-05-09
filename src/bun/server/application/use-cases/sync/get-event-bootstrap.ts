@@ -88,8 +88,8 @@ export class GetEventBootstrapUseCase {
         seasonDefinition: {
           definitionVersion: SYNC_DEFINITION_VERSION,
           diffLabels: {},
-          gameCode: "nrc-2025",
-          gameName: "NRC 2025",
+          gameCode: "nrc-2026",
+          gameName: "NRC 2026",
           generatedAt: new Date().toISOString(),
           matchResultDetailsVersion: SYNC_DEFINITION_VERSION,
           publicViews: {},

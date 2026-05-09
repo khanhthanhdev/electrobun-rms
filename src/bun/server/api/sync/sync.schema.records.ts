@@ -65,7 +65,7 @@ export const matchResultDetailsAllianceSchema = object({
   scoreTotal: number(),
 });
 
-export const matchResultDetails2025Schema = object({
+export const matchResultDetails2026Schema = object({
   redAlliance: matchResultDetailsAllianceSchema,
   blueAlliance: matchResultDetailsAllianceSchema,
 });
@@ -90,7 +90,7 @@ export const matchResultsRecordSchema = object({
   disqualifications: optional(array(string())),
   noShows: optional(array(string())),
   externalMatchId: optional(string()),
-  details: optional(matchResultDetails2025Schema),
+  details: optional(matchResultDetails2026Schema),
 });
 
 // 5. Team Rankings
@@ -112,11 +112,11 @@ export const teamRankingsRecordSchema = object({
 
 // 6. Team Awards
 export const teamAwardsRecordSchema = object({
-  awardCode: string(),
+  awardKey: string(),
   awardName: string(),
   displayOrder: optional(number()),
   teamNumber: optional(string()),
-  recipient: optional(string()),
+  recipientName: optional(string()),
   isPublic: boolean(),
   comment: optional(string()),
   assignedAt: optional(string()),

@@ -69,7 +69,7 @@ export const applyTeamAwardsSnapshot = (
 
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index];
-    const awardCode = String(record.awardCode);
+    const awardCode = String(record.awardKey);
     const displayOrder = parsePositiveInteger(record.displayOrder, index + 1);
     const timestamp =
       typeof record.assignedAt === "string"
@@ -108,7 +108,7 @@ export const applyTeamAwardsSnapshot = (
         ? teamIdByNumber.get(record.teamNumber) ||
             buildSyntheticFmsTeamId(record.teamNumber)
         : null,
-      typeof record.recipient === "string" ? record.recipient : null,
+      typeof record.recipientName === "string" ? record.recipientName : null,
       null,
       toBooleanInt(record.isPublic),
       timestamp,

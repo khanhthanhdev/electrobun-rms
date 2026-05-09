@@ -251,7 +251,7 @@ export function insertSyncOutboundLink(
       eventCode,
       baseUrl: overrides.baseUrl ?? "http://localhost:3001",
       bearerSecret: overrides.bearerSecret ?? "outbound-secret",
-      remoteEventKey: overrides.remoteEventKey ?? `2025/${eventCode}`,
+      remoteEventKey: overrides.remoteEventKey ?? `2026/${eventCode}`,
       definitionVersion: overrides.definitionVersion ?? SYNC_DEFINITION_VERSION,
       allowedPushResources: overrides.allowedPushResources ?? [
         ...DEFAULT_ALLOWED_PUSH_RESOURCES,
