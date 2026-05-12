@@ -22,6 +22,7 @@ export const displayRoutes = new Hono<AppEnv>();
 const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
 const SCORE_UPDATE_EVENT_NAME = "display.change" as const;
+const scoreBridgeEventCodes = new Set<string>();
 
 /**
  * Match lifecycle scenes that must go through /match-control/* routes.
@@ -59,8 +60,22 @@ const writeScoreUpdateEvent = async (
   });
 };
 
+const ensureDisplayScoreBridge = (eventCode: string): void => {
+  if (scoreBridgeEventCodes.has(eventCode)) {
+    return;
+  }
+
+  scoreBridgeEventCodes.add(eventCode);
+  scoringSyncHub.subscribe(eventCode, (scoringEvent) => {
+    if (scoringEvent.kind === "SCORE_UPDATED") {
+      publishDisplayScoreUpdate(eventCode, scoringEvent);
+    }
+  });
+};
+
 displayRoutes.get("/:eventCode/display/stream", (c) => {
   const eventCode = c.req.param("eventCode");
+  ensureDisplayScoreBridge(eventCode);
 
   return streamSSE(c, async (stream) => {
     let queuedWrite = Promise.resolve();
@@ -97,17 +112,6 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
       enqueueWrite((streamApi) => writer(streamApi, event));
     });
 
-    // Subscribe to scoring events and republish through displaySyncHub
-    // so they share the same version sequence as COMMAND_ISSUED events.
-    const scoringUnsubscribe = scoringSyncHub.subscribe(
-      eventCode,
-      (scoringEvent) => {
-        if (scoringEvent.kind === "SCORE_UPDATED") {
-          publishDisplayScoreUpdate(eventCode, scoringEvent);
-        }
-      }
-    );
-
     const heartbeatIntervalId = setInterval(() => {
       enqueueWrite(async (streamApi) => {
         await streamApi.write(": heartbeat\n\n");
@@ -122,7 +126,6 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
       isCleanedUp = true;
       clearInterval(heartbeatIntervalId);
       unsubscribe();
-      scoringUnsubscribe();
     };
 
     stream.onAbort(() => {
