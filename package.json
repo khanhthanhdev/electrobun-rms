@@ -1,6 +1,6 @@
 {
   "name": "electrobun-app",
-  "version": "1.0.0",
+  "version": "0.1.21",
   "description": "ElectroBun app with React + Hono + Drizzle + bun:sqlite",
   "scripts": {
     "dev": "vite build && bun scripts/run-electrobun-build.ts && electrobun run",
