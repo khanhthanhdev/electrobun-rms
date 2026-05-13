@@ -224,14 +224,14 @@ describe("scoring routes", () => {
         cOpponentBackfieldBullets: 4,
         dRobotParkState: 2,
         dGoldFlagsDefended: 3,
-        scoreA: 95,
-        scoreB: 50,
-        scoreC: 4,
-        scoreD: 45,
-        scoreTotal: 194,
+        scoreA: 10,
+        scoreB: 3,
+        scoreC: 15,
+        scoreD: 3,
+        scoreTotal: 27,
       },
       result: {
-        redScore: 194,
+        redScore: 27,
         blueScore: 12,
         redPenaltyCommitted: 5,
         bluePenaltyCommitted: 7,
@@ -251,7 +251,7 @@ describe("scoring routes", () => {
         blueTeamName: "Team 222",
         redSurrogate: false,
         blueSurrogate: false,
-        redScore: 194,
+        redScore: 27,
         blueScore: null,
       },
     ]);
@@ -282,15 +282,15 @@ describe("scoring routes", () => {
         cOpponentBackfieldBullets: 1,
         dRobotParkState: 1,
         dGoldFlagsDefended: 0,
-        scoreA: 30,
-        scoreB: 10,
-        scoreC: 1,
-        scoreD: 10,
-        scoreTotal: 51,
+        scoreA: 3,
+        scoreB: 1,
+        scoreC: 0,
+        scoreD: 2,
+        scoreTotal: 5,
       },
       result: {
-        redScore: 194,
-        blueScore: 51,
+        redScore: 27,
+        blueScore: 5,
         redPenaltyCommitted: 5,
         bluePenaltyCommitted: 7,
       },
@@ -310,13 +310,13 @@ describe("scoring routes", () => {
     expect(history).toHaveLength(2);
     expect(history[0]).toMatchObject({
       type: "Blue Ref Save",
-      redScore: 194,
-      blueScore: 51,
+      redScore: 27,
+      blueScore: 5,
       scoresheetAlliance: "blue",
     });
     expect(history[1]).toMatchObject({
       type: "Red Ref Save",
-      redScore: 194,
+      redScore: 27,
       blueScore: null,
       scoresheetAlliance: "red",
     });
@@ -340,11 +340,11 @@ describe("scoring routes", () => {
       cOpponentBackfieldBullets: 4,
       dRobotParkState: 2,
       dGoldFlagsDefended: 3,
-      scoreA: 95,
-      scoreB: 50,
-      scoreC: 4,
-      scoreD: 45,
-      scoreTotal: 194,
+      scoreA: 10,
+      scoreB: 3,
+      scoreC: 15,
+      scoreD: 3,
+      scoreTotal: 27,
     });
     expect(finalScoresheet.blue).toMatchObject({
       alliance: "blue",
@@ -356,11 +356,11 @@ describe("scoring routes", () => {
       cOpponentBackfieldBullets: 1,
       dRobotParkState: 1,
       dGoldFlagsDefended: 0,
-      scoreA: 30,
-      scoreB: 10,
-      scoreC: 1,
-      scoreD: 10,
-      scoreTotal: 51,
+      scoreA: 3,
+      scoreB: 1,
+      scoreC: 0,
+      scoreD: 2,
+      scoreTotal: 5,
     });
     expect(typeof finalScoresheet.red.ts).toBe("number");
     expect(typeof finalScoresheet.blue.ts).toBe("number");
@@ -397,7 +397,7 @@ describe("scoring routes", () => {
       matchNumber: 1,
       alliance: "red",
       result: {
-        redScore: 194,
+        redScore: 27,
         blueScore: 0,
       },
     });
@@ -416,7 +416,7 @@ describe("scoring routes", () => {
         blueTeamName: "Team 222",
         redSurrogate: false,
         blueSurrogate: false,
-        redScore: 194,
+        redScore: 27,
         blueScore: null,
       },
     ]);
@@ -471,7 +471,7 @@ describe("scoring routes", () => {
       matchNumber: 1,
       alliance: "red",
       result: {
-        redScore: 194,
+        redScore: 27,
         blueScore: 0,
         redPenaltyCommitted: 0,
         bluePenaltyCommitted: 0,
@@ -492,7 +492,7 @@ describe("scoring routes", () => {
         blueTeamName: "Team 222",
         redSurrogate: false,
         blueSurrogate: false,
-        redScore: 194,
+        redScore: 27,
         blueScore: null,
       },
     ]);

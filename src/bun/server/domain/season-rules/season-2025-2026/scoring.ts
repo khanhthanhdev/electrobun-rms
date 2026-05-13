@@ -4,19 +4,20 @@ import type {
   ScoringRules,
 } from "../season-rule-types";
 
-const POINTS_A_SECOND_TIER_FLAG = 25;
-const POINTS_A_FIRST_TIER_FLAG = 20;
-const POINTS_A_CENTER_FLAG = 10;
-const POINTS_B_CENTER_FLAG_DOWN = 30;
-const POINTS_B_BASE_FLAG_DOWN = 10;
-const POINTS_D_GOLD_FLAG_DEFENDED = 10;
+const POINTS_A_SECOND_TIER_FLAG = 2;
+const POINTS_A_FIRST_TIER_FLAG = 1;
+const POINTS_A_CENTER_FLAG = 2;
+const POINTS_B_FERTILIZER = 1;
+const MAX_B_FERTILIZER = 10;
+const POINTS_C_GOLD_FLAG_DEFENDED = 5;
+const POINTS_PENALTY_DROPPED_FLAG = 1;
 
 const computeParkPoints = (parkState: number): number => {
   if (parkState === 1) {
-    return 10;
+    return 2;
   }
   if (parkState === 2) {
-    return 15;
+    return 3;
   }
   return 0;
 };
@@ -28,14 +29,16 @@ const computeAllianceScore = (
     (input.aSecondTierFlags ?? 0) * POINTS_A_SECOND_TIER_FLAG +
     (input.aFirstTierFlags ?? 0) * POINTS_A_FIRST_TIER_FLAG +
     (input.aCenterFlags ?? 0) * POINTS_A_CENTER_FLAG;
-  const scoreB =
-    (input.bCenterFlagDown ?? 0) * POINTS_B_CENTER_FLAG_DOWN +
-    (input.bBaseFlagsDown ?? 0) * POINTS_B_BASE_FLAG_DOWN;
-  const scoreC = input.cOpponentBackfieldBullets ?? 0;
-  const scoreD =
-    computeParkPoints(input.dRobotParkState ?? 0) +
-    (input.dGoldFlagsDefended ?? 0) * POINTS_D_GOLD_FLAG_DEFENDED;
-  const scoreTotal = scoreA + scoreB + scoreC + scoreD;
+  const fertilizerCount = Math.min(
+    MAX_B_FERTILIZER,
+    (input.bCenterFlagDown ?? 0) + (input.bBaseFlagsDown ?? 0)
+  );
+  const scoreB = fertilizerCount * POINTS_B_FERTILIZER;
+  const scoreC = (input.dGoldFlagsDefended ?? 0) * POINTS_C_GOLD_FLAG_DEFENDED;
+  const scoreD = computeParkPoints(input.dRobotParkState ?? 0);
+  const penalty =
+    (input.cOpponentBackfieldBullets ?? 0) * POINTS_PENALTY_DROPPED_FLAG;
+  const scoreTotal = Math.max(0, scoreA + scoreB + scoreC + scoreD - penalty);
 
   return { scoreA, scoreB, scoreC, scoreD, scoreTotal };
 };
@@ -46,14 +49,14 @@ const metrics: ScoreMetricDefinition[] = [
   { key: "aCenterFlags", label: "Center Flags", minValue: 0 },
   {
     key: "bCenterFlagDown",
-    label: "Center Flag Down",
+    label: "Fertilizer In Target",
     minValue: 0,
-    maxValue: 1,
+    maxValue: 10,
   },
-  { key: "bBaseFlagsDown", label: "Base Flags Down", minValue: 0 },
+  { key: "bBaseFlagsDown", label: "Additional Fertilizer In Target", minValue: 0 },
   {
     key: "cOpponentBackfieldBullets",
-    label: "Opponent Backfield Bullets",
+    label: "Dropped Planted Rice Penalties",
     minValue: 0,
   },
   {
@@ -62,7 +65,7 @@ const metrics: ScoreMetricDefinition[] = [
     minValue: 0,
     maxValue: 2,
   },
-  { key: "dGoldFlagsDefended", label: "Gold Flags Defended", minValue: 0 },
+  { key: "dGoldFlagsDefended", label: "Gold Rice Defended", minValue: 0 },
 ];
 
 export const scoringRules: ScoringRules = {

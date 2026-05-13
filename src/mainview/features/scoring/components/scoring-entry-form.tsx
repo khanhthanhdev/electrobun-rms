@@ -1,55 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  calcScoringTotal,
+  INITIAL_SCORING_STATE,
+  PARKING_OPTIONS,
+  PENALTY_SCORING_FIELD,
+  SCORING_FORM_SECTIONS,
+  SCORING_TOTAL_LABEL,
+  type ScoringState,
+} from "../scoring-business-logic";
 
-// Parking states: 0=none, 1=partial(10pts), 2=full(15pts)
-export type ParkingState = 0 | 1 | 2;
-
-export interface ScoringState {
-  bulletsInEnemyZone: number;
-  flagsCenterDefended: number;
-  flagsCenterShot: number;
-  flagsL1Defended: number;
-  flagsL2Defended: number;
-  flagsOtherShot: number;
-  goldenFlagsBonus: number;
-  robotParking: ParkingState;
-}
-
-export const INITIAL_SCORING_STATE: ScoringState = {
-  flagsL2Defended: 0,
-  flagsL1Defended: 0,
-  flagsCenterDefended: 0,
-  flagsCenterShot: 0,
-  flagsOtherShot: 0,
-  bulletsInEnemyZone: 0,
-  robotParking: 0,
-  goldenFlagsBonus: 0,
-};
-
-export const calcScoringTotal = (s: ScoringState): number => {
-  const scoreA =
-    s.flagsL2Defended * 25 +
-    s.flagsL1Defended * 20 +
-    s.flagsCenterDefended * 10;
-  const scoreB = Math.min(1, s.flagsCenterShot) * 30 + s.flagsOtherShot * 10;
-  const scoreC = -(s.bulletsInEnemyZone * 10);
-  const getParkingPts = (p: ParkingState): number => {
-    if (p === 2) {
-      return 15;
-    }
-    if (p === 1) {
-      return 10;
-    }
-    return 0;
-  };
-  const scoreD = getParkingPts(s.robotParking) + s.goldenFlagsBonus * 10;
-  return Math.max(0, scoreA + scoreB + scoreC + scoreD);
-};
-
-const PARKING_OPTIONS: { label: string; value: ParkingState }[] = [
-  { value: 0, label: "Không" },
-  { value: 1, label: "Một phần" },
-  { value: 2, label: "Toàn bộ" },
-];
+export {
+  calcScoringTotal,
+  INITIAL_SCORING_STATE,
+  type ParkingState,
+  type ScoringState,
+} from "../scoring-business-logic";
 
 const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
   red: "#dc2626",
@@ -257,52 +222,22 @@ export const ScoringEntryForm = ({
         padding: "0.75rem 1.25rem 1.25rem",
       }}
     >
-      <SectionHeader accent={accent} label="A — Số cờ được bảo vệ" />
-      <CounterRow
-        label="Cờ tầng 2"
-        onDecrement={() => dec("flagsL2Defended")}
-        onIncrement={() => inc("flagsL2Defended")}
-        pts="25 điểm / 1"
-        value={score.flagsL2Defended}
-      />
-      <CounterRow
-        label="Cờ tầng 1"
-        onDecrement={() => dec("flagsL1Defended")}
-        onIncrement={() => inc("flagsL1Defended")}
-        pts="20 điểm / 1"
-        value={score.flagsL1Defended}
-      />
-      <CounterRow
-        label="Cờ trung tâm"
-        onDecrement={() => dec("flagsCenterDefended")}
-        onIncrement={() => inc("flagsCenterDefended")}
-        pts="10 điểm / 1"
-        value={score.flagsCenterDefended}
-      />
-      <SectionHeader accent={accent} label="B — Bắn phá trên sân đối phương" />
-      <CounterRow
-        label="Bắn hạ cờ trung tâm"
-        onDecrement={() => dec("flagsCenterShot")}
-        onIncrement={() => inc("flagsCenterShot", 1)}
-        pts="30 điểm / 1"
-        value={score.flagsCenterShot}
-      />
-      <CounterRow
-        label="Bắn hạ cờ khác"
-        onDecrement={() => dec("flagsOtherShot")}
-        onIncrement={() => inc("flagsOtherShot")}
-        pts="10 điểm / 1"
-        value={score.flagsOtherShot}
-      />
-      <SectionHeader accent={accent} label="C — Số đạn trên sân đối phương" />
-      <CounterRow
-        label="Số đạn trên sân đối phương"
-        onDecrement={() => dec("bulletsInEnemyZone")}
-        onIncrement={() => inc("bulletsInEnemyZone")}
-        pts="Loại bỏ cờ"
-        value={score.bulletsInEnemyZone}
-      />
-      <SectionHeader accent={accent} label="D — Giai đoạn kết thúc trận đấu" />
+      {SCORING_FORM_SECTIONS.slice(0, 3).map((section) => (
+        <div key={section.key}>
+          <SectionHeader accent={accent} label={section.label} />
+          {section.fields.map((field) => (
+            <CounterRow
+              key={field.key}
+              label={field.label}
+              onDecrement={() => dec(field.key)}
+              onIncrement={() => inc(field.key, field.max)}
+              pts={field.pts}
+              value={score[field.key]}
+            />
+          ))}
+        </div>
+      ))}
+      <SectionHeader accent={accent} label={SCORING_FORM_SECTIONS[3].label} />
       <div
         style={{
           display: "flex",
@@ -313,25 +248,37 @@ export const ScoringEntryForm = ({
           gap: "0.5rem",
         }}
       >
-        <span
-          style={{
-            fontWeight:
-              "var(--font-medium)" as React.CSSProperties["fontWeight"],
-            color: "var(--foreground)",
-            flexShrink: 0,
-          }}
-        >
-          Vị trí đỗ
-        </span>
+        <div>
+          <span
+            style={{
+              fontWeight:
+                "var(--font-medium)" as React.CSSProperties["fontWeight"],
+              color: "var(--foreground)",
+              flexShrink: 0,
+            }}
+          >
+            {SCORING_FORM_SECTIONS[3].fields[0].label}
+          </span>
+          <span
+            style={{
+              marginLeft: "0.5rem",
+              fontSize: "0.78rem",
+              color: "var(--muted-foreground)",
+            }}
+          >
+            {SCORING_FORM_SECTIONS[3].fields[0].pts}
+          </span>
+        </div>
         <div
           style={{
             display: "flex",
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-small)",
             overflow: "hidden",
+            flex: 1,
           }}
         >
-          {PARKING_OPTIONS.map((opt) => {
+          {PARKING_OPTIONS.map((opt, idx) => {
             const active = score.robotParking === opt.value;
             return (
               <button
@@ -340,10 +287,13 @@ export const ScoringEntryForm = ({
                   setScore((s) => ({ ...s, robotParking: opt.value }))
                 }
                 style={{
+                  flex: 1,
                   padding: "0.35rem 0.7rem",
                   border: "none",
                   borderRight:
-                    opt.value < 2 ? "1px solid var(--border)" : "none",
+                    idx < PARKING_OPTIONS.length - 1
+                      ? "1px solid var(--border)"
+                      : "none",
                   background: active ? accent : "var(--card)",
                   color: active ? "#fff" : "var(--foreground)",
                   cursor: "pointer",
@@ -352,6 +302,7 @@ export const ScoringEntryForm = ({
                     : ("var(--font-medium)" as React.CSSProperties["fontWeight"]),
                   fontSize: "0.82rem",
                   whiteSpace: "nowrap",
+                  textAlign: "center",
                 }}
                 type="button"
               >
@@ -361,12 +312,13 @@ export const ScoringEntryForm = ({
           })}
         </div>
       </div>
+      <SectionHeader accent={accent} label="Điểm trừ" />
       <CounterRow
-        label="Bảo vệ cờ vàng"
-        onDecrement={() => dec("goldenFlagsBonus")}
-        onIncrement={() => inc("goldenFlagsBonus")}
-        pts="10 điểm / 1"
-        value={score.goldenFlagsBonus}
+        label={PENALTY_SCORING_FIELD.label}
+        onDecrement={() => dec(PENALTY_SCORING_FIELD.key)}
+        onIncrement={() => inc(PENALTY_SCORING_FIELD.key)}
+        pts={PENALTY_SCORING_FIELD.pts}
+        value={score[PENALTY_SCORING_FIELD.key]}
       />
       <div
         style={{
@@ -387,7 +339,7 @@ export const ScoringEntryForm = ({
             color: "var(--foreground)",
           }}
         >
-          Total Score
+          {SCORING_TOTAL_LABEL}
         </span>
         <span
           style={{
@@ -416,7 +368,7 @@ export const ScoringEntryForm = ({
         }}
         type="button"
       >
-        Submit Score
+        Ghi điểm
       </button>
     </div>
   );

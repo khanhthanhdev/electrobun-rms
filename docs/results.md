@@ -80,12 +80,12 @@ Displays the detailed scoresheet. The layout strictly follows the current score 
 | [▉] Blue Alliance Scoring       [M1][F1]|   | [▉] Red Alliance Scoring        [M1][F1]|
 +-----------------------------------------+   +-----------------------------------------+
 | ▉ A - Cờ bảo vệ (Defended Flags)        |   | ▉ A - Cờ bảo vệ (Defended Flags)        |
-|   Tier 2 Flags (25 pts)          1      |   |   Tier 2 Flags (25 pts)          0      |
-|   Tier 1 Flags (20 pts)          2      |   |   Tier 1 Flags (20 pts)          3      |
-|   Center Flags (10 pts)          1      |   |   Center Flags (10 pts)          1      |
+|   Lúa tầng 2 (25 pts)            1      |   |   Lúa tầng 2 (25 pts)            0      |
+|   Lúa tầng 1 (20 pts)            2      |   |   Lúa tầng 1 (20 pts)            3      |
+|   Lúa trung tâm (10 pts)         1      |   |   Lúa trung tâm (10 pts)         1      |
 |                                         |   |                                         |
 | ▉ B - Bắn phá (Flags Shot)              |   | ▉ B - Bắn phá (Flags Shot)              |
-|   Enemy Center Flag (30)         0      |   |   Enemy Center Flag (30)         1      |
+|   Lúa rơi trung tâm (30)        0      |   |   Lúa rơi trung tâm (30)        1      |
 |   Other Enemy Flags (10)         3      |   |   Other Enemy Flags (10)         2      |
 |                                         |   |                                         |
 | ▉ C - Đạn trên sân đối phương           |   | ▉ C - Đạn trên sân đối phương           |

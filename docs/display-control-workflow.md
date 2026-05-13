@@ -41,7 +41,7 @@ All screens are rendered on the same URL: `/event/{eventCode}/display/`. Content
 | # | Screen | Screenshot | Triggered by | Description |
 |---|--------|------------|--------------|-------------|
 | 1 | **Next Match** | `docs/display/next_match.png` | Show Preview (or default idle) | "Up Next" style: upcoming match name, team numbers, event title. No timer. |
-| 2 | **Match Preview** | `docs/display/match_preview.png` | Show Match (before Start) | Match view with timer at 2:30 (not counting), Red/Blue teams, 0–0 scores, RP progress bars. |
+| 2 | **Match Preview** | `docs/display/match_preview.png` | Show Match (before Start) | Match view with timer at 8:00 (not counting), Red/Blue teams, 0–0 scores, RP progress bars. |
 | 3 | **Match Start** | `docs/display/match_start.png` | Start Match | Timer running; phase changes (AUTO → transition → TELEOP); scoring visible. |
 | 4 | **Match Winner** | `docs/display/match_winner.png` | Timer ends + Commit & Post | Final scores, winner highlight, match result. |
 | 5 | **Blank Screen** | `docs/display/blank_screen.png` | Show Blank Screen | Minimal or empty view; may show audio warning overlay. |
@@ -108,7 +108,7 @@ Display mode commands (Show Blank Screen, Show Ranks & Results, etc.) are under 
 | **Where** | Control page, action bar |
 | **Action** | Click **Show Match** |
 | **When enabled** | After Show Preview |
-| **Effect** | Switches display to match view; timer at 2:30, not counting |
+| **Effect** | Switches display to match view; timer at 8:00, not counting |
 | **Display change** | Display shows **Match Preview** screen (`match_preview.png`): field, teams, 0–0, RP bars |
 | **Next enabled** | Start Match |
 
@@ -184,7 +184,7 @@ These commands override the match flow and switch the display to a specific mode
 3. Open display (separate window/screen): `/event/s4v1/display/`; close Display Options modal.
 4. **Load Next Match** → confirm in Load dialog.
 5. **Show Preview** → display shows "Up Next".
-6. **Show Match** → display shows match preview (2:30, 0–0).
+6. **Show Match** → display shows match preview (8:00, 0–0).
 7. **Start Match** → timer runs; display shows live match.
 8. When timer ends → **Commit & Post Last Match** → display shows match winner.
 9. Repeat from step 4 for next match.

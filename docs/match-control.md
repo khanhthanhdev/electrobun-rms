@@ -73,7 +73,7 @@ The game uses a **Flag Defense** scoring system with four scoring sections:
 
 **Steps:**
 1. **Start Match**
-   - Begins official 2:30 countdown timer
+   - Begins official 8:00 countdown timer
    - Activates scoring input panels (red/blue alliances side-by-side)
    - Shows real-time score calculation as data entered
    
@@ -82,10 +82,10 @@ The game uses a **Flag Defense** scoring system with four scoring sections:
    **Section A — Cờ được bảo vệ (Flags Defended):**
    - L2 Flags: 25 pts each
    - L1 Flags: 20 pts each
-   - Center Flags: 10 pts each
+   - Lúa trung tâm: 10 pts each
    
    **Section B — Bắn phá (Flag Offense):**
-   - Center Flags Shot: 30 pts each
+   - Lúa rơi trung tâm: 30 pts each
    - Other Flags Shot: 10 pts each
    
    **Section C — Đạn trên sân (Bullet Penalty):**
@@ -150,7 +150,7 @@ The game uses a **Flag Defense** scoring system with four scoring sections:
 │                                                                                                              │
 │                                                Match Control                                                 │
 │                                                                                                              │
-│         Loaded Match:          Playoff Match 3         2:30 (Not Started)          Red: 5, 2     Blue: 8, 3  │
+│         Loaded Match:          Playoff Match 3         8:00 (Not Started)          Red: 5, 2     Blue: 8, 3  │
 │         Active Match:                                                                                        │
 │                                                                                                              │
 │               [Load Next Match]  [Show Preview]  [Randomize Field]  [Show Random]  [Show Match]              │
@@ -169,7 +169,7 @@ The game uses a **Flag Defense** scoring system with four scoring sections:
 **Status Indicators:**
 - **Loaded Match:** Current match queued for execution
   - Match name (e.g., "Playoff Match 3")
-  - Remaining time (e.g., "2:30")
+  - Remaining time (e.g., "8:00")
   - Status badge (Not Started, In Progress, Completed)
   - Team numbers per alliance (e.g., "Red: 5, 2")
 
@@ -188,7 +188,7 @@ Primary control buttons for match flow, matching the image reference:
 | **Randomize Field** | Active after load | Trigger randomization if applicable | Field preparation (green highlight when active) |
 | **Show Random** | Active after setup | Display randomization to audience | Field preparation |
 | **Show Match** | Active when ready | Display match view to audience | Ready for scoring |
-| **Start Match** | Active after setup | Begin official 2:30 timer & scoring | Initiates live match |
+| **Start Match** | Active after setup | Begin official 8:00 timer & scoring | Initiates live match |
 | **Commit & Post...** | Active on complete | Finalize scores | Right-aligned, final step |
 
 **Workflow Sequence:**
@@ -295,13 +295,13 @@ interface ScoringState {
 │ [Red Alliance Scoring]     Match M3 F1  │ (Color-coded header)
 ├─────────────────────────────────────────┤
 │ A — Số cờ được bảo vệ                  │
-│  Cờ tầng 2    [−] 1 [+]  25 điểm / 1  │
-│  Cờ tầng 1    [−] 2 [+]  20 điểm / 1  │
-│  Cờ trung tâm [−] 1 [+]  10 điểm / 1  │
+│  Lúa tầng 2   [−] 1 [+]  25 điểm / 1  │
+│  Lúa tầng 1   [−] 2 [+]  20 điểm / 1  │
+│  Lúa trung tâm[−] 1 [+]  10 điểm / 1  │
 │                                        │
 │ B — Bắn phá trên sân đối phương        │
-│  Bắn hạ cờ trung tâm [−] 2 [+] 30 pts │
-│  Bắn hạ cờ khác      [−] 1 [+] 10 pts │
+│  Lúa rơi trung tâm   [−] 2 [+] 30 pts │
+│  Lúa rơi khác        [−] 1 [+] 10 pts │
 │                                        │
 │ C — Số đạn trên sân đối phương         │
 │  Số đạn [−] 0 [+]  Loại bỏ cờ        │
@@ -418,13 +418,13 @@ interface MatchHistoryItem {
 │ RED ALLIANCE          BLUE ALLIANCE  │
 ├─────────────────────────────────────┤
 │ A — Số cờ được bảo vệ              │
-│  Cờ tầng 2      25 pts/1        2  │
-│  Cờ tầng 1      20 pts/1        1  │
-│  Cờ trung tâm   10 pts/1        1  │
+│  Lúa tầng 2     25 pts/1        2  │
+│  Lúa tầng 1     20 pts/1        1  │
+│  Lúa trung tâm  10 pts/1        1  │
 │                                    │
 │ B — Bắn phá                         │
 │  Bắn hạ cờ TT   30 pts/1        2  │
-│  Bắn hạ cờ khác 10 pts/1        1  │
+│  Lúa rơi khác   10 pts/1        1  │
 │                                    │
 │ C — Đạn trên sân                    │
 │  Số đạn         loại bỏ cờ      0  │
@@ -703,7 +703,7 @@ const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
 
 4. **Match Execution**
    - Click "Start Match"
-   - Timer begins (2:30 countdown)
+   - Timer begins (8:00 countdown)
    - Scoring panels live-update as fouls/scores entered
    - Tab automatically switches to "Active Match"
 

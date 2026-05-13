@@ -28,7 +28,7 @@ Load Next Match → Show Preview → Show Match → Start Match → [Timer] → 
 | 1 | **Load Next Match** | Queues next match; shows name, duration, Red/Blue teams | Show Preview |
 | 2 | **Show Preview** | Shows match info to audience; teams take field | Show Match |
 | 3 | **Show Match** | Shows match view; ready for scoring | Start Match |
-| 4 | **Start Match** | Starts 2:30 timer; enables live scoring | — |
+| 4 | **Start Match** | Starts 8:00 timer; enables live scoring | — |
 | 5 | Timer ends | Match COMPLETED | Commit & Post Last Match |
 
 ---
@@ -68,7 +68,7 @@ UNPLAYED
 
 ## Start / Abort Match
 
-- **Start Match:** Starts official 2:30 countdown; locks control buttons; enables scoring panels
+- **Start Match:** Starts official 8:00 countdown; locks control buttons; enables scoring panels
 - **Abort:** Not clearly exposed in the UI; likely:
   - Scenario 1: Operator can stop/reset from Settings or a hidden control
   - Scenario 2: Match can be reverted via Schedule → Replay (after committing a dummy or reopening)

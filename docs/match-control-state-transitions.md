@@ -120,7 +120,7 @@ COMPLETED ──COMMIT──▶ loaded=IDLE, active=IDLE
 | `LOAD` | Preserves current (or `blank`) | No scene change — just data update |
 | `UNLOAD` | `blank` | Clears display |
 | `SHOW_PREVIEW` | `match-preview` | Teams & match info on screen |
-| `SHOW_MATCH` | `match-start` | Match view, timer at 2:30 |
+| `SHOW_MATCH` | `match-start` | Match view, timer at 8:00 |
 | `START` | `match-start` | Timer begins counting down |
 | `AUTO_COMPLETE` | `match-complete` | Match finished, awaiting commit |
 | `ABORT` | `blank` | Display cleared |

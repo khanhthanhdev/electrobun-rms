@@ -47,7 +47,7 @@ export const scoringStateToApiBody = (
   aSecondTierFlags: state.flagsL2Defended,
   aFirstTierFlags: state.flagsL1Defended,
   aCenterFlags: state.flagsCenterDefended,
-  bCenterFlagDown: Math.min(1, Math.max(0, state.flagsCenterShot)),
+  bCenterFlagDown: Math.min(10, Math.max(0, state.flagsCenterShot)),
   bBaseFlagsDown: state.flagsOtherShot,
   cOpponentBackfieldBullets: state.bulletsInEnemyZone,
   dRobotParkState: state.robotParking,

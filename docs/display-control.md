@@ -15,7 +15,7 @@ This document is based on live inspections performed on:
 
 ### Audience Display: Match Preview (Likely “Show Match” State)
 While the admin `/control` page was not accessible (login required), the `/display` page was observed in a match-preview layout consistent with what “Show Match” typically does:
-- Field + timer header: `Field 2` and timer initialized at `2:30` (not counting down).
+- Field + timer header: `Field 2` and timer initialized at `8:00` (not counting down).
 - Match label: `TEST Qualification 4 of 5`
 - Team numbers shown (as rendered on the display): `2 1 4 3` (likely Red: `2, 1` vs Blue: `4, 3`)
 - Score line: `Red 0  Blue 0`

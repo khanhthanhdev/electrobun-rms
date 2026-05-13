@@ -52,22 +52,22 @@ Provides a real-time view of the ongoing match, scores, and foul inputs for the 
 | [ ▼ Normal Scores ▼ ]                                                                             |
 |                                                                                                   |
 |   +-------------------------+   |      A — Số cờ được bảo vệ      |   +-----------------------+   |
-|   |            0            |   |            Cờ tầng 2            |   |           0           |   |
+|   |            0            |   |            Lúa tầng 2           |   |           0           |   |
 |   +-------------------------+   |          25 điểm / 1            |   +-----------------------+   |
 |                                 |                                 |                               |
-|   +-------------------------+   |            Cờ tầng 1            |   +-----------------------+   |
+|   +-------------------------+   |            Lúa tầng 1           |   +-----------------------+   |
 |   |            0            |   |          20 điểm / 1            |   |           0           |   |
 |   +-------------------------+   |                                 |   +-----------------------+   |
 |                                 |                                 |                               |
-|   +-------------------------+   |           Cờ trung tâm          |   +-----------------------+   |
+|   +-------------------------+   |          Lúa trung tâm          |   +-----------------------+   |
 |   |            0            |   |          10 điểm / 1            |   |           0           |   |
 |   +-------------------------+   |                                 |   +-----------------------+   |
 |                                 |                                 |                               |
 |   +-------------------------+   | B — Bắn phá trên sân đối phương |   +-----------------------+   |
-|   |            0            |   |       Bắn hạ cờ trung tâm       |   |           0           |   |
+|   |            0            |   |       Lúa rơi trung tâm        |   |           0           |   |
 |   +-------------------------+   |          30 điểm / 1            |   +-----------------------+   |
 |                                 |                                 |                               |
-|   +-------------------------+   |          Bắn hạ cờ khác         |   +-----------------------+   |
+|   +-------------------------+   |          Lúa rơi khác          |   +-----------------------+   |
 |   |            0            |   |          10 điểm / 1            |   |           0           |   |
 |   +-------------------------+   |                                 |   +-----------------------+   |
 |                                 |                                 |                               |
@@ -101,8 +101,8 @@ Provides a real-time view of the ongoing match, scores, and foul inputs for the 
 *   **Realtime Sync:** Scores update synchronously in real-time. Head ref can see the outcome as it changes.
 *   **Fouls and Cards Control:** Head referee exclusively controls (increment/decrement) Minor and Major fouls for both Blue and Red alliances, and can assign cards.
 *   **Normal Scores (Read-only):** Head referee can view the normal gameplay scores sections (A-D) as defined by the event rules, preferably placed inside a toggleable accordion `[ ▼ Normal Scores ▼ ]` without edit controls.
-    *   **A:** Cờ tầng 2 (25pts), Cờ tầng 1 (20pts), Cờ trung tâm (10pts).
-    *   **B:** Bắn hạ cờ trung tâm (30pts), Bắn hạ cờ khác (10pts).
+    *   **A:** Lúa tầng 2 (25pts), Lúa tầng 1 (20pts), Lúa trung tâm (10pts).
+    *   **B:** Lúa rơi trung tâm (30pts), Lúa rơi khác (10pts).
     *   **C:** Số đạn trên sân đối phương (Cancels flags / -10pts).
     *   **D:** Vị trí đỗ (Không: 0pts, Một phần: 10pts, Toàn bộ: 15pts), Bảo vệ cờ vàng (10pts).
 *   **Notes:** Quick access to the `[Add Note]` feature.
@@ -219,18 +219,18 @@ Provides a read-only or review view of the detailed scoresheets directly from th
 |             +------------------------------+               +------------------------------+       |
 |             |     A — Số cờ được bảo vệ    |               |     A — Số cờ được bảo vệ    |       |
 |             +------------------------------+               +------------------------------+       |
-|             | Cờ tầng 2                 0  |               | Cờ tầng 2                 0  |       |
+|             | Lúa tầng 2               0  |               | Lúa tầng 2               0  |       |
 |             | 25 điểm / 1                  |               | 25 điểm / 1                  |       |
-|             | Cờ tầng 1                 0  |               | Cờ tầng 1                 0  |       |
+|             | Lúa tầng 1               0  |               | Lúa tầng 1               0  |       |
 |             | 20 điểm / 1                  |               | 20 điểm / 1                  |       |
-|             | Cờ trung tâm              0  |               | Cờ trung tâm              0  |       |
+|             | Lúa trung tâm            0  |               | Lúa trung tâm            0  |       |
 |             | 10 điểm / 1                  |               | 10 điểm / 1                  |       |
 |             +------------------------------+               +------------------------------+       |
 |             | B — Bắn phá trên sân đối ... |               | B — Bắn phá trên sân đối ... |       |
 |             +------------------------------+               +------------------------------+       |
-|             | Bắn hạ cờ trung tâm       0  |               | Bắn hạ cờ trung tâm       0  |       |
+|             | Lúa rơi trung tâm        0  |               | Lúa rơi trung tâm        0  |       |
 |             | 30 điểm / 1                  |               | 30 điểm / 1                  |       |
-|             | Bắn hạ cờ khác            0  |               | Bắn hạ cờ khác            0  |       |
+|             | Lúa rơi khác             0  |               | Lúa rơi khác             0  |       |
 |             | 10 điểm / 1                  |               | 10 điểm / 1                  |       |
 |             +------------------------------+               +------------------------------+       |
 |             | C — Số đạn trên sân đối p... |               | C — Số đạn trên sân đối p... |       |
@@ -251,4 +251,3 @@ Provides a read-only or review view of the detailed scoresheets directly from th
 |             +------------------------------+               +------------------------------+       |
 |                                                                                                   |
 +---------------------------------------------------------------------------------------------------+
-

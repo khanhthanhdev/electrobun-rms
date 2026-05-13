@@ -1,5 +1,11 @@
 import type React from "react";
 import { useState } from "react";
+import {
+  formatParkingState,
+  PENALTY_SCORING_FIELD,
+  SCORING_FORM_SECTIONS,
+  SCORING_TOTAL_LABEL,
+} from "@/features/scoring/scoring-business-logic";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import type {
@@ -168,16 +174,11 @@ const AllianceScoresheet = ({
   const isRed = alliance === "red";
   const scoresheetData = data ?? createDefaultScoresheetData(alliance);
   const accent = ALLIANCE_COLOR[alliance];
-
-  const parseParkState = (state: number) => {
-    if (state === 1) {
-      return "Một phần";
-    }
-    if (state === 2) {
-      return "Toàn bộ";
-    }
-    return "Không";
-  };
+  const [sectionA, sectionB, sectionC, sectionD] = SCORING_FORM_SECTIONS;
+  const fertilizerCount = Math.min(
+    10,
+    scoresheetData.bCenterFlagDown + scoresheetData.bBaseFlagsDown
+  );
 
   return (
     <div className="surface-card surface-card--small">
@@ -209,58 +210,48 @@ const AllianceScoresheet = ({
           padding: "0.5rem 1rem 0.75rem",
         }}
       >
-        <SectionHeader accent={accent} label="A — Số cờ được bảo vệ" />
+        <SectionHeader accent={accent} label={sectionA.scoresheetLabel} />
         <ScoreRow
-          label="Cờ tầng 2"
-          pts="25 điểm / 1"
+          label={sectionA.fields[0].label}
+          pts={sectionA.fields[0].pts}
           value={scoresheetData.aSecondTierFlags}
         />
         <ScoreRow
-          label="Cờ tầng 1"
-          pts="20 điểm / 1"
+          label={sectionA.fields[1].label}
+          pts={sectionA.fields[1].pts}
           value={scoresheetData.aFirstTierFlags}
         />
         <ScoreRow
-          label="Cờ trung tâm"
-          pts="10 điểm / 1"
+          label={sectionA.fields[2].label}
+          pts={sectionA.fields[2].pts}
           value={scoresheetData.aCenterFlags}
         />
 
-        <SectionHeader
-          accent={accent}
-          label="B — Bắn phá trên sân đối phương"
-        />
+        <SectionHeader accent={accent} label={sectionB.scoresheetLabel} />
         <ScoreRow
-          label="Bắn hạ cờ trung tâm"
-          pts="30 điểm / 1"
-          value={scoresheetData.bCenterFlagDown}
-        />
-        <ScoreRow
-          label="Bắn hạ cờ khác"
-          pts="10 điểm / 1"
-          value={scoresheetData.bBaseFlagsDown}
+          label={sectionB.fields[0].label}
+          pts={sectionB.fields[0].pts}
+          value={fertilizerCount}
         />
 
-        <SectionHeader accent={accent} label="C — Số đạn trên sân đối phương" />
+        <SectionHeader accent={accent} label={sectionC.scoresheetLabel} />
         <ScoreRow
-          label="Số đạn trên sân đối phương"
-          pts="loại bỏ cờ"
-          value={scoresheetData.cOpponentBackfieldBullets}
+          label={sectionC.fields[0].label}
+          pts={sectionC.fields[0].pts}
+          value={scoresheetData.dGoldFlagsDefended}
         />
 
-        <SectionHeader
-          accent={accent}
-          label="D — Giai đoạn kết thúc trận đấu"
-        />
+        <SectionHeader accent={accent} label={sectionD.scoresheetLabel} />
         <ScoreRow
-          label="Vị trí đỗ"
-          pts={`${parseParkState(scoresheetData.dRobotParkState)}`}
+          label={sectionD.fields[0].label}
+          pts={formatParkingState(scoresheetData.dRobotParkState)}
           value={scoresheetData.dRobotParkState}
         />
+        <SectionHeader accent={accent} label="Điểm trừ" />
         <ScoreRow
-          label="Bảo vệ cờ vàng"
-          pts="10 điểm / 1"
-          value={scoresheetData.dGoldFlagsDefended}
+          label={PENALTY_SCORING_FIELD.label}
+          pts={PENALTY_SCORING_FIELD.pts}
+          value={scoresheetData.cOpponentBackfieldBullets}
         />
 
         <div
@@ -283,7 +274,7 @@ const AllianceScoresheet = ({
               color: "var(--foreground)",
             }}
           >
-            Tổng điểm
+            {SCORING_TOTAL_LABEL}
           </span>
           <span
             style={{

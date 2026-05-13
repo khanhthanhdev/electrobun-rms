@@ -10,6 +10,7 @@ import {
 } from "./sqlite-schedule-persistence";
 import {
   DEFAULT_PRACTICE_CYCLE_TIME_SECONDS,
+  DEFAULT_MATCH_TIME_SECONDS,
   DEFAULT_QUALS_CYCLE_TIME_SECONDS,
   DEFAULT_QUALS_FIELD_START_OFFSET_SECONDS,
   DEFAULT_QUALS_MATCHES_PER_TEAM,
@@ -94,7 +95,7 @@ const loadMatches = (
       blueTeam: row.blue,
       blueSurrogate: row.blues > 0,
       startTime,
-      endTime: startTime + 150_000,
+      endTime: startTime + DEFAULT_MATCH_TIME_SECONDS * 1000,
     };
   });
 };

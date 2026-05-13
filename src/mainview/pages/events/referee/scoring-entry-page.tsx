@@ -1,10 +1,8 @@
 import { useState } from "react";
+import { calcScoringTotal } from "@/features/scoring/scoring-business-logic";
 import { scoresheetToScoringState } from "@/shared/api/scoring";
 import type { MatchType } from "@/shared/types/scoring";
-import {
-  calcScoringTotal,
-  ScoringEntryForm,
-} from "../../../features/scoring/components/scoring-entry-form";
+import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
 import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";

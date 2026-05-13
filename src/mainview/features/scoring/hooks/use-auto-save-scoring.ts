@@ -4,7 +4,7 @@ import {
   scoringStateToApiBody,
 } from "@/shared/api/scoring";
 import type { MatchType } from "@/shared/types/scoring";
-import type { ScoringState } from "../components/scoring-entry-form";
+import type { ScoringState } from "../scoring-business-logic";
 
 const DEBOUNCE_MS = 300;
 

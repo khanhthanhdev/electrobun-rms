@@ -77,11 +77,11 @@ test("switches audience display scenes during control lifecycle transitions", as
   await page.getByRole("button", { name: "Show Match" }).click();
   const timer = displayPage.locator(".display-match-start-timer");
   await expect(displayPage.locator(".display-match-start-scene")).toBeVisible();
-  await expect(timer).toHaveText("2:30");
+  await expect(timer).toHaveText("8:00");
 
   await page.getByRole("button", { name: "Start Match" }).click();
   await expect(page.getByRole("button", { name: "Abort Match" })).toBeVisible();
-  await expect(timer).not.toHaveText("2:30", { timeout: 12_000 });
+  await expect(timer).not.toHaveText("8:00", { timeout: 12_000 });
 
   await page.getByRole("button", { name: "Abort Match" }).click();
   const abortDialog = page.locator(".match-control-dialog");

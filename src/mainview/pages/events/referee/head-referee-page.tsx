@@ -10,6 +10,12 @@ import {
   fetchQualificationSchedule,
   type OneVsOneScheduleMatch,
 } from "@/features/events/schedule";
+import {
+  formatParkingState,
+  PENALTY_SCORING_FIELD,
+  SCORING_FORM_SECTIONS,
+  SCORING_TOTAL_LABEL,
+} from "@/features/scoring/scoring-business-logic";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import {
@@ -27,7 +33,6 @@ import type {
 
 type HrTab = "active" | "notes" | "timers" | "scoresheets";
 type CardState = "none" | "yellow" | "2yellow" | "red";
-type ParkingLabel = "Không" | "Một phần" | "Toàn bộ";
 type NotesFilter = "match" | "team" | "meeting";
 type AllianceView = "red" | "blue" | "both";
 
@@ -229,16 +234,6 @@ const useCurrentTime = (): string => {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-
-const parseParkState = (state: number): ParkingLabel => {
-  if (state === 1) {
-    return "Một phần";
-  }
-  if (state === 2) {
-    return "Toàn bộ";
-  }
-  return "Không";
-};
 
 const createDefaultScoresheetData = (
   alliance: "red" | "blue"
@@ -576,73 +571,81 @@ const NormalScoresAccordion = ({
   const [open, setOpen] = useState(false);
   const left = flipped ? redData : blueData;
   const right = flipped ? blueData : redData;
+  const leftFertilizerCount = Math.min(
+    10,
+    left.bCenterFlagDown + left.bBaseFlagsDown
+  );
+  const rightFertilizerCount = Math.min(
+    10,
+    right.bCenterFlagDown + right.bBaseFlagsDown
+  );
 
+  const [sectionA, sectionB, sectionC, sectionD] = SCORING_FORM_SECTIONS;
   const scoreRows = [
     {
-      section: "A — Số cờ được bảo vệ",
+      section: sectionA.scoresheetLabel,
       items: [
         {
-          label: "Cờ tầng 2",
-          pts: "25 điểm / 1",
+          label: sectionA.fields[0].label,
+          pts: sectionA.fields[0].pts,
           lVal: left.aSecondTierFlags,
           rVal: right.aSecondTierFlags,
         },
         {
-          label: "Cờ tầng 1",
-          pts: "20 điểm / 1",
+          label: sectionA.fields[1].label,
+          pts: sectionA.fields[1].pts,
           lVal: left.aFirstTierFlags,
           rVal: right.aFirstTierFlags,
         },
         {
-          label: "Cờ trung tâm",
-          pts: "10 điểm / 1",
+          label: sectionA.fields[2].label,
+          pts: sectionA.fields[2].pts,
           lVal: left.aCenterFlags,
           rVal: right.aCenterFlags,
         },
       ],
     },
     {
-      section: "B — Bắn phá trên sân đối phương",
+      section: sectionB.scoresheetLabel,
       items: [
         {
-          label: "Bắn hạ cờ trung tâm",
-          pts: "30 điểm / 1",
-          lVal: left.bCenterFlagDown,
-          rVal: right.bCenterFlagDown,
-        },
-        {
-          label: "Bắn hạ cờ khác",
-          pts: "10 điểm / 1",
-          lVal: left.bBaseFlagsDown,
-          rVal: right.bBaseFlagsDown,
+          label: sectionB.fields[0].label,
+          pts: sectionB.fields[0].pts,
+          lVal: leftFertilizerCount,
+          rVal: rightFertilizerCount,
         },
       ],
     },
     {
-      section: "C — Số đạn trên sân đối phương",
+      section: sectionC.scoresheetLabel,
       items: [
         {
-          label: "Số đạn trên sân đối phương",
-          pts: "loại bỏ cờ",
-          lVal: left.cOpponentBackfieldBullets,
-          rVal: right.cOpponentBackfieldBullets,
-        },
-      ],
-    },
-    {
-      section: "D — Giai đoạn kết thúc trận đấu",
-      items: [
-        {
-          label: "Vị trí đỗ",
-          pts: "",
-          lVal: parseParkState(left.dRobotParkState),
-          rVal: parseParkState(right.dRobotParkState),
-        },
-        {
-          label: "Bảo vệ cờ vàng",
-          pts: "10 điểm / 1",
+          label: sectionC.fields[0].label,
+          pts: sectionC.fields[0].pts,
           lVal: left.dGoldFlagsDefended,
           rVal: right.dGoldFlagsDefended,
+        },
+      ],
+    },
+    {
+      section: sectionD.scoresheetLabel,
+      items: [
+        {
+          label: sectionD.fields[0].label,
+          pts: "",
+          lVal: formatParkingState(left.dRobotParkState),
+          rVal: formatParkingState(right.dRobotParkState),
+        },
+      ],
+    },
+    {
+      section: "Điểm trừ",
+      items: [
+        {
+          label: PENALTY_SCORING_FIELD.label,
+          pts: PENALTY_SCORING_FIELD.pts,
+          lVal: left.cOpponentBackfieldBullets,
+          rVal: right.cOpponentBackfieldBullets,
         },
       ],
     },
@@ -705,7 +708,7 @@ const NormalScoresAccordion = ({
             </div>
           ))}
 
-          {/* Total Score */}
+          {/* Total score */}
           <div
             style={{
               display: "flex",
@@ -715,11 +718,11 @@ const NormalScoresAccordion = ({
             }}
           >
             <div className="hr-total-score" style={{ flex: 1 }}>
-              <div className="hr-total-label">Total Score</div>
+              <div className="hr-total-label">{SCORING_TOTAL_LABEL}</div>
               <div className="hr-total-value">{left.scoreTotal}</div>
             </div>
             <div className="hr-total-score" style={{ flex: 1 }}>
-              <div className="hr-total-label">Total Score</div>
+              <div className="hr-total-label">{SCORING_TOTAL_LABEL}</div>
               <div className="hr-total-value">{right.scoreTotal}</div>
             </div>
           </div>
@@ -1002,6 +1005,11 @@ const AllianceScoresheetCard = ({
 }): JSX.Element => {
   const accent = alliance === "red" ? "#dc2626" : "#0284c7";
   const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
+  const [sectionA, sectionB, sectionC, sectionD] = SCORING_FORM_SECTIONS;
+  const fertilizerCount = Math.min(
+    10,
+    data.bCenterFlagDown + data.bBaseFlagsDown
+  );
 
   return (
     <div className="surface-card surface-card--small">
@@ -1026,58 +1034,48 @@ const AllianceScoresheetCard = ({
           padding: "0.5rem 1rem 0.75rem",
         }}
       >
-        <SectionHeader accent={accent} label="A — Số cờ được bảo vệ" />
+        <SectionHeader accent={accent} label={sectionA.scoresheetLabel} />
         <ScoreDisplayRow
-          label="Cờ tầng 2"
-          pts="25 điểm / 1"
+          label={sectionA.fields[0].label}
+          pts={sectionA.fields[0].pts}
           value={data.aSecondTierFlags}
         />
         <ScoreDisplayRow
-          label="Cờ tầng 1"
-          pts="20 điểm / 1"
+          label={sectionA.fields[1].label}
+          pts={sectionA.fields[1].pts}
           value={data.aFirstTierFlags}
         />
         <ScoreDisplayRow
-          label="Cờ trung tâm"
-          pts="10 điểm / 1"
+          label={sectionA.fields[2].label}
+          pts={sectionA.fields[2].pts}
           value={data.aCenterFlags}
         />
 
-        <SectionHeader
-          accent={accent}
-          label="B — Bắn phá trên sân đối phương"
-        />
+        <SectionHeader accent={accent} label={sectionB.scoresheetLabel} />
         <ScoreDisplayRow
-          label="Bắn hạ cờ trung tâm"
-          pts="30 điểm / 1"
-          value={data.bCenterFlagDown}
-        />
-        <ScoreDisplayRow
-          label="Bắn hạ cờ khác"
-          pts="10 điểm / 1"
-          value={data.bBaseFlagsDown}
+          label={sectionB.fields[0].label}
+          pts={sectionB.fields[0].pts}
+          value={fertilizerCount}
         />
 
-        <SectionHeader accent={accent} label="C — Số đạn trên sân đối phương" />
+        <SectionHeader accent={accent} label={sectionC.scoresheetLabel} />
         <ScoreDisplayRow
-          label="Số đạn trên sân đối phương"
-          pts="loại bỏ cờ"
-          value={data.cOpponentBackfieldBullets}
+          label={sectionC.fields[0].label}
+          pts={sectionC.fields[0].pts}
+          value={data.dGoldFlagsDefended}
         />
 
-        <SectionHeader
-          accent={accent}
-          label="D — Giai đoạn kết thúc trận đấu"
-        />
+        <SectionHeader accent={accent} label={sectionD.scoresheetLabel} />
         <ScoreDisplayRow
-          label="Vị trí đỗ"
-          pts={parseParkState(data.dRobotParkState)}
+          label={sectionD.fields[0].label}
+          pts={formatParkingState(data.dRobotParkState)}
           value={0}
         />
+        <SectionHeader accent={accent} label="Điểm trừ" />
         <ScoreDisplayRow
-          label="Bảo vệ cờ vàng"
-          pts="10 điểm / 1"
-          value={data.dGoldFlagsDefended}
+          label={PENALTY_SCORING_FIELD.label}
+          pts={PENALTY_SCORING_FIELD.pts}
+          value={data.cOpponentBackfieldBullets}
         />
 
         <div
@@ -1100,7 +1098,7 @@ const AllianceScoresheetCard = ({
               color: "var(--foreground)",
             }}
           >
-            Tổng điểm
+            {SCORING_TOTAL_LABEL}
           </span>
           <span
             style={{

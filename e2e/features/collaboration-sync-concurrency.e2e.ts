@@ -198,11 +198,11 @@ test("simulates the full match workflow from control start to head referee revie
   await expect(displayPage.locator(".display-match-start-scene")).toBeVisible({
     timeout: REALTIME_TIMEOUT_MS,
   });
-  await expect(displayTimer).toHaveText("2:30");
+  await expect(displayTimer).toHaveText("8:00");
 
   await page.getByRole("button", { name: "Start Match" }).click();
   await expect(activeRow).toContainText("In Progress");
-  await expect(displayTimer).not.toHaveText("2:30", { timeout: 12_000 });
+  await expect(displayTimer).not.toHaveText("8:00", { timeout: 12_000 });
 
   const redLiveScore = headRefPage.locator(
     ".hr-live-score--red .hr-live-score-value"

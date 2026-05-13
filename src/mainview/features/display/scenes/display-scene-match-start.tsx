@@ -1,6 +1,10 @@
 import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import matchPreviewTrophyIcon from "@/assets/display-sponsors/match-preview-trophy-icon.svg";
 import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
+import {
+  SCORE_BREAKDOWN_ROWS,
+  SCORING_TOTAL_LABEL,
+} from "@/features/scoring/scoring-business-logic";
 
 import { DisplaySceneFooter } from "../components/display-scene-footer";
 import { formatTimer } from "../display-helpers";
@@ -27,16 +31,6 @@ interface DisplaySceneMatchStartProps {
   matchStartedAtMs?: number | null;
 }
 
-const BREAKDOWN_ROWS = [
-  { key: "a", label: "Điểm bảo vệ cờ" },
-  { key: "b", label: "Điểm bắn phá cờ" },
-  { key: "c", label: "Đạn trên sân đối phương" },
-  { key: "d", label: "Endgame" },
-] as const satisfies ReadonlyArray<{
-  key: keyof ScoreBreakdown;
-  label: string;
-}>;
-
 const formatHeaderMatchLabel = (
   match: MatchStartData | null | undefined
 ): string => match?.matchName?.trim().toUpperCase() || "MATCH START";
@@ -52,11 +46,16 @@ const formatBoardScore = (score: number): string =>
   String(Math.max(0, score)).padStart(2, "0");
 
 const toBreakdownRows = (
-  blue: ScoreBreakdown | null,
-  red: ScoreBreakdown | null
+  _blue: ScoreBreakdown | null,
+  _red: ScoreBreakdown | null
 ) => {
-  const hasEndgame = (blue?.d ?? 0) > 0 || (red?.d ?? 0) > 0;
-  return BREAKDOWN_ROWS.filter((row) => hasEndgame || row.key !== "d");
+  return SCORE_BREAKDOWN_ROWS.filter((row) => {
+    // Part B is hidden from this display phase.
+    if (row.key === "b") {
+      return false;
+    }
+    return true;
+  });
 };
 
 const AllianceLiveCard = ({
@@ -192,7 +191,7 @@ export const DisplaySceneMatchStart = ({
                   {formatBoardScore(blueScore)}
                 </span>
                 <span className="display-match-start-board-total-label">
-                  Tổng điểm
+                  {SCORING_TOTAL_LABEL}
                 </span>
                 <span className="display-match-start-board-total-score display-match-start-board-total-score--red">
                   {formatBoardScore(redScore)}

@@ -64,8 +64,8 @@ Shared function: `computeMatchTimes(matchIndex, startTime, cycleTimeSeconds, { f
 - `roundIndex = floor(matchIndex / fieldCount)`
 - `fieldIndex = matchIndex % fieldCount`
 - `startOffset = roundIndex * cycleTime + fieldIndex * fieldOffset`
-- `matchTimeSeconds` is fixed to `150` seconds
-- `endTime = startTime + 150s`
+- `matchTimeSeconds` is fixed to `480` seconds
+- `endTime = startTime + 480s`
 
 Implication: matches are packed round-by-round with optional field staggering.
 
@@ -227,7 +227,7 @@ Annealing process:
 
 ### Global constants
 
-- `DEFAULT_MATCH_TIME_SECONDS = 150`
+- `DEFAULT_MATCH_TIME_SECONDS = 480`
 - `DEFAULT_FIELD_COUNT = 2`
 - `DEFAULT_PRACTICE_CYCLE_TIME_SECONDS = 180`
 - `DEFAULT_QUALS_CYCLE_TIME_SECONDS = 240`
@@ -388,7 +388,7 @@ Current seed is `Date.now()`. To make runs reproducible:
 
 ## Quick Reference (Current Defaults)
 
-- Match duration: `150s`
+- Match duration: `480s`
 - Practice cycle default: `180s`
 - Qualification cycle default: `240s`
 - Qualification field offset default: `15s`

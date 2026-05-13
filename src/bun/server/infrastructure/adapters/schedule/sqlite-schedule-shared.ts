@@ -10,6 +10,7 @@ import { getActiveSeasonRules } from "../../../domain/season-rules";
 const timingRules = getActiveSeasonRules().timing;
 
 export const DEFAULT_FIELD_COUNT = 2;
+export const DEFAULT_MATCH_TIME_SECONDS = timingRules.matchDurationSeconds;
 export const DEFAULT_PRACTICE_CYCLE_TIME_SECONDS =
   timingRules.defaultCycleTimeSecondsByType.practice ?? 180;
 export const DEFAULT_QUALS_CYCLE_TIME_SECONDS =

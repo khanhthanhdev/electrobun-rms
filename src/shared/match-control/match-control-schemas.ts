@@ -2,7 +2,7 @@ import { literal, nullable, number, object, string, union } from "valibot";
 import { displayMatchRefSchema } from "../display/display-schemas";
 
 /** Default match duration in seconds (shared between server and client). */
-export const MATCH_DURATION_SECONDS = 150;
+export const MATCH_DURATION_SECONDS = 480;
 
 /**
  * Loaded slot states.
