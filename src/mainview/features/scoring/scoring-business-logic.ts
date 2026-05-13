@@ -28,9 +28,9 @@ export const PARKING_OPTIONS: ReadonlyArray<{
   label: string;
   value: ParkingState;
 }> = [
-  { value: 0, label: "Không" },
-  { value: 1, label: "Không hoàn toàn" },
-  { value: 2, label: "Hoàn toàn" },
+  { value: 0, label: "0" },
+  { value: 1, label: "0.5" },
+  { value: 2, label: "1" },
 ];
 
 export const SCORING_TOTAL_LABEL = "Tổng điểm";
@@ -105,7 +105,7 @@ export const SCORING_FORM_SECTIONS = [
       {
         key: "robotParking",
         label: "Vị trí đỗ robot",
-        pts: "Không hoàn toàn 2 / Hoàn toàn 3",
+        pts: "",
       },
     ],
   },

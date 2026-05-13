@@ -230,7 +230,7 @@ export const ScoringEntryForm = ({
               key={field.key}
               label={field.label}
               onDecrement={() => dec(field.key)}
-              onIncrement={() => inc(field.key, field.max)}
+              onIncrement={() => inc(field.key, "max" in field ? field.max : undefined)}
               pts={field.pts}
               value={score[field.key]}
             />
