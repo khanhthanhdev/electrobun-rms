@@ -8,17 +8,15 @@ interface OneVsOneSchedulePageProps {
   configSection?: ReactNode;
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
-  eventCode: string;
-  fieldCount?: number;
-  fieldStartOffsetSeconds?: number;
   hasMatches: boolean;
   isLoading: boolean;
   matchBlocks: MatchBlockState[];
+  matchEditorMode?: "practice" | "qualification";
+  onCycleTimeSecondsChange?: (seconds: number) => void;
   onMatchBlocksChange: (blocks: MatchBlockState[]) => void;
   onScheduleDateChange: (date: string) => void;
   scheduleDate: string;
   successMessage: string | null;
-  teamCount: number;
   title: string;
   toolbar: (args: { hasMatches: boolean }) => ReactNode;
 }
@@ -29,17 +27,15 @@ export const OneVsOneSchedulePage = ({
   configSection,
   defaultCycleTimeMinutes,
   errorMessage,
-  eventCode,
-  fieldCount,
-  fieldStartOffsetSeconds,
   hasMatches,
   isLoading,
   matchBlocks,
+  matchEditorMode,
+  onCycleTimeSecondsChange,
   onMatchBlocksChange,
   onScheduleDateChange,
   scheduleDate,
   successMessage,
-  teamCount,
   title,
   toolbar,
 }: OneVsOneSchedulePageProps): JSX.Element => (
@@ -48,16 +44,14 @@ export const OneVsOneSchedulePage = ({
     configSection={configSection}
     defaultCycleTimeMinutes={defaultCycleTimeMinutes}
     errorMessage={errorMessage}
-    eventCode={eventCode}
-    fieldCount={fieldCount}
-    fieldStartOffsetSeconds={fieldStartOffsetSeconds}
     isLoading={isLoading}
     matchBlocks={matchBlocks}
+    matchEditorMode={matchEditorMode}
+    onCycleTimeSecondsChange={onCycleTimeSecondsChange}
     onMatchBlocksChange={onMatchBlocksChange}
     onScheduleDateChange={onScheduleDateChange}
     scheduleDate={scheduleDate}
     successMessage={successMessage}
-    teamCount={teamCount}
     title={title}
     toolbar={toolbar({ hasMatches })}
   >

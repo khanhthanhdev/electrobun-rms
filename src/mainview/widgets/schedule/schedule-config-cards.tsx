@@ -19,8 +19,10 @@ export const ScheduleConfigCards = ({
       const LabelTag = labelTag;
       return (
         <article className="schedule-metric-card" key={item.label}>
-          <LabelTag className="schedule-metric-label">{item.label}</LabelTag>
-          <p className="schedule-metric-value">{item.value}</p>
+          <div className="schedule-metric-content">
+            <LabelTag className="schedule-metric-label">{item.label}</LabelTag>
+            <p className="schedule-metric-value">{item.value}</p>
+          </div>
         </article>
       );
     })}

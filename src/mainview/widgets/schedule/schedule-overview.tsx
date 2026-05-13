@@ -9,9 +9,7 @@ interface EditableFieldConfig {
 }
 
 export interface BuildSummaryItemsInput {
-  cycleTimeSeconds: number;
   editable?: {
-    cycleTimeSeconds?: EditableFieldConfig;
     fieldCount?: EditableFieldConfig;
     fieldStartOffsetSeconds?: EditableFieldConfig;
     matchesPerTeam?: EditableFieldConfig;
@@ -52,7 +50,6 @@ const renderValue = (
 };
 
 export const buildOneVsOneSummaryItems = ({
-  cycleTimeSeconds,
   editable,
   fieldCount,
   fieldStartOffsetSeconds,
@@ -81,10 +78,6 @@ export const buildOneVsOneSummaryItems = ({
   {
     label: "Field Count",
     value: renderValue(fieldCount, editable?.fieldCount),
-  },
-  {
-    label: "Cycle Time (sec)",
-    value: renderValue(cycleTimeSeconds, editable?.cycleTimeSeconds),
   },
   {
     label: "Field Offset (sec)",

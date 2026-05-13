@@ -11,6 +11,9 @@ This document describes how match scheduling works in the current codebase, incl
 - Customization points and safe extension strategy
 - Core cases, edge cases, and test coverage guidance
 
+For a focused input/output contract, see
+[`scheduling-algorithm-input-output.md`](./scheduling-algorithm-input-output.md).
+
 Primary implementation files:
 
 - `src/bun/server/services/event-schedule-service.ts`

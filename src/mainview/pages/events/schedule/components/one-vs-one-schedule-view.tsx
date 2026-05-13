@@ -11,9 +11,6 @@ interface OneVsOneScheduleViewProps {
   configSection?: ReactNode;
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
-  eventCode: string;
-  fieldCount?: number;
-  fieldStartOffsetSeconds?: number;
   generatedEmptyMessage: string;
   generatedMatches: ScheduleMatchRow[];
   generatedTitle?: string;
@@ -21,12 +18,13 @@ interface OneVsOneScheduleViewProps {
   isGeneratedPrintDisabled?: boolean;
   isLoading: boolean;
   matchBlocks: MatchBlockState[];
+  matchEditorMode?: "practice" | "qualification";
+  onCycleTimeSecondsChange?: (seconds: number) => void;
   onMatchBlocksChange: (blocks: MatchBlockState[]) => void;
   onPrintGeneratedMatches?: (destination: PrintDestination) => void;
   onScheduleDateChange: (date: string) => void;
   scheduleDate: string;
   successMessage: string | null;
-  teamCount: number;
   title: string;
   toolbar: (args: { hasMatches: boolean }) => ReactNode;
 }
@@ -37,9 +35,6 @@ export const OneVsOneScheduleView = ({
   configSection,
   defaultCycleTimeMinutes,
   errorMessage,
-  eventCode,
-  fieldCount,
-  fieldStartOffsetSeconds,
   generatedEmptyMessage,
   generatedMatches,
   generatedTitle,
@@ -47,12 +42,13 @@ export const OneVsOneScheduleView = ({
   isGeneratedPrintDisabled = false,
   isLoading,
   matchBlocks,
+  matchEditorMode,
+  onCycleTimeSecondsChange,
   onMatchBlocksChange,
   onPrintGeneratedMatches,
   onScheduleDateChange,
   scheduleDate,
   successMessage,
-  teamCount,
   title,
   toolbar,
 }: OneVsOneScheduleViewProps): JSX.Element => (
@@ -61,17 +57,15 @@ export const OneVsOneScheduleView = ({
     configSection={configSection}
     defaultCycleTimeMinutes={defaultCycleTimeMinutes}
     errorMessage={errorMessage}
-    eventCode={eventCode}
-    fieldCount={fieldCount}
-    fieldStartOffsetSeconds={fieldStartOffsetSeconds}
     hasMatches={hasMatches}
     isLoading={isLoading}
     matchBlocks={matchBlocks}
+    matchEditorMode={matchEditorMode}
+    onCycleTimeSecondsChange={onCycleTimeSecondsChange}
     onMatchBlocksChange={onMatchBlocksChange}
     onScheduleDateChange={onScheduleDateChange}
     scheduleDate={scheduleDate}
     successMessage={successMessage}
-    teamCount={teamCount}
     title={title}
     toolbar={toolbar}
   >

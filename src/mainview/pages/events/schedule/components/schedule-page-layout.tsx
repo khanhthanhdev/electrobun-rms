@@ -9,23 +9,20 @@ interface SchedulePageLayoutProps {
   configSection?: ReactNode;
   defaultCycleTimeMinutes: number;
   errorMessage: string | null;
-  eventCode: string;
-  fieldCount?: number;
-  fieldStartOffsetSeconds?: number;
   isLoading: boolean;
   matchBlocks: MatchBlockState[];
+  matchEditorMode?: "practice" | "qualification";
+  onCycleTimeSecondsChange?: (seconds: number) => void;
   onMatchBlocksChange: (blocks: MatchBlockState[]) => void;
   onScheduleDateChange: (date: string) => void;
   scheduleDate: string;
   successMessage: string | null;
-  teamCount: number;
   title: string;
   toolbar: ReactNode;
 }
 
 export const SchedulePageLayout = ({
   title,
-  eventCode,
   isLoading,
   errorMessage,
   successMessage,
@@ -34,11 +31,10 @@ export const SchedulePageLayout = ({
   scheduleDate,
   onScheduleDateChange,
   matchBlocks,
+  matchEditorMode,
+  onCycleTimeSecondsChange,
   onMatchBlocksChange,
   defaultCycleTimeMinutes,
-  fieldCount,
-  fieldStartOffsetSeconds,
-  teamCount,
   toolbar,
   children,
 }: SchedulePageLayoutProps): JSX.Element => {
@@ -73,31 +69,33 @@ export const SchedulePageLayout = ({
 
         {configSection}
 
-        <div className="schedule-date-section">
-          <label
-            className="app-heading app-heading--small schedule-date-heading"
-            htmlFor="schedule-date"
-          >
-            Schedule Date
-          </label>
-          <input
-            className="schedule-date-input"
-            id="schedule-date"
-            onChange={(e) => onScheduleDateChange(e.target.value)}
-            type="date"
-            value={scheduleDate}
-          />
-        </div>
+        <section className="schedule-setup-panel">
+          <div className="schedule-date-section">
+            <div className="schedule-date-content">
+              <label
+                className="app-heading app-heading--small schedule-date-heading"
+                htmlFor="schedule-date"
+              >
+                Schedule Date
+              </label>
+              <input
+                className="schedule-date-input"
+                id="schedule-date"
+                onChange={(e) => onScheduleDateChange(e.target.value)}
+                type="date"
+                value={scheduleDate}
+              />
+            </div>
+          </div>
 
-        <MatchBlockEditor
-          defaultCycleTimeMinutes={defaultCycleTimeMinutes}
-          fieldCount={fieldCount}
-          fieldStartOffsetSeconds={fieldStartOffsetSeconds}
-          matchBlocks={matchBlocks}
-          onMatchBlocksChange={onMatchBlocksChange}
-          scheduleDate={scheduleDate}
-          teamCount={teamCount}
-        />
+          <MatchBlockEditor
+            defaultCycleTimeMinutes={defaultCycleTimeMinutes}
+            matchBlocks={matchBlocks}
+            mode={matchEditorMode}
+            onCycleTimeSecondsChange={onCycleTimeSecondsChange}
+            onMatchBlocksChange={onMatchBlocksChange}
+          />
+        </section>
 
         <div className="schedule-toolbar">{toolbar}</div>
 

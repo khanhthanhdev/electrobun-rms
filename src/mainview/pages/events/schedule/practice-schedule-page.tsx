@@ -23,7 +23,6 @@ import {
   type OneVsOneEditableMatch,
   reduceOneVsOneScheduleAdminBaseAction,
   resolveOneVsOneFirstBlockTiming,
-  updateOneVsOneCycleTime,
 } from "@/widgets/schedule/one-vs-one-schedule-admin-helpers";
 import { OneVsOneScheduleAdminOverview } from "@/widgets/schedule/one-vs-one-schedule-admin-overview";
 import { ScheduleCsvSection } from "@/widgets/schedule/schedule-csv-section";
@@ -284,12 +283,19 @@ export const PracticeSchedulePage = ({
   const firstBlock = matchBlocks[0];
   const cycleTimeSeconds =
     (firstBlock?.cycleTimeMinutes ?? DEFAULT_CYCLE_MINUTES) * 60;
+  const fieldStartOffsetSecondsMax = Math.max(0, cycleTimeSeconds - 1);
 
   const handleCycleTimeChange = useCallback(
     (seconds: number) => {
-      updateOneVsOneCycleTime(setMatchBlocks, seconds);
+      dispatch({
+        type: "SET_FIELD_START_OFFSET",
+        payload: Math.min(
+          state.fieldStartOffsetSeconds,
+          Math.max(0, seconds - 1)
+        ),
+      });
     },
-    [setMatchBlocks]
+    [state.fieldStartOffsetSeconds]
   );
 
   const metrics = computeOneVsOneScheduleMetrics(state.matches);
@@ -433,15 +439,14 @@ export const PracticeSchedulePage = ({
       }
       configSection={
         <OneVsOneScheduleAdminOverview
-          cycleTimeSeconds={cycleTimeSeconds}
           fieldCount={state.fieldCount}
           fieldCountMax={state.maxFieldCount}
           fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+          fieldStartOffsetSecondsMax={fieldStartOffsetSecondsMax}
           generatedMatchCount={state.matches.length}
           isActive={state.isActive}
           matchesPerTeam={matchesPerTeam}
           metrics={metrics}
-          onCycleTimeSecondsChange={handleCycleTimeChange}
           onFieldCountChange={(value) =>
             dispatch({ type: "SET_FIELD_COUNT", payload: value })
           }
@@ -455,21 +460,18 @@ export const PracticeSchedulePage = ({
       }
       defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
       errorMessage={errorMessage}
-      eventCode={eventCode}
-      fieldCount={state.fieldCount}
-      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
       generatedEmptyMessage="No practice matches available."
       generatedMatches={tableRows}
       hasMatches={hasMatches}
       isGeneratedPrintDisabled={!hasMatches}
       isLoading={isLoading}
       matchBlocks={matchBlocks}
+      onCycleTimeSecondsChange={handleCycleTimeChange}
       onMatchBlocksChange={setMatchBlocks}
       onPrintGeneratedMatches={handlePrintGeneratedMatches}
       onScheduleDateChange={setScheduleDate}
       scheduleDate={scheduleDate}
       successMessage={successMessage}
-      teamCount={teamCount}
       title="Practice Match Schedule"
       toolbar={() => (
         <ScheduleManagementToolbar

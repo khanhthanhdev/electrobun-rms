@@ -19,7 +19,6 @@ import {
   mapCsvMatchesToScheduleMatches,
   reduceOneVsOneScheduleAdminBaseAction,
   resolveOneVsOneFirstBlockTiming,
-  updateOneVsOneCycleTime,
 } from "@/widgets/schedule/one-vs-one-schedule-admin-helpers";
 import { OneVsOneScheduleAdminOverview } from "@/widgets/schedule/one-vs-one-schedule-admin-overview";
 import { ScheduleCsvSection } from "@/widgets/schedule/schedule-csv-section";
@@ -300,14 +299,20 @@ export const QualificationSchedulePage = ({
   const matchesPerTeam = state.matchesPerTeam;
   const totalMatchesRequired = Math.ceil((teamCount * matchesPerTeam) / 2);
   const cycleTimeSeconds =
-    state.schedule?.config.cycleTimeSeconds ??
     (matchBlocks[0]?.cycleTimeMinutes ?? DEFAULT_CYCLE_MINUTES) * 60;
+  const fieldStartOffsetSecondsMax = Math.max(0, cycleTimeSeconds - 1);
 
   const handleCycleTimeChange = useCallback(
     (seconds: number) => {
-      updateOneVsOneCycleTime(setMatchBlocks, seconds);
+      dispatch({
+        type: "SET_FIELD_START_OFFSET",
+        payload: Math.min(
+          state.fieldStartOffsetSeconds,
+          Math.max(0, seconds - 1)
+        ),
+      });
     },
-    [setMatchBlocks]
+    [state.fieldStartOffsetSeconds]
   );
 
   const metrics = state.schedule?.metrics ?? EMPTY_ONE_VS_ONE_SCHEDULE_METRICS;
@@ -417,14 +422,13 @@ export const QualificationSchedulePage = ({
       }
       configSection={
         <OneVsOneScheduleAdminOverview
-          cycleTimeSeconds={cycleTimeSeconds}
           fieldCount={state.fieldCount}
           fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
+          fieldStartOffsetSecondsMax={fieldStartOffsetSecondsMax}
           generatedMatchCount={state.schedule?.matches.length ?? 0}
           isActive={isActive}
           matchesPerTeam={matchesPerTeam}
           metrics={metrics}
-          onCycleTimeSecondsChange={handleCycleTimeChange}
           onFieldCountChange={(value) =>
             dispatch({ type: "SET_FIELD_COUNT", payload: value })
           }
@@ -440,19 +444,17 @@ export const QualificationSchedulePage = ({
       }
       defaultCycleTimeMinutes={DEFAULT_CYCLE_MINUTES}
       errorMessage={errorMessage}
-      eventCode={eventCode}
-      fieldCount={state.fieldCount}
-      fieldStartOffsetSeconds={state.fieldStartOffsetSeconds}
       generatedEmptyMessage="No qualification matches available."
       generatedMatches={tableRows}
       hasMatches={hasMatches}
       isLoading={isLoading}
       matchBlocks={matchBlocks}
+      matchEditorMode="qualification"
+      onCycleTimeSecondsChange={handleCycleTimeChange}
       onMatchBlocksChange={setMatchBlocks}
       onScheduleDateChange={setScheduleDate}
       scheduleDate={scheduleDate}
       successMessage={successMessage}
-      teamCount={teamCount}
       title="Qualification Match Schedule"
       toolbar={() => (
         <ScheduleManagementToolbar
