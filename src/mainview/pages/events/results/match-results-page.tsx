@@ -147,24 +147,11 @@ export const MatchResultsPage = ({
     token
   );
 
-  const handleBack = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onNavigate(`/event/${eventCode}`);
-  };
-
   const currentYear = new Date().getFullYear();
 
   return (
     <main className="schedule-page-shell schedule-public-view">
       <div className="schedule-view-top-nav" style={{ padding: "0 0.5rem" }}>
-        <a
-          className="back-link schedule-page-back-link"
-          href={`/event/${eventCode}`}
-          onClick={handleBack}
-        >
-          &lt;&lt; Back <span className="hide-mobile">to Event Home</span>
-        </a>
-
         <div
           className="match-results-controls show-desktop-flex"
           style={{ marginLeft: "auto", marginRight: "1rem" }}

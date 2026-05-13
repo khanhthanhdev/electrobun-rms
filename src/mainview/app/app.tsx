@@ -12,6 +12,27 @@ import { readCurrentPath } from "./route-matcher";
 
 const AUDIENCE_DISPLAY_PATTERN = /^\/event\/[^/]+\/display\/?$/;
 
+const AppBackButton = (): JSX.Element => {
+  const goBack = (): void => {
+    window.history.back();
+  };
+
+  return (
+    <nav aria-label="Page history" className="app-history-nav">
+      <a
+        className="app-history-nav__back"
+        href="#"
+        onClick={(event) => {
+          event.preventDefault();
+          goBack();
+        }}
+      >
+        ← Back
+      </a>
+    </nav>
+  );
+};
+
 const App = (): JSX.Element => {
   const [currentPath, setCurrentPath] = useState(readCurrentPath);
   const previousPathRef = useRef(currentPath);
@@ -74,6 +95,7 @@ const App = (): JSX.Element => {
 
   const isAdminUser = hasAdminGlobalRole(user);
   const showSiteHeader = !AUDIENCE_DISPLAY_PATTERN.test(currentPath);
+  const showBackButton = !AUDIENCE_DISPLAY_PATTERN.test(currentPath);
 
   return (
     <>
@@ -87,6 +109,7 @@ const App = (): JSX.Element => {
           user={user}
         />
       ) : null}
+      {showBackButton ? <AppBackButton /> : null}
       <Suspense fallback={<PageLoadingFallback />}>
         <PageRenderer
           currentPath={currentPath}

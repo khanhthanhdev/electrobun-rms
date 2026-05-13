@@ -235,12 +235,6 @@ export const MatchSelectionPage = ({
 
   const config = roleStyles[refereeRole];
 
-  // Back path goes to field selection for the role
-  const selectionBackPath =
-    refereeRole === "hr"
-      ? `/event/${eventCode}/hr`
-      : `/event/${eventCode}/ref/${refereeRole}/scoring`;
-
   if (isLoading) {
     return (
       <main className="page-shell page-shell--center">
@@ -271,23 +265,6 @@ export const MatchSelectionPage = ({
             marginBottom: "1.5rem",
           }}
         >
-          <button
-            onClick={() => onNavigate(selectionBackPath)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "inherit",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              opacity: 0.9,
-              padding: 0,
-              display: "block",
-              marginBottom: "0.4rem",
-            }}
-            type="button"
-          >
-            ← Back to Selection
-          </button>
           <div
             style={{
               textAlign: "center",

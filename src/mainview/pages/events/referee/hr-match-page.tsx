@@ -326,20 +326,6 @@ export const HrMatchPage = ({
             alignItems: "center",
           }}
         >
-          <button
-            onClick={() => onNavigate(backPath)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "white",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              opacity: 0.85,
-            }}
-            type="button"
-          >
-            ← Back
-          </button>
           <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>
             Head Referee — {matchLabel}
           </span>

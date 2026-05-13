@@ -66,11 +66,6 @@ export const MatchHistoryPage = ({
     parsed !== null
   );
 
-  const handleBack = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onNavigate(`/event/${eventCode}/results`);
-  };
-
   if (!parsed) {
     return (
       <main className="page-shell">
@@ -78,13 +73,6 @@ export const MatchHistoryPage = ({
           <p className="message-block" data-variant="danger">
             Invalid match name: {matchName}
           </p>
-          <a
-            className="app-link-inline"
-            href={`/event/${eventCode}/results`}
-            onClick={handleBack}
-          >
-            Back to Match Results
-          </a>
         </div>
       </main>
     );
@@ -94,14 +82,6 @@ export const MatchHistoryPage = ({
     <main className="page-shell">
       <div className="card surface-card match-results-container">
         <header className="match-results-header">
-          <a
-            className="app-link-inline match-results-back"
-            href={`/event/${eventCode}/results`}
-            onClick={handleBack}
-          >
-            « Back to Match Results
-          </a>
-
           <div className="text-center" style={{ flexGrow: 1 }}>
             <div className="text-muted">{eventCode}</div>
             <h1 className="match-results-title">History for {matchName}</h1>

@@ -104,9 +104,6 @@ export const EventDashboardPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             You must be logged in to access the dashboard.
           </p>
-          <a className="app-link-inline" href="/">
-            Back to Home
-          </a>
         </div>
       </main>
     );
@@ -121,9 +118,6 @@ export const EventDashboardPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             Event not found.
           </p>
-          <a className="app-link-inline" href="/">
-            Back to Home
-          </a>
         </div>
       </main>
     );
@@ -153,11 +147,6 @@ export const EventDashboardPage = ({
           ))}
         </div>
 
-        <div style={{ marginTop: "var(--space-6)" }}>
-          <a className="button" href={`/event/${eventCode}`}>
-            Back to Event
-          </a>
-        </div>
       </div>
     </main>
   );

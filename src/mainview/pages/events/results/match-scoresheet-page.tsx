@@ -428,11 +428,6 @@ export const MatchScoresheetPage = ({
   const shouldRenderScoresheetGrid = !(isLoading || error);
   const showMobileSelector = !allianceFilter && shouldRenderScoresheetGrid;
 
-  const handleBack = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onNavigate(`/event/${eventCode}/results`);
-  };
-
   if (!parsed) {
     return (
       <main className="page-shell">
@@ -440,13 +435,6 @@ export const MatchScoresheetPage = ({
           <p className="message-block" data-variant="danger">
             Invalid match name: {matchName}
           </p>
-          <a
-            className="app-link-inline"
-            href={`/event/${eventCode}/results`}
-            onClick={handleBack}
-          >
-            Back to Match Results
-          </a>
         </div>
       </main>
     );
@@ -456,14 +444,6 @@ export const MatchScoresheetPage = ({
     <main className="page-shell">
       <div className="card surface-card match-results-container scoresheet-container">
         <header className="match-results-header">
-          <a
-            className="app-link-inline match-results-back"
-            href={`/event/${eventCode}/results`}
-            onClick={handleBack}
-          >
-            ←<span className="back-text"> Back to Match Results</span>
-          </a>
-
           <div className="match-results-title-wrapper">
             <h1 className="match-results-title">Scoresheet for {matchName}</h1>
           </div>

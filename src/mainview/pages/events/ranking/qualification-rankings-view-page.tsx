@@ -121,7 +121,6 @@ export const QualificationRankingsViewPage = ({
           className="back-link schedule-page-back-link"
           href={`/event/${eventCode}`}
         >
-          &lt;&lt; Back <span className="hide-mobile">to Event Home</span>
         </a>
         <button
           className="schedule-public-view__print-text-button"

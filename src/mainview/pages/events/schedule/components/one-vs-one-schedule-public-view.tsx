@@ -166,14 +166,6 @@ export const OneVsOneSchedulePublicView = ({
     <main className="schedule-page-shell">
       <div className="schedule-page-card schedule-public-view">
         <div className="schedule-view-top-nav">
-          <a
-            className="back-link schedule-page-back-link"
-            href={`/event/${eventCode}`}
-          >
-            <span className="hide-mobile">&lt;&lt; Back to Event Home</span>
-            <span className="show-mobile">&lt;- Back</span>
-          </a>
-
           <button
             aria-label={printAriaLabel}
             className="schedule-public-view__print-text-button"

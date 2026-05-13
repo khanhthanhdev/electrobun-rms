@@ -1379,16 +1379,6 @@ export const HeadRefereePage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {error}
           </p>
-          <a
-            className="app-link-inline"
-            href={backPath}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate(backPath);
-            }}
-          >
-            Back
-          </a>
         </div>
       </main>
     );
@@ -1399,13 +1389,6 @@ export const HeadRefereePage = ({
       <div className="hr-container">
         {/* Header */}
         <div className="hr-header">
-          <button
-            className="hr-header-btn"
-            onClick={() => onNavigate(backPath)}
-            type="button"
-          >
-            ← Back
-          </button>
           <span className="hr-header-title">Head Referee ({fieldLabel})</span>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button

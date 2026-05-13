@@ -1015,16 +1015,6 @@ export const EventControlPage = ({
     <main className="page-shell">
       <div className="match-control-page">
         <div className="match-control-header">
-          <a
-            className="app-link-inline"
-            href={`/event/${eventCode}`}
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate(`/event/${eventCode}`);
-            }}
-          >
-            &lt;&lt; Back to Event Home
-          </a>
           <button
             className="button button-secondary"
             onClick={() => refresh()}

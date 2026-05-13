@@ -33,13 +33,6 @@ export const RefereeSelectionPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             Event not found.
           </p>
-          <button
-            className="app-link-inline"
-            onClick={() => onNavigate("/")}
-            type="button"
-          >
-            Back to Home
-          </button>
         </div>
       </main>
     );
@@ -104,23 +97,6 @@ export const RefereeSelectionPage = ({
             marginBottom: "1.5rem",
           }}
         >
-          <button
-            onClick={() => onNavigate(`/event/${eventCode}`)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "inherit",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              opacity: 0.9,
-              padding: 0,
-              display: "block",
-              marginBottom: "0.4rem",
-            }}
-            type="button"
-          >
-            ← Back to Event
-          </button>
           <div
             style={{
               textAlign: "center",

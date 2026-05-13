@@ -258,7 +258,7 @@ const RouteErrorPage = ({ message }: { message: string }): JSX.Element => (
         {message}
       </p>
       <a className="app-link-inline" href="/">
-        Back to Home
+        Home
       </a>
     </div>
   </main>

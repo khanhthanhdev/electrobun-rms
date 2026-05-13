@@ -110,28 +110,6 @@ export const ScoringEntryPage = ({
             >
               {lastTotal} pts
             </p>
-            <button
-              onClick={() =>
-                onNavigate(
-                  `/event/${eventCode}/ref/${alliance}/scoring/${fieldNumber}`
-                )
-              }
-              style={{
-                padding: "0.75rem 2rem",
-                backgroundColor: accent,
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-medium)",
-                fontSize: "0.95rem",
-                cursor: "pointer",
-                fontWeight:
-                  "var(--font-semibold)" as React.CSSProperties["fontWeight"],
-                width: "100%",
-              }}
-              type="button"
-            >
-              Back to Match List
-            </button>
           </div>
         </div>
       </main>

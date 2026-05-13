@@ -66,9 +66,6 @@ export const InspectionTeamsPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {error}
           </p>
-          <a className="app-link-inline" href={`/event/${eventCode}`}>
-            Back to Event
-          </a>
         </div>
       </main>
     );
@@ -79,10 +76,6 @@ export const InspectionTeamsPage = ({
       <section className="card surface-card surface-card--xlarge stack inspection-page-card">
         <div className="inspection-header-layout">
           <div className="inspection-header-top-row">
-            <a className="inspection-header-link" href={`/event/${eventCode}`}>
-              <span className="hide-mobile">&lt;&lt; Back to Event Home</span>
-              <span className="show-mobile">&lt;&lt; Back</span>
-            </a>
             <div className="inspection-header-right-links">
               <a
                 className="inspection-header-link"

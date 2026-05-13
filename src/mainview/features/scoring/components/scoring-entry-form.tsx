@@ -419,29 +419,7 @@ export const ScoringEntryForm = ({
           alignItems: "center",
         }}
       >
-        {onBackClick ? (
-          <button
-            onClick={onBackClick}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              opacity: 0.9,
-              padding: 0,
-            }}
-            title="Back to Selection"
-            type="button"
-          >
-            <span className="back-text" style={{ display: "none" }}>
-              Back to Selection
-            </span>
-            ←
-          </button>
-        ) : (
-          <span />
-        )}
+        <span />
         <span
           style={{
             fontWeight: "var(--font-bold)" as React.CSSProperties["fontWeight"],

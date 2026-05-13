@@ -3,6 +3,29 @@
   padding: var(--space-6) var(--space-4);
 }
 
+.app-history-nav {
+  max-width: var(--app-surface-max);
+  padding: var(--space-3) var(--space-4) 0;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.app-history-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--foreground);
+  font-size: var(--text-7);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+}
+
+.app-history-nav__back:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 .page-shell--top {
   display: flex;
   align-items: flex-start;

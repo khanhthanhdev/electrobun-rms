@@ -742,9 +742,6 @@ export const TeamsPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {loadErrorMessage}
           </p>
-          <a className="app-link-inline" href={`/event/${eventCode}/dashboard`}>
-            Back to Dashboard
-          </a>
         </div>
       </main>
     );
@@ -843,9 +840,6 @@ export const TeamsPage = ({
             >
               Print / Export PDF
             </button>
-            <a className="button" href={`/event/${eventCode}/dashboard`}>
-              Back to Dashboard
-            </a>
           </div>
         </div>
 

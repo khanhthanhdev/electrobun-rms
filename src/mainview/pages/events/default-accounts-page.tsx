@@ -213,9 +213,6 @@ export const DefaultAccountsPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {state.loadErrorMessage}
           </p>
-          <a className="app-link-inline" href="/">
-            Back to Home
-          </a>
         </div>
       </main>
     );
@@ -298,9 +295,6 @@ export const DefaultAccountsPage = ({
               Cancel
             </button>
           ) : null}
-          <a className="button" href="/">
-            Back to Home
-          </a>
         </div>
       </div>
     </main>

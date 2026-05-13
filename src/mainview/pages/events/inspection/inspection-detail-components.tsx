@@ -88,17 +88,6 @@ export const InspectionHeader = ({
   return (
     <div className="inspection-header-layout">
       <div className="inspection-header-top-row">
-        <a
-          className="inspection-header-link"
-          href={`/event/${eventCode}/inspection`}
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate(`/event/${eventCode}/inspection`);
-          }}
-        >
-          <span className="hide-mobile">&lt;&lt; Back to Team Select</span>
-          <span className="show-mobile">&lt;&lt; Back</span>
-        </a>
         <div
           className={`inspection-cell-status inspection-cell-status--${status}`}
           style={{

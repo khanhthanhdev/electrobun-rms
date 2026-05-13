@@ -102,12 +102,6 @@ export const InspectionDetailPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {error}
           </p>
-          <a
-            className="app-link-inline"
-            href={`/event/${eventCode}/inspection`}
-          >
-            Back to Team Select
-          </a>
         </div>
       </main>
     );

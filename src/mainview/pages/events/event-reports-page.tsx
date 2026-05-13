@@ -787,11 +787,6 @@ const EventReportsContent = ({
         schedules={reportData.schedules}
       />
 
-      <div className="form-actions">
-        <a className="button" href={`/event/${eventCode}/dashboard`}>
-          Back to Dashboard
-        </a>
-      </div>
     </section>
   </main>
 );
@@ -820,9 +815,6 @@ export const EventReportsPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {handlers.state.errorMessage ?? "Failed to load report data."}
           </p>
-          <a className="app-link-inline" href={`/event/${eventCode}/dashboard`}>
-            Back to Dashboard
-          </a>
         </div>
       </main>
     );

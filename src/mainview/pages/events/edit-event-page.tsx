@@ -117,9 +117,6 @@ export const EditEventPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {state.errorMessage ?? "Failed to load event."}
           </p>
-          <a className="app-link-inline" href="/">
-            Back to Home
-          </a>
         </div>
       </main>
     );
@@ -167,11 +164,6 @@ export const EditEventPage = ({
           {state.isSubmitting ? "Saving..." : "Save Event"}
         </button>
 
-        <div className="form-actions">
-          <a className="app-link-inline" href={`/event/${eventCode}/dashboard`}>
-            Back to Dashboard
-          </a>
-        </div>
       </form>
     </main>
   );

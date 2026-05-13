@@ -288,16 +288,6 @@ export const InspectionEventOverridePage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {error}
           </p>
-          <a
-            className="app-link-inline"
-            href={`/event/${eventCode}/inspection`}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate(`/event/${eventCode}/inspection`);
-            }}
-          >
-            Back to Team Select
-          </a>
         </div>
       </main>
     );
@@ -308,17 +298,6 @@ export const InspectionEventOverridePage = ({
       <section className="card surface-card surface-card--xlarge stack inspection-page-card">
         <div className="inspection-header-layout">
           <div className="inspection-header-top-row">
-            <a
-              className="inspection-header-link"
-              href={`/event/${eventCode}/inspection`}
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigate(`/event/${eventCode}/inspection`);
-              }}
-            >
-              <span className="hide-mobile">&lt;&lt; Back to Team Select</span>
-              <span className="show-mobile">&lt;&lt; Back</span>
-            </a>
             <div className="inspection-header-right-links" />
           </div>
           <h1 className="inspection-header-title">
