@@ -12,7 +12,9 @@ export type RealtimeConnectionState =
 export class RealtimeFatalError extends Error {}
 
 const API_BASE_URL = "/api" as const;
-const RECONNECT_DELAY_MS = 2000;
+const BASE_RECONNECT_DELAY_MS = 2000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const BACKOFF_MULTIPLIER = 2;
 
 export interface ConnectRealtimeStreamOptions<TEvent> {
   eventCode: string;
@@ -45,6 +47,7 @@ export const connectRealtimeStream = async <TEvent>({
 }: ConnectRealtimeStreamOptions<TEvent>): Promise<void> => {
   onConnectionStateChange("connecting");
   let hasConnectedBefore = false;
+  let consecutiveFailures = 0;
 
   const headers: Record<string, string> = {
     Accept: EventStreamContentType,
@@ -69,13 +72,19 @@ export const connectRealtimeStream = async <TEvent>({
           throw error;
         }
 
+        consecutiveFailures++;
+        const delay = Math.min(
+          BASE_RECONNECT_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, consecutiveFailures - 1),
+          MAX_RECONNECT_DELAY_MS
+        );
+
         const message =
           error instanceof Error
             ? error.message
             : `${streamLabel} realtime temporarily unavailable.`;
         onConnectionStateChange("reconnecting");
         onError(message);
-        return RECONNECT_DELAY_MS;
+        return delay;
       },
       onmessage: (message) => {
         if (message.event !== eventName) {
@@ -103,6 +112,7 @@ export const connectRealtimeStream = async <TEvent>({
             onReconnected?.();
           }
           hasConnectedBefore = true;
+          consecutiveFailures = 0;
 
           onConnectionStateChange("connected");
           return Promise.resolve();
