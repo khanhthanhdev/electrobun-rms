@@ -12,7 +12,7 @@ export type DisplayControlAction =
   | "show-preview"
   | "show-match"
   | "start-match"
-  | "commit-winner"
+  | "show-results"
   | "show-blank"
   | "show-ranking"
   | "show-inspection"
@@ -39,7 +39,7 @@ export function getSceneForAction(
       return "match-start";
     case "start-match":
       return "match-start";
-    case "commit-winner":
+    case "show-results":
       return "match-winner";
     case "show-blank":
       return "blank";

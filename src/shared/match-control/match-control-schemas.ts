@@ -1,5 +1,17 @@
-import { literal, nullable, number, object, string, union } from "valibot";
-import { displayMatchRefSchema } from "../display/display-schemas";
+import {
+  boolean,
+  literal,
+  nullable,
+  number,
+  object,
+  optional,
+  string,
+  union,
+} from "valibot";
+import {
+  displayMatchRefSchema,
+  displayMatchTypeSchema,
+} from "../display/display-schemas";
 
 /** Default match duration in seconds (shared between server and client). */
 export const MATCH_DURATION_SECONDS = 480;
@@ -42,6 +54,7 @@ export const matchControlStateSchema = object({
 export const matchControlLoadBodySchema = object({
   match: displayMatchRefSchema,
   expectedVersion: number(),
+  resetScoresBeforeLoad: optional(boolean()),
 });
 
 /**
@@ -49,4 +62,26 @@ export const matchControlLoadBodySchema = object({
  */
 export const matchControlTransitionBodySchema = object({
   expectedVersion: number(),
+});
+
+/**
+ * Body for POST /match-control/clear-scores.
+ *
+ * Used to reset partial / committed scores for a match that is NOT currently
+ * the loaded or active match. After clearing, the match returns to the
+ * UNPLAYED state.
+ */
+export const matchControlClearScoresBodySchema = object({
+  matchType: displayMatchTypeSchema,
+  matchNumber: number(),
+});
+
+/**
+ * Body for POST /match-control/show-results.
+ *
+ * Publishes the match-winner display scene for a committed match without
+ * changing match-control state.
+ */
+export const matchControlShowResultsBodySchema = object({
+  match: displayMatchRefSchema,
 });

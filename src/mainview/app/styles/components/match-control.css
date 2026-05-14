@@ -475,6 +475,18 @@
   border-color: #fde68a;
 }
 
+.match-control-table-action--reset {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.match-control-table-action--show-results {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 /* ── Timer Display ── */
 
 .match-control-timer {

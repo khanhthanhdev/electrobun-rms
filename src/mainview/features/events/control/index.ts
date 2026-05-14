@@ -6,7 +6,9 @@ export { useMatchControlRealtime } from "./hooks/use-match-control-realtime";
 export {
   fetchMatchControlState,
   MatchControlTransitionError,
+  postMatchControlClearScores,
   postMatchControlLoad,
+  postMatchControlShowResults,
   postMatchControlTransition,
 } from "./match-control-api";
 export { fetchMatchControlData } from "./match-control-service";

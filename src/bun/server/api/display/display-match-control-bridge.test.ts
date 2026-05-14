@@ -33,4 +33,17 @@ describe("display match-control bridge", () => {
     expect(latest?.mode).toBe("match-complete");
     expect(latest?.activeMatch?.matchNumber).toBe(1);
   });
+
+  it("does not publish match-winner mode for COMMIT", () => {
+    publishDisplayFromMatchControl(completedState, "AUTO_COMPLETE");
+    const beforeCommit = displaySyncHub.getLatestEvent(eventCode);
+
+    publishDisplayFromMatchControl(
+      { ...completedState, activeMatch: null, activeState: "IDLE" },
+      "COMMIT",
+      { committedMatch: completedState.activeMatch }
+    );
+
+    expect(displaySyncHub.getLatestEvent(eventCode)).toBe(beforeCommit);
+  });
 });

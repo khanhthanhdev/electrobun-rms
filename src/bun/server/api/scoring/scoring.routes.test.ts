@@ -101,12 +101,18 @@ describe("scoring routes", () => {
 
   it("streams snapshot hints and published score updates", async () => {
     const eventCode = "SCSTRM1";
+    const token = await createAdminToken(eventCode);
     const app = createScoringTestApp();
 
     jest.useFakeTimers();
 
     const response = await app.request(
-      `http://localhost/${eventCode}/scoring/stream`
+      `http://localhost/${eventCode}/scoring/stream`,
+      {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      }
     );
 
     expect(response.status).toBe(200);

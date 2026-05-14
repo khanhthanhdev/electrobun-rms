@@ -17,6 +17,7 @@ import {
   SCORING_TOTAL_LABEL,
 } from "@/features/scoring/scoring-business-logic";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { useScoringRealtime } from "../../../features/scoring/hooks/use-scoring-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import {
   MatchNoteForm,
@@ -1283,6 +1284,7 @@ export const HeadRefereePage = ({
 
   // Subscribe to match-control SSE so we auto-select the loaded/active match
   useMatchControlRealtime(eventCode, token);
+  useScoringRealtime(eventCode, token);
 
   const findMatchIdx = useCallback(
     (matchNumber: number, matchType: string): number => {

@@ -14,8 +14,8 @@ describe("getSceneForAction", () => {
     expect(getSceneForAction("start-match")).toBe("match-start");
   });
 
-  it("returns match-winner for commit-winner action", () => {
-    expect(getSceneForAction("commit-winner")).toBe("match-winner");
+  it("returns match-winner for show-results action", () => {
+    expect(getSceneForAction("show-results")).toBe("match-winner");
   });
 
   it("returns blank for show-blank action", () => {

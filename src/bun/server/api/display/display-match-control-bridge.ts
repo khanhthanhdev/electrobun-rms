@@ -16,7 +16,7 @@ interface DisplayBridgeContext {
 export const publishDisplayFromMatchControl = (
   state: MatchControlState,
   trigger: MatchControlCommand["type"],
-  context?: DisplayBridgeContext
+  _context?: DisplayBridgeContext
 ): void => {
   const latest = displaySyncHub.getLatestEvent(state.eventCode);
 
@@ -100,13 +100,8 @@ export const publishDisplayFromMatchControl = (
       break;
 
     case "COMMIT":
-      displaySyncHub.publish({
-        eventCode: state.eventCode,
-        kind: "COMMAND_ISSUED",
-        mode: "match-winner",
-        loadedMatch: null,
-        activeMatch: context?.committedMatch ?? state.activeMatch,
-      });
+      // Intentional: posting committed scores to the display is a separate
+      // operator action handled by /show-results.
       break;
 
     default:

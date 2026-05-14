@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import type { DisplayMatchRef } from "@shared/display";
-import { applyTransition } from "./match-control-state";
+import {
+  applyTransition,
+  getMatchControlState,
+  restoreMatchControlState,
+} from "./match-control-state";
 
 const createMatchRef = (matchNumber: number): DisplayMatchRef => ({
   matchNumber,
@@ -231,5 +235,21 @@ describe("match control state transitions", () => {
       expect(unload.error).toBe("INVALID_TRANSITION");
       expect(unload.message).toContain("No match is loaded to unload.");
     }
+  });
+
+  it("restores an unpublished transition state", () => {
+    const eventCode = nextEventCode("restore");
+    const initial = getMatchControlState(eventCode);
+
+    const load = applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
+    expect("state" in load).toBe(true);
+
+    restoreMatchControlState(eventCode, initial);
+
+    expect(getMatchControlState(eventCode)).toEqual(initial);
   });
 });

@@ -19,6 +19,8 @@ import {
 } from "../common/route-handler-helpers";
 import { runQueuedHeartbeatSse } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
+import { getMatchControlState } from "../match-control/match-control-state";
+import { matchControlSyncHub } from "../match-control/match-control-sync";
 import { saveMatchAllianceScoreBodySchema } from "./scoring.schema";
 import {
   createScoringSnapshotHintEvent,
@@ -135,6 +137,7 @@ scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
       matchNumber: payload.matchNumber,
       matchType: payload.matchType,
     });
+    matchControlSyncHub.publish(getMatchControlState(eventCode));
     outboundSyncPushService.requestEventSync(eventCode);
     return c.json(result);
   } catch (error) {

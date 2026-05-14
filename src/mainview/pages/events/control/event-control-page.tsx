@@ -7,7 +7,9 @@ import {
   fetchMatchControlState,
   getMatchControlRealtimeState,
   MatchControlTransitionError,
+  postMatchControlClearScores,
   postMatchControlLoad,
+  postMatchControlShowResults,
   postMatchControlTransition,
   subscribeToMatchControlRealtimeState,
   useMatchControlData,
@@ -101,6 +103,9 @@ const toDisplayMatchRef = (match: ControlMatchRow): DisplayMatchRef => ({
   redTeam: match.redTeam,
   redTeamName: match.redTeamName,
 });
+
+const shouldClearScoresBeforeLoad = (row: ControlMatchRow): boolean =>
+  row.state === "INCOMPLETE" || row.state === "COMMITTED";
 
 const StatusBar = ({
   activeMatch,
@@ -269,7 +274,7 @@ const ActionBar = ({
             style={{ marginLeft: "auto" }}
             type="button"
           >
-            Commit &amp; Post Last Match
+            Commit Score
           </button>
         </div>
       </div>
@@ -645,6 +650,14 @@ export const EventControlPage = ({
   const [selectedTab, setSelectedTab] = useState<ControlTab>("schedule");
   const [selectedMatchType, setSelectedMatchType] =
     useState<ControlMatchType>("practice");
+  const [resetScoreRow, setResetScoreRow] = useState<ControlMatchRow | null>(
+    null
+  );
+  const [replayLoadRow, setReplayLoadRow] = useState<ControlMatchRow | null>(
+    null
+  );
+  const [isScoreClearSubmitting, setIsScoreClearSubmitting] = useState(false);
+  const [isReplayLoadSubmitting, setIsReplayLoadSubmitting] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Server-derived match lifecycle state
@@ -825,7 +838,9 @@ export const EventControlPage = ({
   const nextLoadableMatch = useMemo(
     () =>
       selectedRows.find((row) => {
-        if (row.state !== "UNPLAYED") {
+        // Treat INCOMPLETE the same as UNPLAYED for "next loadable" — both
+        // have not been committed yet and need to be played.
+        if (row.state !== "UNPLAYED" && row.state !== "INCOMPLETE") {
           return false;
         }
         const ref = toMatchRef(row);
@@ -850,36 +865,47 @@ export const EventControlPage = ({
   // Action handlers — POST to server, state comes back via SSE
   // ---------------------------------------------------------------------------
 
+  const loadMatchRow = useCallback(
+    async (row: ControlMatchRow, resetScoresBeforeLoad: boolean) => {
+      if (!token) {
+        return;
+      }
+
+      if (loadedMatchRef) {
+        const unload = await postMatchControlTransition(
+          eventCode,
+          token,
+          "unload",
+          versionRef.current
+        );
+        applyServerState(unload.state);
+      }
+
+      const load = await postMatchControlLoad(
+        eventCode,
+        token,
+        toDisplayMatchRef(row),
+        versionRef.current,
+        { resetScoresBeforeLoad }
+      );
+      applyServerState(load.state);
+    },
+    [eventCode, token, loadedMatchRef, applyServerState]
+  );
+
   const handleLoadNextMatch = useCallback(() => {
     if (!(token && nextLoadableMatch)) {
       return;
     }
-    const loadFn = () =>
-      postMatchControlLoad(
-        eventCode,
-        token,
-        toDisplayMatchRef(nextLoadableMatch),
-        versionRef.current
-      )
-        .then((res) => applyServerState(res.state))
-        .catch(handleTransitionError);
-
-    if (loadedMatchRef) {
-      postMatchControlTransition(eventCode, token, "unload", versionRef.current)
-        .then((res) => {
-          applyServerState(res.state);
-          return loadFn();
-        })
-        .catch(handleTransitionError);
-    } else {
-      loadFn();
+    if (shouldClearScoresBeforeLoad(nextLoadableMatch)) {
+      setReplayLoadRow(nextLoadableMatch);
+      return;
     }
+    loadMatchRow(nextLoadableMatch, false).catch(handleTransitionError);
   }, [
     nextLoadableMatch,
-    loadedMatchRef,
-    eventCode,
     token,
-    applyServerState,
+    loadMatchRow,
     handleTransitionError,
   ]);
 
@@ -896,40 +922,18 @@ export const EventControlPage = ({
       if (matchRefEquals(ref, activeMatchRef)) {
         return;
       }
-      const loadFn = () =>
-        postMatchControlLoad(
-          eventCode,
-          token,
-          toDisplayMatchRef(row),
-          versionRef.current
-        )
-          .then((res) => applyServerState(res.state))
-          .catch(handleTransitionError);
-
-      if (loadedMatchRef) {
-        postMatchControlTransition(
-          eventCode,
-          token,
-          "unload",
-          versionRef.current
-        )
-          .then((res) => {
-            applyServerState(res.state);
-            return loadFn();
-          })
-          .catch(handleTransitionError);
-      } else {
-        loadFn();
+      if (shouldClearScoresBeforeLoad(row)) {
+        setReplayLoadRow(row);
+        return;
       }
+      loadMatchRow(row, false).catch(handleTransitionError);
     },
     [
       activeMatchRef,
-      loadedMatchRef,
       selectedMatchType,
       selectedRows,
-      eventCode,
       token,
-      applyServerState,
+      loadMatchRow,
       handleTransitionError,
     ]
   );
@@ -999,6 +1003,76 @@ export const EventControlPage = ({
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, refresh, handleTransitionError]);
 
+  const handleResetScore = useCallback(
+    (row: ControlMatchRow) => {
+      if (!token) {
+        return;
+      }
+      // Defensive UI guard — also enforced by the server.
+      const ref: MatchRef = {
+        matchNumber: row.matchNumber,
+        matchType: row.matchType,
+      };
+      if (
+        matchRefEquals(ref, activeMatchRef) ||
+        matchRefEquals(ref, loadedMatchRef)
+      ) {
+        showTransitionError(
+          "Cannot reset scores for the loaded or active match. Unload or abort first."
+        );
+        return;
+      }
+      setResetScoreRow(row);
+    },
+    [token, activeMatchRef, loadedMatchRef, showTransitionError]
+  );
+
+  const confirmResetScore = useCallback(() => {
+    if (!(token && resetScoreRow) || isScoreClearSubmitting) {
+      return;
+    }
+    const row = resetScoreRow;
+    setIsScoreClearSubmitting(true);
+    postMatchControlClearScores(
+      eventCode,
+      token,
+      row.matchType,
+      row.matchNumber
+    )
+      .then((res) => {
+        applyServerState(res.state);
+        setResetScoreRow(null);
+        refresh();
+      })
+      .catch(handleTransitionError)
+      .finally(() => setIsScoreClearSubmitting(false));
+  }, [
+    eventCode,
+    token,
+    resetScoreRow,
+    isScoreClearSubmitting,
+    refresh,
+    applyServerState,
+    handleTransitionError,
+  ]);
+
+  const confirmReplayLoad = useCallback(() => {
+    if (!replayLoadRow || isReplayLoadSubmitting) {
+      return;
+    }
+    const row = replayLoadRow;
+    setIsReplayLoadSubmitting(true);
+    loadMatchRow(row, true)
+      .then(() => setReplayLoadRow(null))
+      .catch(handleTransitionError)
+      .finally(() => setIsReplayLoadSubmitting(false));
+  }, [
+    replayLoadRow,
+    isReplayLoadSubmitting,
+    loadMatchRow,
+    handleTransitionError,
+  ]);
+
   const handleCommitMatch = useCallback(() => {
     if (!token) {
       return;
@@ -1006,10 +1080,25 @@ export const EventControlPage = ({
     postMatchControlTransition(eventCode, token, "commit", versionRef.current)
       .then((res) => {
         applyServerState(res.state);
+        setSelectedTab("schedule");
         refresh();
       })
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, refresh, handleTransitionError]);
+
+  const handleShowResults = useCallback(
+    (row: ControlMatchRow) => {
+      if (!token) {
+        return;
+      }
+      postMatchControlShowResults(eventCode, token, toDisplayMatchRef(row))
+        .then(() => {
+          setTransitionError(null);
+        })
+        .catch(handleTransitionError);
+    },
+    [eventCode, token, handleTransitionError]
+  );
 
   return (
     <main className="page-shell">
@@ -1046,6 +1135,90 @@ export const EventControlPage = ({
           <p className="message-block" data-variant="danger" role="alert">
             {transitionError}
           </p>
+        ) : null}
+
+        {resetScoreRow ? (
+          <div className="match-control-dialog-overlay">
+            <div className="match-control-dialog">
+              <div className="match-control-dialog-header">
+                <h3 className="match-control-dialog-title">Reset Scores?</h3>
+                <button
+                  className="match-control-dialog-close"
+                  disabled={isScoreClearSubmitting}
+                  onClick={() => setResetScoreRow(null)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="match-control-dialog-body">
+                Reset all saved scores for {resetScoreRow.matchName}? This
+                cannot be undone.
+              </p>
+              <div className="match-control-dialog-actions">
+                <button
+                  className="match-control-dialog-btn-secondary"
+                  disabled={isScoreClearSubmitting}
+                  onClick={() => setResetScoreRow(null)}
+                  type="button"
+                >
+                  Close
+                </button>
+                <button
+                  className="match-control-dialog-btn-primary"
+                  disabled={isScoreClearSubmitting}
+                  onClick={confirmResetScore}
+                  type="button"
+                >
+                  {isScoreClearSubmitting ? "Resetting..." : "Reset Scores"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {replayLoadRow ? (
+          <div className="match-control-dialog-overlay">
+            <div className="match-control-dialog">
+              <div className="match-control-dialog-header">
+                <h3 className="match-control-dialog-title">
+                  {replayLoadRow.state === "COMMITTED"
+                    ? "Replay Match?"
+                    : "Clear Scores And Play?"}
+                </h3>
+                <button
+                  className="match-control-dialog-close"
+                  disabled={isReplayLoadSubmitting}
+                  onClick={() => setReplayLoadRow(null)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="match-control-dialog-body">
+                Clear all saved scores for {replayLoadRow.matchName} and load
+                it for play? This cannot be undone.
+              </p>
+              <div className="match-control-dialog-actions">
+                <button
+                  className="match-control-dialog-btn-secondary"
+                  disabled={isReplayLoadSubmitting}
+                  onClick={() => setReplayLoadRow(null)}
+                  type="button"
+                >
+                  Close
+                </button>
+                <button
+                  className="match-control-dialog-btn-primary"
+                  disabled={isReplayLoadSubmitting}
+                  onClick={confirmReplayLoad}
+                  type="button"
+                >
+                  {isReplayLoadSubmitting ? "Loading..." : "Clear And Load"}
+                </button>
+              </div>
+            </div>
+          </div>
         ) : null}
 
         <ActionBar
@@ -1104,6 +1277,8 @@ export const EventControlPage = ({
                 eventCode={eventCode}
                 onLoadMatch={handleLoadMatch}
                 onNavigate={onNavigate}
+                onResetScore={handleResetScore}
+                onShowResults={handleShowResults}
                 rows={selectedRows}
                 selectedMatch={selectedTableMatch}
               />
@@ -1115,6 +1290,8 @@ export const EventControlPage = ({
                 eventCode={eventCode}
                 onLoadMatch={handleLoadMatch}
                 onNavigate={onNavigate}
+                onResetScore={handleResetScore}
+                onShowResults={handleShowResults}
                 rows={incompleteRows}
                 selectedMatch={selectedTableMatch}
               />

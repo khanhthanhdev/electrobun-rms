@@ -23,7 +23,7 @@ export const saveMatchAllianceScoreBodySchema = object({
     maxValue(Number.MAX_SAFE_INTEGER)
   ),
   aCenterFlags: pipe(number(), minValue(0), maxValue(Number.MAX_SAFE_INTEGER)),
-  bCenterFlagDown: pipe(number(), minValue(0), maxValue(1)),
+  bCenterFlagDown: pipe(number(), minValue(0), maxValue(Number.MAX_SAFE_INTEGER)),
   bBaseFlagsDown: pipe(
     number(),
     minValue(0),

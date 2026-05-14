@@ -1,6 +1,8 @@
 import {
   type MatchControlState,
+  matchControlClearScoresBodySchema,
   matchControlLoadBodySchema,
+  matchControlShowResultsBodySchema,
   matchControlTransitionBodySchema,
 } from "@shared/match-control";
 import { Hono } from "hono";
@@ -14,10 +16,13 @@ import { parseJsonBody } from "../common/http";
 import { awaitStreamClose } from "../common/sse";
 import { formatValidationIssues } from "../common/validation";
 import { publishDisplayFromMatchControl } from "../display/display-match-control-bridge";
+import { displaySyncHub } from "../display/display-sync";
+import { scoringSyncHub } from "../scoring/scoring-sync";
 import {
   applyTransition,
   getMatchControlState,
   type MatchControlCommand,
+  restoreMatchControlState,
   scheduleAutoComplete,
   type TransitionError,
   type TransitionResult,
@@ -35,6 +40,26 @@ const SSE_RETRY_MS = 2000;
 const SSE_HEARTBEAT_MS = 20_000;
 
 const scoringRepository = new SQLiteScoringRepository();
+
+const publishCurrentMatchControlState = (
+  eventCode: string
+): MatchControlSyncEvent => {
+  const state = getMatchControlState(eventCode);
+  return matchControlSyncHub.publish(state);
+};
+
+const publishScoreMutation = (
+  eventCode: string,
+  matchType: string,
+  matchNumber: number
+): void => {
+  scoringSyncHub.publish({
+    eventCode,
+    kind: "SCORE_UPDATED",
+    matchNumber,
+    matchType,
+  });
+};
 
 // ---------------------------------------------------------------------------
 // Transition handler helper
@@ -57,19 +82,6 @@ const handleTransition = (
       },
       409
     );
-  }
-
-  // On ABORT, clear saved scores so replayed match starts from zero.
-  if (trigger === "ABORT" && preTransitionState?.activeMatch) {
-    const { matchType, matchNumber } = preTransitionState.activeMatch;
-    scoringRepository
-      .clearMatchScores(eventCode, matchType, matchNumber)
-      .catch((err) => {
-        console.error(
-          `Failed to clear scores for ${matchType} #${matchNumber} in ${eventCode}:`,
-          err
-        );
-      });
   }
 
   // Publish assigns the real version via the sync hub's single counter.
@@ -216,6 +228,7 @@ matchControlRoutes.post(
     }
 
     const currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
+    const preLoadState = getMatchControlState(eventCode);
     const result = applyTransition(
       eventCode,
       {
@@ -225,6 +238,34 @@ matchControlRoutes.post(
       },
       currentVersion
     );
+
+    if ("state" in result && bodyResult.output.resetScoresBeforeLoad) {
+      try {
+        await scoringRepository.clearMatchScores(
+          eventCode,
+          bodyResult.output.match.matchType,
+          bodyResult.output.match.matchNumber
+        );
+        publishScoreMutation(
+          eventCode,
+          bodyResult.output.match.matchType,
+          bodyResult.output.match.matchNumber
+        );
+      } catch (err) {
+        restoreMatchControlState(eventCode, preLoadState);
+        console.error(
+          `Failed to clear scores for ${bodyResult.output.match.matchType} #${bodyResult.output.match.matchNumber} in ${eventCode}:`,
+          err
+        );
+        return c.json(
+          {
+            error: "INTERNAL",
+            message: "Failed to clear match scores before loading.",
+          },
+          500
+        );
+      }
+    }
 
     return handleTransition(result, "LOAD", eventCode, c);
   }
@@ -262,6 +303,34 @@ const createTransitionRoute = (
 
       const preState = getMatchControlState(eventCode);
       const currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
+      if (
+        commandType === "ABORT" &&
+        preState.activeState === "IN_PROGRESS" &&
+        preState.activeMatch &&
+        bodyResult.output.expectedVersion === currentVersion
+      ) {
+        const { matchType, matchNumber } = preState.activeMatch;
+        try {
+          await scoringRepository.clearMatchScores(
+            eventCode,
+            matchType,
+            matchNumber
+          );
+          publishScoreMutation(eventCode, matchType, matchNumber);
+        } catch (err) {
+          console.error(
+            `Failed to clear scores for ${matchType} #${matchNumber} in ${eventCode}:`,
+            err
+          );
+          return c.json(
+            {
+              error: "INTERNAL",
+              message: "Failed to clear match scores.",
+            },
+            500
+          );
+        }
+      }
       const result = applyTransition(
         eventCode,
         {
@@ -282,3 +351,175 @@ createTransitionRoute("show-match", "SHOW_MATCH");
 createTransitionRoute("start", "START");
 createTransitionRoute("abort", "ABORT");
 createTransitionRoute("commit", "COMMIT");
+
+// ---------------------------------------------------------------------------
+// Show committed match results on the audience display. This is intentionally
+// separate from COMMIT so score finalization and public posting are two
+// explicit operator actions.
+// ---------------------------------------------------------------------------
+
+matchControlRoutes.post(
+  "/:eventCode/match-control/show-results",
+  requireAuth,
+  async (c) => {
+    const eventCode = c.req.param("eventCode");
+    const forbiddenResponse = requireEventAdmin(c, eventCode);
+    if (forbiddenResponse) {
+      return forbiddenResponse;
+    }
+
+    const body = await parseJsonBody(c);
+    if (body === null) {
+      return c.json({ error: "Body must be valid JSON" }, 400);
+    }
+
+    const bodyResult = safeParse(matchControlShowResultsBodySchema, body);
+    if (!bodyResult.success) {
+      return c.json(
+        {
+          error: "Validation failed",
+          message: formatValidationIssues(bodyResult.issues),
+        },
+        400
+      );
+    }
+
+    const { match } = bodyResult.output;
+    let isCommitted = false;
+    try {
+      const results = await scoringRepository.getMatchResults(
+        eventCode,
+        match.matchType
+      );
+      const result = results.find(
+        (row) => row.matchNumber === match.matchNumber
+      );
+      isCommitted =
+        result?.redScore !== null &&
+        result?.redScore !== undefined &&
+        result?.blueScore !== null &&
+        result?.blueScore !== undefined;
+    } catch (err) {
+      console.error(
+        `Failed to verify committed result for ${match.matchType} #${match.matchNumber} in ${eventCode}:`,
+        err
+      );
+      return c.json(
+        {
+          error: "INTERNAL",
+          message: "Failed to verify match results.",
+        },
+        500
+      );
+    }
+
+    if (!isCommitted) {
+      return c.json(
+        {
+          error: "MATCH_NOT_COMMITTED",
+          message: "Cannot show results for a match without committed scores.",
+        },
+        409
+      );
+    }
+
+    displaySyncHub.publish({
+      activeMatch: match,
+      eventCode,
+      kind: "COMMAND_ISSUED",
+      loadedMatch: null,
+      mode: "match-winner",
+      startedAtMs: null,
+    });
+
+    return c.json({ ok: true });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Reset scores for a non-active, non-loaded match (UNPLAYED / INCOMPLETE /
+// COMMITTED rows in the schedule). Wipes saved scores so the row returns to
+// the UNPLAYED state and can be re-played from scratch.
+// ---------------------------------------------------------------------------
+
+matchControlRoutes.post(
+  "/:eventCode/match-control/clear-scores",
+  requireAuth,
+  async (c) => {
+    const eventCode = c.req.param("eventCode");
+    const forbiddenResponse = requireEventAdmin(c, eventCode);
+    if (forbiddenResponse) {
+      return forbiddenResponse;
+    }
+
+    const body = await parseJsonBody(c);
+    if (body === null) {
+      return c.json({ error: "Body must be valid JSON" }, 400);
+    }
+
+    const bodyResult = safeParse(matchControlClearScoresBodySchema, body);
+    if (!bodyResult.success) {
+      return c.json(
+        {
+          error: "Validation failed",
+          message: formatValidationIssues(bodyResult.issues),
+        },
+        400
+      );
+    }
+
+    const { matchType, matchNumber } = bodyResult.output;
+
+    // Refuse to wipe scores for the loaded or active match — the match-control
+    // state machine owns those slots and abort/unload should be used instead.
+    const state = getMatchControlState(eventCode);
+    const isLoaded =
+      state.loadedMatch?.matchNumber === matchNumber &&
+      state.loadedMatch?.matchType === matchType;
+    const isActive =
+      state.activeMatch?.matchNumber === matchNumber &&
+      state.activeMatch?.matchType === matchType;
+    if (isLoaded || isActive) {
+      return c.json(
+        {
+          error: "MATCH_BUSY",
+          message:
+            "Cannot reset scores for a match that is currently loaded or active. Unload or abort it first.",
+        },
+        409
+      );
+    }
+
+    try {
+      await scoringRepository.clearMatchScores(
+        eventCode,
+        matchType,
+        matchNumber
+      );
+    } catch (err) {
+      console.error(
+        `Failed to clear scores for ${matchType} #${matchNumber} in ${eventCode}:`,
+        err
+      );
+      return c.json(
+        {
+          error: "INTERNAL",
+          message: "Failed to clear match scores.",
+        },
+        500
+      );
+    }
+
+    // Notify every page whose visible state is derived from scores:
+    // scoring/referee views, audience display bridge, and match-control
+    // schedule subscribers.
+    publishScoreMutation(eventCode, matchType, matchNumber);
+    const published = publishCurrentMatchControlState(eventCode);
+
+    return c.json({
+      ok: true,
+      state: published.state,
+      version: published.version,
+    });
+  }
+);

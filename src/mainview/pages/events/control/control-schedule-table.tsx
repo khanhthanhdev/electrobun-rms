@@ -6,6 +6,8 @@ interface ControlScheduleTableProps {
   eventCode: string;
   onLoadMatch?: (matchNumber: number) => void;
   onNavigate: (path: string) => void;
+  onResetScore?: (row: ControlMatchRow) => void;
+  onShowResults?: (row: ControlMatchRow) => void;
   rows: ControlMatchRow[];
   selectedMatch?: Pick<ControlMatchRow, "matchNumber" | "matchType"> | null;
 }
@@ -61,13 +63,24 @@ const createClickHandler = (
 
 const MatchActions = ({
   eventCode,
+  isBusy,
   onLoadMatch,
   onNavigate,
+  onResetScore,
+  onShowResults,
   row,
 }: {
   eventCode: string;
+  /**
+   * True if this row is the currently loaded or active match. When busy we
+   * hide Play/Replay/Reset because those operations are owned by the active
+   * match panel and the match-control state machine.
+   */
+  isBusy: boolean;
   onLoadMatch?: (matchNumber: number) => void;
   onNavigate: (path: string) => void;
+  onResetScore?: (row: ControlMatchRow) => void;
+  onShowResults?: (row: ControlMatchRow) => void;
   row: ControlMatchRow;
 }): JSX.Element => {
   const scoresheetPath = `/event/${eventCode}/match/${row.matchName}`;
@@ -75,91 +88,114 @@ const MatchActions = ({
   const redEntryPath = `/event/${eventCode}/ref/red/scoring/${row.fieldNumber}/${row.matchType}/match/${row.matchNumber}`;
   const blueEntryPath = `/event/${eventCode}/ref/blue/scoring/${row.fieldNumber}/${row.matchType}/match/${row.matchNumber}`;
 
-  if (row.state === "COMMITTED") {
-    return (
-      <div className="match-control-table-links">
-        <button
-          className="match-control-table-action match-control-table-action--replay"
-          onClick={() => onLoadMatch?.(row.matchNumber)}
-          type="button"
-        >
-          [Replay]
-        </button>
-        <a
-          href={redEntryPath}
-          onClick={(event) =>
-            createClickHandler(event, onNavigate, redEntryPath)
-          }
-        >
-          [Edit Red]
-        </a>
-        <a
-          href={blueEntryPath}
-          onClick={(event) =>
-            createClickHandler(event, onNavigate, blueEntryPath)
-          }
-        >
-          [Edit Blue]
-        </a>
-        <button className="match-control-table-action" type="button">
-          [Post]
-        </button>
-      </div>
-    );
+  // Play / Replay button — present for any row that is not the currently
+  // loaded or active match. Label depends on whether scores already exist.
+  // - UNPLAYED  → [Play]   (no scores yet)
+  // - INCOMPLETE → [Play]  (load path clears saved scores before staging)
+  // - COMMITTED → [Replay] (load path clears saved scores before staging)
+  let playLabel: string | null = null;
+  let playClass = "match-control-table-action--play";
+  if (!isBusy) {
+    if (row.state === "UNPLAYED" || row.state === "INCOMPLETE") {
+      playLabel = "Play";
+    } else if (row.state === "COMMITTED") {
+      playLabel = "Replay";
+      playClass = "match-control-table-action--replay";
+    }
   }
 
-  if (row.state === "UNPLAYED") {
-    return (
-      <div className="match-control-table-links">
-        <button
-          className="match-control-table-action match-control-table-action--play"
-          onClick={() => onLoadMatch?.(row.matchNumber)}
-          type="button"
-        >
-          [Play]
-        </button>
-        <a
-          href={redEntryPath}
-          onClick={(event) =>
-            createClickHandler(event, onNavigate, redEntryPath)
-          }
-        >
-          [Enter Scores]
-        </a>
-      </div>
-    );
-  }
+  // Reset Score button — visible whenever there are saved scores to wipe.
+  const canReset =
+    !isBusy &&
+    onResetScore !== undefined &&
+    (row.state === "INCOMPLETE" || row.state === "COMMITTED");
 
   return (
     <div className="match-control-table-links">
-      <a
-        href={scoresheetPath}
-        onClick={(event) =>
-          createClickHandler(event, onNavigate, scoresheetPath)
-        }
-      >
-        [Scoresheet]
-      </a>
-      <a
-        href={historyPath}
-        onClick={(event) => createClickHandler(event, onNavigate, historyPath)}
-      >
-        [History]
-      </a>
-      <a
-        href={redEntryPath}
-        onClick={(event) => createClickHandler(event, onNavigate, redEntryPath)}
-      >
-        [Red Ref]
-      </a>
-      <a
-        href={blueEntryPath}
-        onClick={(event) =>
-          createClickHandler(event, onNavigate, blueEntryPath)
-        }
-      >
-        [Blue Ref]
-      </a>
+      {playLabel ? (
+        <button
+          className={`match-control-table-action ${playClass}`}
+          onClick={() => onLoadMatch?.(row.matchNumber)}
+          type="button"
+        >
+          [{playLabel}]
+        </button>
+      ) : null}
+
+      {canReset ? (
+        <button
+          className="match-control-table-action match-control-table-action--reset"
+          onClick={() => onResetScore?.(row)}
+          type="button"
+        >
+          [Reset Score]
+        </button>
+      ) : null}
+
+      {row.state === "COMMITTED" ? (
+        <>
+          {onShowResults ? (
+            <button
+              className="match-control-table-action match-control-table-action--show-results"
+              onClick={() => onShowResults(row)}
+              type="button"
+            >
+              [Show Results]
+            </button>
+          ) : null}
+          <a
+            href={scoresheetPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, scoresheetPath)
+            }
+          >
+            [Scoresheet]
+          </a>
+          <a
+            href={historyPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, historyPath)
+            }
+          >
+            [History]
+          </a>
+          <a
+            href={redEntryPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, redEntryPath)
+            }
+          >
+            [Edit Red]
+          </a>
+          <a
+            href={blueEntryPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, blueEntryPath)
+            }
+          >
+            [Edit Blue]
+          </a>
+        </>
+      ) : (
+        <>
+          <a
+            href={redEntryPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, redEntryPath)
+            }
+          >
+            [Red Ref]
+          </a>
+          <a
+            href={blueEntryPath}
+            onClick={(event) =>
+              createClickHandler(event, onNavigate, blueEntryPath)
+            }
+          >
+            [Blue Ref]
+          </a>
+        </>
+      )}
     </div>
   );
 };
@@ -169,6 +205,8 @@ export const ControlScheduleTable = ({
   eventCode,
   onLoadMatch,
   onNavigate,
+  onResetScore,
+  onShowResults,
   rows,
   selectedMatch = null,
 }: ControlScheduleTableProps): JSX.Element => (
@@ -229,8 +267,11 @@ export const ControlScheduleTable = ({
               <td>
                 <MatchActions
                   eventCode={eventCode}
+                  isBusy={isSelectedRow(row, selectedMatch)}
                   onLoadMatch={onLoadMatch}
                   onNavigate={onNavigate}
+                  onResetScore={onResetScore}
+                  onShowResults={onShowResults}
                   row={row}
                 />
               </td>

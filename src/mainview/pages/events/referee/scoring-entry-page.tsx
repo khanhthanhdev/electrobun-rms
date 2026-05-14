@@ -5,6 +5,7 @@ import type { MatchType } from "@/shared/types/scoring";
 import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
 import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { useScoringRealtime } from "../../../features/scoring/hooks/use-scoring-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 
 const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
@@ -32,6 +33,7 @@ export const ScoringEntryPage = ({
   token,
 }: ScoringEntryPageProps): JSX.Element => {
   const [lastTotal, setLastTotal] = useState(0);
+  useScoringRealtime(eventCode, token);
 
   const { scoresheet, isLoading } = useMatchScoresheet(
     eventCode,

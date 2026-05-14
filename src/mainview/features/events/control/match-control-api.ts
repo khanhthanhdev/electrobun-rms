@@ -85,12 +85,17 @@ export const postMatchControlLoad = (
   eventCode: string,
   token: string,
   match: DisplayMatchRef,
-  expectedVersion: number
+  expectedVersion: number,
+  options: { resetScoresBeforeLoad?: boolean } = {}
 ): Promise<MatchControlTransitionResponse> =>
   matchControlRequest<MatchControlTransitionResponse>(
     matchControlPath(eventCode, "load"),
     {
-      body: JSON.stringify({ match, expectedVersion }),
+      body: JSON.stringify({
+        match,
+        expectedVersion,
+        resetScoresBeforeLoad: options.resetScoresBeforeLoad,
+      }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
       token,
@@ -113,6 +118,43 @@ export const postMatchControlTransition = (
     matchControlPath(eventCode, action),
     {
       body: JSON.stringify({ expectedVersion }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      token,
+    }
+  );
+
+/**
+ * Wipe all saved scores for a match so it returns to the UNPLAYED state.
+ *
+ * Server rejects this with 409 if the match is currently loaded or active —
+ * use unload / abort first in that case.
+ */
+export const postMatchControlClearScores = (
+  eventCode: string,
+  token: string,
+  matchType: "practice" | "quals" | "elims",
+  matchNumber: number
+): Promise<{ ok: true; state: MatchControlState; version: number }> =>
+  matchControlRequest<{ ok: true; state: MatchControlState; version: number }>(
+    matchControlPath(eventCode, "clear-scores"),
+    {
+      body: JSON.stringify({ matchType, matchNumber }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      token,
+    }
+  );
+
+export const postMatchControlShowResults = (
+  eventCode: string,
+  token: string,
+  match: DisplayMatchRef
+): Promise<{ ok: true }> =>
+  matchControlRequest<{ ok: true }>(
+    matchControlPath(eventCode, "show-results"),
+    {
+      body: JSON.stringify({ match }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
       token,

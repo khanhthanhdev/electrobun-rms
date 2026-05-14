@@ -2,7 +2,9 @@ export {
   activeStateSchema,
   loadedStateSchema,
   MATCH_DURATION_SECONDS,
+  matchControlClearScoresBodySchema,
   matchControlLoadBodySchema,
+  matchControlShowResultsBodySchema,
   matchControlStateSchema,
   matchControlTransitionBodySchema,
 } from "./match-control-schemas";

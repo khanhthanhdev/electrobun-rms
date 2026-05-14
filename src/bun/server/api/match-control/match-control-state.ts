@@ -116,6 +116,14 @@ export const getMatchControlState = (eventCode: string): MatchControlState => {
   return state;
 };
 
+export const restoreMatchControlState = (
+  eventCode: string,
+  state: MatchControlState
+): void => {
+  assertStateInvariants(state, `restore:${eventCode}`);
+  stateByEventCode.set(eventCode, state);
+};
+
 /**
  * Schedule the auto-complete timer for a running match.
  * The callback receives the resulting state after AUTO_COMPLETE.
