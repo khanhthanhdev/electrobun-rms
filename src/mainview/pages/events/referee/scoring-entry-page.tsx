@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { calcScoringTotal } from "@/features/scoring/scoring-business-logic";
-import { scoresheetToScoringState } from "@/shared/api/scoring";
 import type { MatchType } from "@/shared/types/scoring";
 import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
-import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
-import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { useScoringEntrySync } from "../../../features/scoring/hooks/use-scoring-entry-sync";
 import { useScoringRealtime } from "../../../features/scoring/hooks/use-scoring-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 
@@ -19,7 +17,6 @@ interface ScoringEntryPageProps {
   fieldNumber: string;
   matchNumber: number;
   matchType?: MatchType;
-  onNavigate: (path: string) => void;
   token: string | null;
 }
 
@@ -29,46 +26,33 @@ export const ScoringEntryPage = ({
   fieldNumber,
   matchNumber,
   matchType = "quals",
-  onNavigate,
   token,
 }: ScoringEntryPageProps): JSX.Element => {
   const [lastTotal, setLastTotal] = useState(0);
   useScoringRealtime(eventCode, token);
 
-  const { scoresheet, isLoading } = useMatchScoresheet(
-    eventCode,
-    matchType,
-    matchNumber,
-    token,
-    true
-  );
-
-  const {
-    isAutoSaving,
-    isSubmitting,
-    lastSaveError,
-    onScoreChange,
-    submitted,
-    submitScore,
-  } = useAutoSaveScoring({
-    alliance,
+  const { formProps, isLoading, saveState } = useScoringEntrySync({
     eventCode,
     matchNumber,
     matchType,
     token,
   });
+  const allianceFormProps = formProps[alliance];
+  const allianceSaveState = saveState[alliance];
 
   const fieldLabel =
     fieldNumber === "all" ? "All Fields" : `Field ${fieldNumber}`;
   const matchLabel = `Match M${matchNumber}`;
   const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
   const accent = ALLIANCE_COLOR[alliance];
-  const handleSubmit = (score: Parameters<typeof submitScore>[0]): void => {
+  const handleSubmit = (
+    score: Parameters<typeof allianceFormProps.onSubmit>[0]
+  ): void => {
     setLastTotal(calcScoringTotal(score));
-    submitScore(score);
+    allianceFormProps.onSubmit(score);
   };
 
-  if (submitted) {
+  if (allianceSaveState.submitted) {
     return (
       <main className="page-shell page-shell--center">
         <div className="surface-card surface-card--small">
@@ -126,32 +110,26 @@ export const ScoringEntryPage = ({
     );
   }
 
-  const allianceData = scoresheet?.[alliance];
-  const initialScore = allianceData
-    ? scoresheetToScoringState(allianceData)
-    : undefined;
-
   return (
     <main className="page-shell page-shell--top">
-      {lastSaveError ? (
+      {allianceSaveState.lastSaveError ? (
         <p className="message-block" data-variant="danger" role="alert">
-          {lastSaveError}
+          {allianceSaveState.lastSaveError}
         </p>
       ) : null}
-      {isAutoSaving || isSubmitting ? (
+      {allianceSaveState.isAutoSaving || allianceSaveState.isSubmitting ? (
         <p className="message-block" data-variant="info">
-          {isSubmitting ? "Submitting score…" : "Saving…"}
+          {allianceSaveState.isSubmitting ? "Submitting score…" : "Saving…"}
         </p>
       ) : null}
       <ScoringEntryForm
         alliance={alliance}
         embedded={false}
         fieldLabel={fieldLabel}
-        initialScore={initialScore}
+        initialScore={allianceFormProps.initialScore}
         key={`${matchNumber}-${alliance}`}
         matchLabel={matchLabel}
-        onBackClick={() => window.history.back()}
-        onChange={onScoreChange}
+        onChange={allianceFormProps.onChange}
         onSubmit={handleSubmit}
       />
     </main>

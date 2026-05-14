@@ -10,7 +10,7 @@ import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
 import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
-import { requireEventAdmin, requireScorer } from "../common/guards";
+import { requireScorer } from "../common/guards";
 import {
   getEventCodeWithGuard,
   parseJsonBodyOrResponse,
@@ -97,7 +97,7 @@ scoringRoutes.get("/:eventCode/scoring/stream", requireAuth, (c) => {
 });
 
 scoringRoutes.put("/:eventCode/scoring/matches", requireAuth, async (c) => {
-  const eventCodeResult = getEventCodeWithGuard(c, requireEventAdmin);
+  const eventCodeResult = getEventCodeWithGuard(c, requireScorer);
   if (!eventCodeResult.ok) {
     return eventCodeResult.response;
   }

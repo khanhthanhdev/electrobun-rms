@@ -140,11 +140,6 @@ export const ScoringEntryPage = lazy(() =>
     default: module.ScoringEntryPage,
   }))
 );
-export const HrMatchPage = lazy(() =>
-  import("@/pages/events/referee/hr-match-page").then((module) => ({
-    default: module.HrMatchPage,
-  }))
-);
 export const HeadRefereePage = lazy(() =>
   import("@/pages/events/referee/head-referee-page").then((module) => ({
     default: module.HeadRefereePage,

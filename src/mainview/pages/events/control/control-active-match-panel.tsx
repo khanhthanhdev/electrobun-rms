@@ -4,10 +4,8 @@ import {
   matchRefEquals,
   toMatchRef,
 } from "@/features/events/control/match-control-session";
-import { scoresheetToScoringState } from "@/shared/api/scoring";
 import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
-import { useAutoSaveScoring } from "../../../features/scoring/hooks/use-auto-save-scoring";
-import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { useScoringEntrySync } from "../../../features/scoring/hooks/use-scoring-entry-sync";
 import type { ControlMatchRow } from "../../../shared/types/match-control";
 import { MatchHistoryEmbed } from "./match-history-embed";
 import { MatchScoresheetEmbed } from "./match-scoresheet-embed";
@@ -17,7 +15,6 @@ interface ControlActiveMatchPanelProps {
   activeMatchRef: MatchRef | null;
   activeState: "idle" | "in_progress" | "completed";
   eventCode: string;
-  onNavigate: (path: string) => void;
   timeRemaining: number;
   token: string | null;
 }
@@ -62,7 +59,6 @@ export const ControlActiveMatchPanel = ({
   activeMatchRef,
   activeState,
   eventCode,
-  onNavigate: _onNavigate,
   timeRemaining,
   token,
 }: ControlActiveMatchPanelProps): JSX.Element => {
@@ -72,29 +68,15 @@ export const ControlActiveMatchPanel = ({
   const matchNumber = selectedMatch?.matchNumber ?? 0;
   const hasActiveMatch = selectedMatch !== null;
 
-  const { scoresheet } = useMatchScoresheet(
-    eventCode,
-    matchType,
-    matchNumber,
-    token,
-    hasActiveMatch
-  );
-
-  const redAutoSave = useAutoSaveScoring({
-    alliance: "red",
+  const { formProps, saveState, scoresheet } = useScoringEntrySync({
+    enabled: hasActiveMatch,
     eventCode,
     matchNumber,
     matchType,
     token,
   });
-
-  const blueAutoSave = useAutoSaveScoring({
-    alliance: "blue",
-    eventCode,
-    matchNumber,
-    matchType,
-    token,
-  });
+  const redSaveState = saveState.red;
+  const blueSaveState = saveState.blue;
 
   if (!selectedMatch) {
     return <p className="empty-state">No active match.</p>;
@@ -104,10 +86,10 @@ export const ControlActiveMatchPanel = ({
   const blueScore =
     scoresheet?.blue?.scoreTotal ?? selectedMatch.blueScore ?? 0;
   const isLiveScoring =
-    redAutoSave.isAutoSaving ||
-    redAutoSave.isSubmitting ||
-    blueAutoSave.isAutoSaving ||
-    blueAutoSave.isSubmitting;
+    redSaveState.isAutoSaving ||
+    redSaveState.isSubmitting ||
+    blueSaveState.isAutoSaving ||
+    blueSaveState.isSubmitting;
 
   const isActiveMatch =
     activeState === "in_progress" &&
@@ -201,9 +183,9 @@ export const ControlActiveMatchPanel = ({
           hidden={activeTab !== 0}
           role="tabpanel"
         >
-          {redAutoSave.lastSaveError || blueAutoSave.lastSaveError ? (
+          {redSaveState.lastSaveError || blueSaveState.lastSaveError ? (
             <p className="message-block" data-variant="danger" role="alert">
-              {redAutoSave.lastSaveError ?? blueAutoSave.lastSaveError}
+              {redSaveState.lastSaveError ?? blueSaveState.lastSaveError}
             </p>
           ) : null}
           <div className="match-control-score-entry-inline scoresheet-grid-container">
@@ -211,29 +193,21 @@ export const ControlActiveMatchPanel = ({
               alliance="blue"
               embedded
               fieldLabel={fieldLabel}
-              initialScore={
-                scoresheet?.blue
-                  ? scoresheetToScoringState(scoresheet.blue)
-                  : undefined
-              }
+              initialScore={formProps.blue.initialScore}
               key={`blue-${selectedMatch.matchType}-${selectedMatch.matchNumber}`}
               matchLabel={matchLabel}
-              onChange={blueAutoSave.onScoreChange}
-              onSubmit={blueAutoSave.submitScore}
+              onChange={formProps.blue.onChange}
+              onSubmit={formProps.blue.onSubmit}
             />
             <ScoringEntryForm
               alliance="red"
               embedded
               fieldLabel={fieldLabel}
-              initialScore={
-                scoresheet?.red
-                  ? scoresheetToScoringState(scoresheet.red)
-                  : undefined
-              }
+              initialScore={formProps.red.initialScore}
               key={`red-${selectedMatch.matchType}-${selectedMatch.matchNumber}`}
               matchLabel={matchLabel}
-              onChange={redAutoSave.onScoreChange}
-              onSubmit={redAutoSave.submitScore}
+              onChange={formProps.red.onChange}
+              onSubmit={formProps.red.onSubmit}
             />
           </div>
         </div>

@@ -41,8 +41,6 @@ const REFEREE_RED_SCORING_PATTERN =
 const REFEREE_BLUE_SCORING_PATTERN =
   /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
 const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
-const HEAD_REFEREE_MATCH_PATTERN =
-  /^\/event\/([^/]+)\/hr\/([^/]+)\/match\/(\d+)\/?$/;
 const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;
 const MATCH_HISTORY_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/history\/?$/;
 const MATCH_SCORESHEET_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/?$/;
@@ -201,11 +199,6 @@ const MatchSelectionPage = lazy(() =>
 const ScoringEntryPage = lazy(() =>
   import("../pages/events/referee/scoring-entry-page").then((module) => ({
     default: module.ScoringEntryPage,
-  }))
-);
-const HrMatchPage = lazy(() =>
-  import("../pages/events/referee/hr-match-page").then((module) => ({
-    default: module.HrMatchPage,
   }))
 );
 const HeadRefereePage = lazy(() =>
@@ -898,7 +891,6 @@ const renderInspectionRoutePage = ({
 interface RefereeRoutePageArgs {
   events: EventItem[];
   headRefereeMatch: RegExpExecArray | null;
-  headRefereeMatchEntryMatch: RegExpExecArray | null;
   isEventsLoading: boolean;
   onNavigate: (path: string) => void;
   refereeBlueScoreEntryMatch: RegExpExecArray | null;
@@ -911,7 +903,6 @@ interface RefereeRoutePageArgs {
 const renderScoringEntryPage = (
   match: RegExpExecArray,
   alliance: "blue" | "red",
-  onNavigate: (path: string) => void,
   token: string | null
 ): JSX.Element | null => {
   const eventCode = decodePathSegment(match[1]);
@@ -932,32 +923,7 @@ const renderScoringEntryPage = (
       fieldNumber={fieldNumber}
       matchNumber={matchNumber}
       matchType={matchType}
-      onNavigate={onNavigate}
       token={token}
-    />
-  );
-};
-
-const renderHrMatchEntryPage = (
-  match: RegExpExecArray,
-  onNavigate: (path: string) => void
-): JSX.Element | null => {
-  const eventCode = decodePathSegment(match[1]);
-  const fieldNumber = match[2] ? decodePathSegment(match[2]) : null;
-  const matchNumber = Number.parseInt(match[3], 10);
-  if (
-    eventCode === null ||
-    fieldNumber === null ||
-    !Number.isInteger(matchNumber)
-  ) {
-    return <RouteErrorPage message="Invalid HR match URL." />;
-  }
-  return (
-    <HrMatchPage
-      eventCode={eventCode}
-      fieldNumber={fieldNumber}
-      matchNumber={matchNumber}
-      onNavigate={onNavigate}
     />
   );
 };
@@ -968,32 +934,17 @@ const renderRefereeRoutePage = ({
   refereeBlueScoringMatch,
   refereeBlueScoreEntryMatch,
   headRefereeMatch,
-  headRefereeMatchEntryMatch,
   events,
   isEventsLoading,
   onNavigate,
   token,
 }: RefereeRoutePageArgs): JSX.Element | null => {
   if (refereeRedScoreEntryMatch) {
-    return renderScoringEntryPage(
-      refereeRedScoreEntryMatch,
-      "red",
-      onNavigate,
-      token
-    );
+    return renderScoringEntryPage(refereeRedScoreEntryMatch, "red", token);
   }
 
   if (refereeBlueScoreEntryMatch) {
-    return renderScoringEntryPage(
-      refereeBlueScoreEntryMatch,
-      "blue",
-      onNavigate,
-      token
-    );
-  }
-
-  if (headRefereeMatchEntryMatch) {
-    return renderHrMatchEntryPage(headRefereeMatchEntryMatch, onNavigate);
+    return renderScoringEntryPage(refereeBlueScoreEntryMatch, "blue", token);
   }
 
   // Head Referee gets its own tabbed page when a field is selected
@@ -1011,7 +962,6 @@ const renderRefereeRoutePage = ({
         <HeadRefereePage
           eventCode={hrEventCode}
           fieldNumber={hrFieldSelection}
-          onNavigate={onNavigate}
           token={token}
         />
       );
@@ -1203,14 +1153,12 @@ export const PageRenderer = ({
   const refereeRedScoringMatch = REFEREE_RED_SCORING_PATTERN.exec(currentPath);
   const refereeBlueScoringMatch =
     REFEREE_BLUE_SCORING_PATTERN.exec(currentPath);
-  const headRefereeMatch = HEAD_REFEREE_PATTERN.exec(currentPath);
   // More specific match-level routes — must be exec'd before field-level patterns
   const refereeRedScoreEntryMatch =
     REFEREE_RED_SCORE_ENTRY_PATTERN.exec(currentPath);
   const refereeBlueScoreEntryMatch =
     REFEREE_BLUE_SCORE_ENTRY_PATTERN.exec(currentPath);
-  const headRefereeMatchEntryMatch =
-    HEAD_REFEREE_MATCH_PATTERN.exec(currentPath);
+  const headRefereeMatch = HEAD_REFEREE_PATTERN.exec(currentPath);
 
   const hasAdminRoute =
     isCreateEventPage ||
@@ -1292,7 +1240,6 @@ export const PageRenderer = ({
     refereeBlueScoringMatch,
     refereeBlueScoreEntryMatch,
     headRefereeMatch,
-    headRefereeMatchEntryMatch,
     events,
     isEventsLoading,
     onNavigate,

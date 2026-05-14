@@ -294,7 +294,7 @@ export const MatchSelectionPage = ({
                 onClick={() => {
                   const matchPath =
                     refereeRole === "hr"
-                      ? `/event/${eventCode}/hr/${fieldNumber}/match/${mb.match.matchNumber}`
+                      ? `/event/${eventCode}/hr/${fieldNumber}`
                       : `/event/${eventCode}/ref/${refereeRole}/scoring/${fieldNumber}/${mb.type}/match/${mb.match.matchNumber}`;
                   onNavigate(matchPath);
                 }}

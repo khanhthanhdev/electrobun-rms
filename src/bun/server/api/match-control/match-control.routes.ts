@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { safeParse } from "valibot";
 import { SQLiteScoringRepository } from "../../infrastructure/adapters/scoring";
+import { outboundSyncPushService } from "../../infrastructure/services/outbound-sync-push-service";
 import { requireAuth } from "../auth/auth.middleware";
 import type { AppEnv } from "../common/app-env";
 import { requireEventAdmin } from "../common/guards";
@@ -22,7 +23,6 @@ import {
   applyTransition,
   getMatchControlState,
   type MatchControlCommand,
-  restoreMatchControlState,
   scheduleAutoComplete,
   type TransitionError,
   type TransitionResult,
@@ -227,19 +227,41 @@ matchControlRoutes.post(
       );
     }
 
-    const currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
-    const preLoadState = getMatchControlState(eventCode);
-    const result = applyTransition(
-      eventCode,
-      {
-        type: "LOAD",
-        match: bodyResult.output.match,
-        expectedVersion: bodyResult.output.expectedVersion,
-      },
-      currentVersion
-    );
-
-    if ("state" in result && bodyResult.output.resetScoresBeforeLoad) {
+    let currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
+    const currentState = getMatchControlState(eventCode);
+    if (bodyResult.output.resetScoresBeforeLoad) {
+      if (bodyResult.output.expectedVersion !== currentVersion) {
+        return c.json(
+          {
+            error: "STATE_CONFLICT",
+            message: `Expected version ${bodyResult.output.expectedVersion} but current is ${currentVersion}. Refresh state.`,
+            currentState: { ...currentState, version: currentVersion },
+          },
+          409
+        );
+      }
+      if (currentState.activeState !== "IDLE") {
+        return c.json(
+          {
+            error: "INVALID_TRANSITION",
+            message:
+              "Cannot load a match while another is active. Abort or commit first.",
+            currentState: { ...currentState, version: currentVersion },
+          },
+          409
+        );
+      }
+      if (currentState.loadedState !== "IDLE") {
+        return c.json(
+          {
+            error: "INVALID_TRANSITION",
+            message:
+              "A match is already staged. Unload it before loading a new one.",
+            currentState: { ...currentState, version: currentVersion },
+          },
+          409
+        );
+      }
       try {
         await scoringRepository.clearMatchScores(
           eventCode,
@@ -251,8 +273,8 @@ matchControlRoutes.post(
           bodyResult.output.match.matchType,
           bodyResult.output.match.matchNumber
         );
+        outboundSyncPushService.requestEventSync(eventCode);
       } catch (err) {
-        restoreMatchControlState(eventCode, preLoadState);
         console.error(
           `Failed to clear scores for ${bodyResult.output.match.matchType} #${bodyResult.output.match.matchNumber} in ${eventCode}:`,
           err
@@ -265,7 +287,18 @@ matchControlRoutes.post(
           500
         );
       }
+      currentVersion = matchControlSyncHub.getCurrentVersion(eventCode);
     }
+
+    const result = applyTransition(
+      eventCode,
+      {
+        type: "LOAD",
+        match: bodyResult.output.match,
+        expectedVersion: bodyResult.output.expectedVersion,
+      },
+      currentVersion
+    );
 
     return handleTransition(result, "LOAD", eventCode, c);
   }
@@ -317,6 +350,7 @@ const createTransitionRoute = (
             matchNumber
           );
           publishScoreMutation(eventCode, matchType, matchNumber);
+          outboundSyncPushService.requestEventSync(eventCode);
         } catch (err) {
           console.error(
             `Failed to clear scores for ${matchType} #${matchNumber} in ${eventCode}:`,
@@ -514,6 +548,7 @@ matchControlRoutes.post(
     // scoring/referee views, audience display bridge, and match-control
     // schedule subscribers.
     publishScoreMutation(eventCode, matchType, matchNumber);
+    outboundSyncPushService.requestEventSync(eventCode);
     const published = publishCurrentMatchControlState(eventCode);
 
     return c.json({

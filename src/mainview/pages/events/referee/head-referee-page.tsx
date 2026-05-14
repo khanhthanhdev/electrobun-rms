@@ -16,7 +16,9 @@ import {
   SCORING_FORM_SECTIONS,
   SCORING_TOTAL_LABEL,
 } from "@/features/scoring/scoring-business-logic";
+import { ScoringEntryForm } from "../../../features/scoring/components/scoring-entry-form";
 import { useMatchScoresheet } from "../../../features/scoring/hooks/use-match-results";
+import { useScoringEntrySync } from "../../../features/scoring/hooks/use-scoring-entry-sync";
 import { useScoringRealtime } from "../../../features/scoring/hooks/use-scoring-realtime";
 import { LoadingIndicator } from "../../../shared/components/loading-indicator";
 import {
@@ -36,11 +38,14 @@ type HrTab = "active" | "notes" | "timers" | "scoresheets";
 type CardState = "none" | "yellow" | "2yellow" | "red";
 type NotesFilter = "match" | "team" | "meeting";
 type AllianceView = "red" | "blue" | "both";
+type ScoringFormSyncProps = Pick<
+  React.ComponentProps<typeof ScoringEntryForm>,
+  "initialScore" | "onChange" | "onSubmit"
+>;
 
 interface HeadRefereePageProps {
   eventCode: string;
   fieldNumber: string;
-  onNavigate: (path: string) => void;
   token: string | null;
 }
 
@@ -323,6 +328,10 @@ interface ActiveMatchTabProps {
   onFlip: () => void;
   redCards: AllianceCardState;
   redFouls: AllianceFoulState;
+  scoreFormProps: Record<"blue" | "red", ScoringFormSyncProps>;
+  scoreSaveError: string | null;
+  scoreSaving: boolean;
+  scoresEditable: boolean;
   scoresheet: MatchScoresheet | null;
   scoresheetLoading: boolean;
 }
@@ -741,6 +750,10 @@ const ActiveMatchTab = ({
   redCards,
   scoresheet,
   scoresheetLoading,
+  scoreFormProps,
+  scoreSaveError,
+  scoreSaving,
+  scoresEditable,
   onChangeBlueFoul,
   onChangeRedFoul,
   onChangeBlueCard,
@@ -829,6 +842,49 @@ const ActiveMatchTab = ({
           redData={redData}
         />
       )}
+
+      <div
+        className="match-control-score-entry-inline scoresheet-grid-container"
+        style={{ marginTop: "1rem" }}
+      >
+        {scoresEditable && scoreSaveError ? (
+          <p
+            className="message-block"
+            data-variant="danger"
+            role="alert"
+            style={{ gridColumn: "1 / -1" }}
+          >
+            {scoreSaveError}
+          </p>
+        ) : null}
+        {scoresEditable && scoreSaving ? (
+          <p
+            className="message-block"
+            data-variant="info"
+            style={{ gridColumn: "1 / -1" }}
+          >
+            Saving…
+          </p>
+        ) : null}
+        <ScoringEntryForm
+          alliance="blue"
+          embedded
+          fieldLabel={fieldLabel}
+          key={`hr-blue-${activeMatch.type}-${activeMatch.match.matchNumber}`}
+          matchLabel={matchLabel}
+          readOnly={!scoresEditable}
+          {...scoreFormProps.blue}
+        />
+        <ScoringEntryForm
+          alliance="red"
+          embedded
+          fieldLabel={fieldLabel}
+          key={`hr-red-${activeMatch.type}-${activeMatch.match.matchNumber}`}
+          matchLabel={matchLabel}
+          readOnly={!scoresEditable}
+          {...scoreFormProps.red}
+        />
+      </div>
     </div>
   );
 };
@@ -1263,7 +1319,6 @@ const ScoresheetsTab = ({
 export const HeadRefereePage = ({
   eventCode,
   fieldNumber,
-  onNavigate,
   token,
 }: HeadRefereePageProps): JSX.Element => {
   const [activeTab, setActiveTab] = useState<HrTab>("active");
@@ -1275,6 +1330,9 @@ export const HeadRefereePage = ({
   const [flipped, setFlipped] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [controlState, setControlState] = useState(() =>
+    getMatchControlRealtimeState(eventCode)
+  );
 
   const { matches, isLoading, error } = useMatchBlocks(
     eventCode,
@@ -1300,6 +1358,7 @@ export const HeadRefereePage = ({
   useEffect(() => {
     const syncFromControlState = (): void => {
       const controlState = getMatchControlRealtimeState(eventCode);
+      setControlState(controlState);
       if (!controlState) {
         return;
       }
@@ -1326,18 +1385,33 @@ export const HeadRefereePage = ({
     : "quals";
   const matchNumber = activeMatch?.match.matchNumber ?? 0;
 
-  const { scoresheet, isLoading: scoresheetLoading } = useMatchScoresheet(
+  const {
+    formProps: scoreFormProps,
+    isLoading: scoresheetLoading,
+    saveState: scoreSaveState,
+    scoresheet,
+  } = useScoringEntrySync({
+    enabled: activeMatch !== null,
     eventCode,
-    matchType,
     matchNumber,
+    matchType,
     token,
-    activeMatch !== null
-  );
+  });
+  const scoresEditable =
+    activeMatch !== null &&
+    controlState?.activeState === "COMPLETED" &&
+    controlState.activeMatch?.matchNumber === matchNumber &&
+    controlState.activeMatch?.matchType === matchType;
+  const scoreSaving =
+    scoreSaveState.blue.isAutoSaving ||
+    scoreSaveState.blue.isSubmitting ||
+    scoreSaveState.red.isAutoSaving ||
+    scoreSaveState.red.isSubmitting;
+  const scoreSaveError =
+    scoreSaveState.blue.lastSaveError ?? scoreSaveState.red.lastSaveError;
 
   const fieldLabel =
     fieldNumber === "all" ? "All Fields" : `Field ${fieldNumber}`;
-  const backPath = `/event/${eventCode}/hr`;
-
   const changeFoul = (
     setter: React.Dispatch<React.SetStateAction<AllianceFoulState>>,
     field: "minorHr" | "majorHr",
@@ -1469,6 +1543,10 @@ export const HeadRefereePage = ({
             onFlip={() => setFlipped((f) => !f)}
             redCards={redCards}
             redFouls={redFouls}
+            scoreFormProps={scoreFormProps}
+            scoreSaveError={scoreSaveError}
+            scoreSaving={scoreSaving}
+            scoresEditable={scoresEditable}
             scoresheet={scoresheet}
             scoresheetLoading={scoresheetLoading}
           />

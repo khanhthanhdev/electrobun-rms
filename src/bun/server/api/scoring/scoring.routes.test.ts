@@ -8,6 +8,7 @@ import {
   SCORING_SYNC_EVENT_NAME,
   scoringSyncHub,
 } from "./scoring.test-support";
+import { matchControlSyncHub } from "../match-control/match-control-sync";
 
 const RED_SCORE_PAYLOAD = {
   matchType: "quals",
@@ -162,6 +163,8 @@ describe("scoring routes", () => {
 
     const token = await createAdminToken(eventCode);
     const app = createScoringTestApp();
+    const initialMatchControlVersion =
+      matchControlSyncHub.getCurrentVersion(eventCode);
 
     const initialScoresheetResponse = await app.request(
       `http://localhost/${eventCode}/scoring/quals/1`
@@ -216,6 +219,9 @@ describe("scoring routes", () => {
       }
     );
     expect(saveRedResponse.status).toBe(200);
+    expect(matchControlSyncHub.getCurrentVersion(eventCode)).toBeGreaterThan(
+      initialMatchControlVersion
+    );
     expect(await saveRedResponse.json()).toEqual({
       eventCode,
       matchType: "quals",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   calcScoringTotal,
   INITIAL_SCORING_STATE,
@@ -24,10 +24,12 @@ const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
 const CounterRow = ({
   label,
   value,
+  disabled = false,
   onDecrement,
   onIncrement,
   pts,
 }: {
+  disabled?: boolean;
   label: string;
   onDecrement: () => void;
   onIncrement: () => void;
@@ -64,6 +66,7 @@ const CounterRow = ({
     </div>
     <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
       <button
+        disabled={disabled}
         onClick={onDecrement}
         style={{
           width: 34,
@@ -72,7 +75,8 @@ const CounterRow = ({
           border: "1px solid var(--border)",
           background: "var(--card)",
           fontSize: "1.15rem",
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.55 : 1,
           lineHeight: 1,
           color: "var(--foreground)",
           display: "flex",
@@ -95,6 +99,7 @@ const CounterRow = ({
         {value}
       </span>
       <button
+        disabled={disabled}
         onClick={onIncrement}
         style={{
           width: 34,
@@ -103,7 +108,8 @@ const CounterRow = ({
           border: "1px solid var(--border)",
           background: "var(--card)",
           fontSize: "1.15rem",
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.55 : 1,
           lineHeight: 1,
           color: "var(--foreground)",
           display: "flex",
@@ -166,10 +172,20 @@ interface ScoringEntryFormProps {
   fieldLabel?: string;
   initialScore?: Partial<ScoringState>;
   matchLabel?: string;
-  onBackClick?: () => void;
   onChange?: (score: ScoringState) => void;
+  readOnly?: boolean;
   onSubmit?: (score: ScoringState) => void;
 }
+
+const getEffectiveInitialScore = (
+  initialScore?: Partial<ScoringState>
+): ScoringState => ({
+  ...INITIAL_SCORING_STATE,
+  ...initialScore,
+});
+
+const getScoreSignature = (score: ScoringState): string =>
+  JSON.stringify(score);
 
 export const ScoringEntryForm = ({
   alliance,
@@ -178,34 +194,74 @@ export const ScoringEntryForm = ({
   initialScore,
   matchLabel,
   onChange,
-  onBackClick,
+  readOnly = false,
   onSubmit,
 }: ScoringEntryFormProps): JSX.Element => {
-  const [score, setScore] = useState<ScoringState>({
-    ...INITIAL_SCORING_STATE,
-    ...initialScore,
-  });
+  const [score, setScore] = useState<ScoringState>(() =>
+    getEffectiveInitialScore(initialScore)
+  );
   const accent = ALLIANCE_COLOR[alliance];
   const allianceLabel = alliance === "red" ? "Red Team" : "Blue Team";
   const isInitialMount = useRef(true);
+  const onChangeRef = useRef(onChange);
+  const suppressNextChangeRef = useRef(false);
+  const effectiveInitialScore = useMemo(
+    () => getEffectiveInitialScore(initialScore),
+    [initialScore]
+  );
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    setScore((currentScore) => {
+      if (
+        getScoreSignature(currentScore) ===
+        getScoreSignature(effectiveInitialScore)
+      ) {
+        return currentScore;
+      }
+
+      suppressNextChangeRef.current = true;
+      return effectiveInitialScore;
+    });
+  }, [effectiveInitialScore]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-    onChange?.(score);
-  }, [score, onChange]);
 
-  const dec = (key: keyof ScoringState) =>
+    if (suppressNextChangeRef.current) {
+      suppressNextChangeRef.current = false;
+      return;
+    }
+
+    onChangeRef.current?.(score);
+  }, [score]);
+
+  const dec = (key: keyof ScoringState) => {
+    if (readOnly) {
+      return;
+    }
     setScore((s) => ({ ...s, [key]: Math.max(0, (s[key] as number) - 1) }));
-  const inc = (key: keyof ScoringState, max?: number) =>
+  };
+  const inc = (key: keyof ScoringState, max?: number) => {
+    if (readOnly) {
+      return;
+    }
     setScore((s) => {
       const next = (s[key] as number) + 1;
       return { ...s, [key]: max !== undefined ? Math.min(max, next) : next };
     });
+  };
 
   const handleSubmit = (): void => {
+    if (readOnly) {
+      return;
+    }
     onSubmit?.(score);
   };
 
@@ -227,6 +283,7 @@ export const ScoringEntryForm = ({
           <SectionHeader accent={accent} label={section.label} />
           {section.fields.map((field) => (
             <CounterRow
+              disabled={readOnly}
               key={field.key}
               label={field.label}
               onDecrement={() => dec(field.key)}
@@ -282,8 +339,10 @@ export const ScoringEntryForm = ({
             const active = score.robotParking === opt.value;
             return (
               <button
+                disabled={readOnly}
                 key={opt.value}
                 onClick={() =>
+                  !readOnly &&
                   setScore((s) => ({ ...s, robotParking: opt.value }))
                 }
                 style={{
@@ -296,7 +355,8 @@ export const ScoringEntryForm = ({
                       : "none",
                   background: active ? accent : "var(--card)",
                   color: active ? "#fff" : "var(--foreground)",
-                  cursor: "pointer",
+                  cursor: readOnly ? "not-allowed" : "pointer",
+                  opacity: readOnly && !active ? 0.55 : 1,
                   fontWeight: active
                     ? ("var(--font-semibold)" as React.CSSProperties["fontWeight"])
                     : ("var(--font-medium)" as React.CSSProperties["fontWeight"]),
@@ -314,6 +374,7 @@ export const ScoringEntryForm = ({
       </div>
       <SectionHeader accent={accent} label="Điểm trừ" />
       <CounterRow
+        disabled={readOnly}
         label={PENALTY_SCORING_FIELD.label}
         onDecrement={() => dec(PENALTY_SCORING_FIELD.key)}
         onIncrement={() => inc(PENALTY_SCORING_FIELD.key)}
@@ -352,24 +413,26 @@ export const ScoringEntryForm = ({
           {total}
         </span>
       </div>
-      <button
-        onClick={handleSubmit}
-        style={{
-          marginTop: "1rem",
-          width: "100%",
-          padding: "0.875rem",
-          backgroundColor: accent,
-          color: "#fff",
-          border: "none",
-          borderRadius: "var(--radius-medium)",
-          fontSize: "1rem",
-          fontWeight: "var(--font-bold)" as React.CSSProperties["fontWeight"],
-          cursor: "pointer",
-        }}
-        type="button"
-      >
-        Ghi điểm
-      </button>
+      {!readOnly && onSubmit ? (
+        <button
+          onClick={handleSubmit}
+          style={{
+            marginTop: "1rem",
+            width: "100%",
+            padding: "0.875rem",
+            backgroundColor: accent,
+            color: "#fff",
+            border: "none",
+            borderRadius: "var(--radius-medium)",
+            fontSize: "1rem",
+            fontWeight: "var(--font-bold)" as React.CSSProperties["fontWeight"],
+            cursor: "pointer",
+          }}
+          type="button"
+        >
+          Ghi điểm
+        </button>
+      ) : null}
     </div>
   );
 

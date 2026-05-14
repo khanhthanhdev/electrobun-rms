@@ -1311,7 +1311,6 @@ export const EventControlPage = ({
                 activeMatchRef={activeMatchRef}
                 activeState={activeState}
                 eventCode={eventCode}
-                onNavigate={onNavigate}
                 timeRemaining={timeRemaining}
                 token={token}
               />

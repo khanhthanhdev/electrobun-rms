@@ -6,6 +6,7 @@ import {
   createScoringEventDb,
   insertEvent,
   resetScoringTestDatabase,
+  scoringSyncHub,
 } from "../scoring/scoring.test-support";
 
 const matchControlRoutesModule = await import("./match-control.routes");
@@ -96,6 +97,7 @@ describe("match control routes", () => {
     });
     const token = await createAdminToken(eventCode);
     const app = createMatchControlTestApp();
+    const initialScoringVersion = scoringSyncHub.getCurrentVersion(eventCode);
 
     await app.request(
       `http://localhost/${eventCode}/match-control/clear-scores`,
@@ -122,6 +124,9 @@ describe("match control routes", () => {
     );
 
     expect(response.status).toBe(409);
+    expect(scoringSyncHub.getCurrentVersion(eventCode)).toBeGreaterThan(
+      initialScoringVersion
+    );
     expect(await response.json()).toEqual({
       error: "MATCH_NOT_COMMITTED",
       message: "Cannot show results for a match without committed scores.",
@@ -139,6 +144,7 @@ describe("match control routes", () => {
     });
     const token = await createAdminToken(eventCode);
     const app = createMatchControlTestApp();
+    const initialScoringVersion = scoringSyncHub.getCurrentVersion(eventCode);
 
     const response = await postMatchControl(app, eventCode, "load", token, {
       expectedVersion: 0,
@@ -156,6 +162,9 @@ describe("match control routes", () => {
       blueScore: null,
       redScore: null,
     });
+    expect(scoringSyncHub.getCurrentVersion(eventCode)).toBeGreaterThan(
+      initialScoringVersion
+    );
   });
 
   it("does not clear scores when replay load validation fails", async () => {
@@ -201,6 +210,7 @@ describe("match control routes", () => {
     });
     const token = await createAdminToken(eventCode);
     const app = createMatchControlTestApp();
+    const initialScoringVersion = scoringSyncHub.getCurrentVersion(eventCode);
 
     let response = await postMatchControl(app, eventCode, "load", token, {
       expectedVersion: 0,
@@ -238,5 +248,8 @@ describe("match control routes", () => {
       blueScore: null,
       redScore: null,
     });
+    expect(scoringSyncHub.getCurrentVersion(eventCode)).toBeGreaterThan(
+      initialScoringVersion
+    );
   });
 });
