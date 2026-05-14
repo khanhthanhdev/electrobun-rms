@@ -44,3 +44,11 @@ Reduce hidden sync failures in SSE + TinyBase cross-client update flows, especia
 - **Regression-proofing (kept):**
   - Expanded `display-command-sync-service` unit tests to cover invalid JSON/object shape handling, `SNAPSHOT_HINT`+null mode rejection, normalization fallbacks, and score-update validation branches.
   - Metric unchanged (`sync_error_count=0`), but parser behavior now pinned by tests.
+- **Comprehensive parser test coverage (kept):**
+  - Added 59 unit tests across 3 realtime parser test files:
+    - `scoring-sync-service.test.ts` (18 tests): SCORE_UPDATED, SNAPSHOT_HINT, null matchNumber/matchType, validation edge cases.
+    - `inspection-sync-service.test.ts` (21 tests): all 5 event kinds (ITEMS_UPDATED, STATUS_UPDATED, COMMENT_UPDATED, OVERRIDE_APPLIED, SNAPSHOT_HINT), null teamNumber.
+    - `match-control-sync-service.test.ts` (20 tests): STATE_CHANGED, SNAPSHOT_HINT, null state, parseMatchControlState helper.
+  - Metric unchanged (`sync_error_count=0`), all parser validation behaviors now pinned by tests.
+- **Build process fix (kept):**
+  - Updated `autoresearch.sh` to ignore TS6133 (unused variable) warnings in out-of-scope files that were blocking TypeScript compile check.
