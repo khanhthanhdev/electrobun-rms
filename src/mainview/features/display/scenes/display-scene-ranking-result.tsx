@@ -1,3 +1,6 @@
+import { DisplaySceneFooter } from "../components/display-scene-footer";
+import { DisplaySceneHeader } from "../components/display-scene-header";
+
 interface RankingRow {
   rank: number;
   rp: number;
@@ -14,49 +17,85 @@ interface DisplaySceneRankingResultProps {
   rankings?: RankingRow[];
 }
 
+const DISPLAYED_RANKING_COUNT = 4;
+
+const getRankClassName = (rank: number): string => {
+  if (rank === 1) {
+    return "display-ranking-rank-badge display-ranking-rank-badge--gold";
+  }
+
+  if (rank === 2) {
+    return "display-ranking-rank-badge display-ranking-rank-badge--silver";
+  }
+
+  return "display-ranking-rank-badge";
+};
+
+const formatDecimal = (value: number): string => value.toFixed(2);
+
+const getPlays = (wlt: string): number =>
+  wlt
+    .split("-")
+    .map((value) => Number.parseInt(value, 10))
+    .filter(Number.isFinite)
+    .reduce((total, value) => total + value, 0);
+
 export const DisplaySceneRankingResult = ({
   eventName,
   rankings = [],
-  matchesPlayed = "0 / 0 matches played",
-}: DisplaySceneRankingResultProps): JSX.Element => (
-  <div className="display-scene display-scene-ranking-result">
-    <section className="display-ranking-header">
-      <table className="display-ranking-table">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Team</th>
-            <th>Name</th>
-            <th>RP</th>
-            <th>Total</th>
-            <th>W-L-T</th>
-            <th>% Win</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rankings.length > 0 ? (
-            rankings.map((row) => (
-              <tr key={row.teamNumber}>
-                <td>{row.rank}</td>
-                <td>{row.teamNumber}</td>
-                <td>{row.teamName}</td>
-                <td>{row.rp}</td>
-                <td>{row.total}</td>
-                <td>{row.wlt}</td>
-                <td>{row.winPct}</td>
-              </tr>
-            ))
+}: DisplaySceneRankingResultProps): JSX.Element => {
+  const displayedRankings = rankings.slice(0, DISPLAYED_RANKING_COUNT);
+
+  return (
+    <section
+      aria-label={`${eventName} ranking results scene`}
+      className="display-sponsors-scene display-ranking-result-scene"
+    >
+      <DisplaySceneHeader title="Rankings" />
+
+      <main className="display-sponsors-main display-ranking-main">
+        <section className="display-ranking-card" aria-label="Team rankings">
+          <div aria-hidden="true" className="display-ranking-card-glow" />
+
+          <div className="display-ranking-grid display-ranking-grid--header">
+            <span>Rank</span>
+            <span>Team</span>
+            <span>RS</span>
+            <span>Points</span>
+            <span>Base</span>
+            <span>Plays</span>
+          </div>
+
+          {displayedRankings.length > 0 ? (
+            <div className="display-ranking-list">
+              {displayedRankings.map((row) => (
+                <div className="display-ranking-grid" key={row.teamNumber}>
+                  <span className={getRankClassName(row.rank)}>
+                    {row.rank}
+                  </span>
+                  <span className="display-ranking-team-badge">
+                    {row.teamNumber}
+                  </span>
+                  <span className="display-ranking-value">
+                    {formatDecimal(row.rp)}
+                  </span>
+                  <span className="display-ranking-value display-ranking-value--strong">
+                    {formatDecimal(row.total)}
+                  </span>
+                  <span className="display-ranking-value">0.00</span>
+                  <span className="display-ranking-plays-badge">
+                    {getPlays(row.wlt)}
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : (
-            <tr>
-              <td colSpan={7}>No rankings yet</td>
-            </tr>
+            <div className="display-ranking-empty">No rankings yet</div>
           )}
-        </tbody>
-      </table>
+        </section>
+      </main>
+
+      <DisplaySceneFooter />
     </section>
-    <footer className="display-ranking-footer">
-      <span>{matchesPlayed}</span>
-      <span>{eventName}</span>
-    </footer>
-  </div>
-);
+  );
+};

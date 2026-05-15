@@ -1,11 +1,9 @@
-import hourglassLine from "@/assets/display-sponsors/hourglass-line.svg";
-import hourglassOutline from "@/assets/display-sponsors/hourglass-outline.svg";
 import sponsorAivf from "@/assets/display-sponsors/sponsor-aivf.png";
 import sponsorSteam from "@/assets/display-sponsors/sponsor-steam.png";
 import sponsorUsEmbassy from "@/assets/display-sponsors/sponsor-us-embassy.png";
-import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
 
 import { DisplaySceneFooter } from "../components/display-scene-footer";
+import { DisplaySceneHeader } from "../components/display-scene-header";
 import { formatTimer } from "../display-helpers";
 import { useNow } from "../use-now";
 
@@ -59,17 +57,7 @@ export const DisplaySceneNextMatch = ({
       aria-label={`${eventName} next match scene`}
       className="display-sponsors-scene"
     >
-      <header className="display-sponsors-header">
-        <img
-          alt="STEAM For Vietnam"
-          className="display-sponsors-brand"
-          height={907}
-          src={steamBrandLockup}
-          width={2534}
-        />
-      
-
-      </header>
+      <DisplaySceneHeader title="Next Match" />
 
       <div className="display-sponsors-main display-next-match-main">
         <ul className="display-sponsors-logo-list display-next-match-logo-list">

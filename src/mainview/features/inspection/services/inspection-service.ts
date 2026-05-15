@@ -3,6 +3,7 @@ import type {
   InspectionDetailResponse,
   InspectionHistoryResponse,
   InspectionTeamsResponse,
+  PublicInspectionStatusResponse,
 } from "../../../shared/types/inspection";
 
 export const fetchInspectionTeams = (
@@ -19,6 +20,14 @@ export const fetchInspectionTeams = (
     { token }
   );
 };
+
+export const fetchPublicInspectionStatus = (
+  eventCode: string
+): Promise<PublicInspectionStatusResponse> =>
+  requestJson<PublicInspectionStatusResponse>(
+    `/events/${encodeURIComponent(eventCode)}/inspection/public-status`,
+    {}
+  );
 
 export const fetchInspectionDetail = (
   eventCode: string,

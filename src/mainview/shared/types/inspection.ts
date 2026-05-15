@@ -59,6 +59,20 @@ export interface InspectionTeamsResponse {
   totalTeams: number;
 }
 
+export interface PublicInspectionTeamStatus {
+  status: InspectionStatus;
+  statusCode: string;
+  statusLabel: string;
+  teamName: string;
+  teamNumber: number;
+}
+
+export interface PublicInspectionStatusResponse {
+  eventCode: string;
+  statusCounts: Record<InspectionStatus, number>;
+  teams: PublicInspectionTeamStatus[];
+}
+
 export interface InspectionDetailResponse {
   checklist: ChecklistDefinition;
   inspection: {

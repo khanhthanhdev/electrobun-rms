@@ -1,11 +1,9 @@
-import hourglassLine from "@/assets/display-sponsors/hourglass-line.svg";
-import hourglassOutline from "@/assets/display-sponsors/hourglass-outline.svg";
 import sponsorAivf from "@/assets/display-sponsors/sponsor-aivf.png";
 import sponsorSteam from "@/assets/display-sponsors/sponsor-steam.png";
 import sponsorUsEmbassy from "@/assets/display-sponsors/sponsor-us-embassy.png";
-import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
 
 import { DisplaySceneFooter } from "../components/display-scene-footer";
+import { DisplaySceneHeader } from "../components/display-scene-header";
 
 const SPONSOR_LOGOS = [
   {
@@ -26,32 +24,6 @@ interface DisplaySceneSponsorsProps {
   eventName: string;
 }
 
-const SponsorHourglassIcon = (): JSX.Element => (
-  <span aria-hidden="true" className="display-sponsors-hourglass">
-    <img
-      alt=""
-      className="display-sponsors-hourglass-outline"
-      height={28}
-      src={hourglassOutline}
-      width={20}
-    />
-    <img
-      alt=""
-      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--top"
-      height={2}
-      src={hourglassLine}
-      width={7}
-    />
-    <img
-      alt=""
-      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--bottom"
-      height={2}
-      src={hourglassLine}
-      width={7}
-    />
-  </span>
-);
-
 export const DisplaySceneSponsors = ({
   eventName,
 }: DisplaySceneSponsorsProps): JSX.Element => (
@@ -59,17 +31,7 @@ export const DisplaySceneSponsors = ({
     aria-label={`${eventName} sponsors scene`}
     className="display-sponsors-scene"
   >
-    <header className="display-sponsors-header">
-      <img
-        alt="STEAM For Vietnam"
-        className="display-sponsors-brand"
-        height={907}
-        src={steamBrandLockup}
-        width={2534}
-      />
-      <SponsorHourglassIcon />
-
-    </header>
+    <DisplaySceneHeader title="Nhà tài trợ" />
 
     <div className="display-sponsors-main">
       <h1 className="display-sponsors-title">Nhà tài trợ</h1>

@@ -1,8 +1,7 @@
-import matchPreviewTrophyIcon from "@/assets/display-sponsors/match-preview-trophy-icon.svg";
 import matchPreviewVsGraphic from "@/assets/display-sponsors/match-preview-vs.png";
-import steamBrandLockup from "@/assets/display-sponsors/steam-header-logo-trimmed.png";
 
 import { DisplaySceneFooter } from "../components/display-scene-footer";
+import { DisplaySceneMatchHeader } from "../components/display-scene-match-header";
 
 interface MatchPreviewData {
   blueTeam: number;
@@ -21,10 +20,6 @@ interface DisplaySceneMatchPreviewProps {
 const formatHeaderMatchLabel = (
   match: MatchPreviewData | null | undefined
 ): string => match?.matchName?.trim().toUpperCase() || "MATCH PREVIEW";
-
-const formatHeaderFieldLabel = (
-  match: MatchPreviewData | null | undefined
-): string => `SÂN THI ĐẤU ${match?.fieldNumber ?? 1}`;
 
 const formatTeamId = (teamNumber: number | undefined): string =>
   teamNumber ? `ID: #${String(teamNumber).padStart(3, "0")}` : "ID: #TBD";
@@ -63,44 +58,16 @@ export const DisplaySceneMatchPreview = ({
   match,
 }: DisplaySceneMatchPreviewProps): JSX.Element => {
   const headerMatchLabel = formatHeaderMatchLabel(match);
-  const headerFieldLabel = formatHeaderFieldLabel(match);
 
   return (
     <section
       aria-label={`${eventName} match preview scene`}
       className="display-sponsors-scene display-match-preview-scene"
     >
-      <header className="display-sponsors-header display-match-preview-header">
-        <img
-          alt="STEAM For Vietnam"
-          className="display-sponsors-brand"
-          height={907}
-          src={steamBrandLockup}
-          width={2534}
-        />
-
-        <div className="display-match-preview-header-pill">
-          <img
-            alt=""
-            className="display-match-preview-header-icon"
-            height={24}
-            src={matchPreviewTrophyIcon}
-            width={24}
-          />
-          <p className="display-match-preview-header-title">
-            <span>{headerMatchLabel}</span>
-            <span
-              aria-hidden="true"
-              className="display-match-preview-header-divider"
-            >
-              |
-            </span>
-            <span>{headerFieldLabel}</span>
-          </p>
-        </div>
-
-
-      </header>
+      <DisplaySceneMatchHeader
+        fieldNumber={match?.fieldNumber}
+        matchLabel={headerMatchLabel}
+      />
 
       <div className="display-sponsors-main display-match-preview-main">
         <div className="display-match-preview-stage">

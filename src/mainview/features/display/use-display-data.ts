@@ -3,10 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMatchControlData } from "@/features/events/control";
 import { fetchQualificationRankings } from "@/features/events/rankings";
 import type { EventQualificationRankingsResponse } from "@/features/events/rankings/qualification-rankings-service";
-import { fetchInspectionTeams } from "@/features/inspection/services/inspection-service";
+import {
+  fetchInspectionTeams,
+  fetchPublicInspectionStatus,
+} from "@/features/inspection/services/inspection-service";
 import { requestJson } from "@/shared/api/http-client";
 import { fetchMatchScoresheet } from "@/shared/api/scoring";
 import type { EventItem } from "@/shared/types/event";
+import type { InspectionStatus } from "@/shared/types/inspection";
 import type { MatchControlData } from "@/shared/types/match-control";
 import type { MatchScoresheet, MatchType } from "@/shared/types/scoring";
 import type { DisplaySceneMode } from "./display-scene-types";
@@ -29,7 +33,7 @@ export interface DisplayData {
   inspectionTeams: Array<{
     teamNumber: number;
     teamName: string;
-    status: string;
+    status: InspectionStatus;
   }>;
   loadedMatch: {
     blueBreakdown: ScoreBreakdown | null;
@@ -216,7 +220,7 @@ const toInspectionTeams = (
     teams?: Array<{
       teamName?: string | null;
       teamNumber: number;
-      status?: string;
+      status?: InspectionStatus;
     }>;
   } | null
 ): DisplayData["inspectionTeams"] =>
@@ -238,7 +242,7 @@ const fetchAllDisplaySources = (
       teams: Array<{
         teamName?: string | null;
         teamNumber: number;
-        status?: string;
+        status?: InspectionStatus;
       }>;
     }>,
   ]
@@ -248,10 +252,10 @@ const fetchAllDisplaySources = (
     fetchMatchControlData(eventCode, token),
     fetchQualificationRankings(eventCode, token, Date.now()),
     token
-      ? fetchInspectionTeams(eventCode, token, "").catch(() => ({
-          teams: [],
-        }))
-      : Promise.resolve({ teams: [] }),
+      ? fetchInspectionTeams(eventCode, token, "").catch(() =>
+          fetchPublicInspectionStatus(eventCode).catch(() => ({ teams: [] }))
+        )
+      : fetchPublicInspectionStatus(eventCode).catch(() => ({ teams: [] })),
   ]);
 
 const unwrapSettled = <T>(result: PromiseSettledResult<T>): T | null =>

@@ -1,5 +1,3 @@
-import { DisplayChrome } from "../display-chrome";
-
 interface DisplaySceneBlankProps {
   eventName: string;
 }
@@ -7,11 +5,7 @@ interface DisplaySceneBlankProps {
 export const DisplaySceneBlank = ({
   eventName,
 }: DisplaySceneBlankProps): JSX.Element => (
-  <DisplayChrome eventName={eventName}>
-    <div className="display-scene display-scene-blank">
-      <div aria-hidden="true" className="display-scene-center">
-        {/* Minimal standby - event logo/clock area placeholder */}
-      </div>
-    </div>
-  </DisplayChrome>
+  <div className="display-scene display-scene-blank display-scene-fullscreen">
+    {/* Blank scene - just background, no header or footer */}
+  </div>
 );

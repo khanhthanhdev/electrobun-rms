@@ -102,16 +102,7 @@ export const DisplaySceneRenderer = ({
       return (
         <DisplaySceneRobotInspectionStatus
           eventName={eventName}
-          teams={data.inspectionTeams.map((t) => ({
-            teamNumber: t.teamNumber,
-            teamName: t.teamName,
-            status: t.status as
-              | "NOT_STARTED"
-              | "IN_PROGRESS"
-              | "PASSED"
-              | "READY"
-              | "INCOMPLETE",
-          }))}
+          teams={data.inspectionTeams}
         />
       );
     case "text-notification":

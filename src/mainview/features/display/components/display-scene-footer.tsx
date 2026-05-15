@@ -5,7 +5,7 @@ export const DisplaySceneFooter = (): JSX.Element => (
     <div className="display-sponsors-footer-content">
       {/*<DisplaySceneFooterSponsorLogos />*/}
       <span className="display-sponsors-footer-title">
-        National Robotics Competition 2026
+        HÀNH TINH 4.0
       </span>
     </div>
   </footer>
