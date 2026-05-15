@@ -10,7 +10,6 @@ export const machinePushResourceTypes = [
 export const DEFAULT_ALLOWED_PUSH_RESOURCES = [...machinePushResourceTypes];
 
 export type MachinePushResourceType = (typeof machinePushResourceTypes)[number];
-export type MatchPhase = "PRACTICE" | "PLAYOFF" | "QUALIFICATION";
 export type MatchType = "elims" | "practice" | "quals";
 export type PushMode = "replace_snapshot" | "upsert";
 
@@ -75,12 +74,4 @@ export interface ApplyNotifications {
   inspectionTeamNumbers: Set<number>;
   rankingUpdated: boolean;
   scoringUpdates: Array<{ matchNumber: number; matchType: MatchType }>;
-}
-
-export interface MatchLineup {
-  blueTeam: number;
-  matchNumber: number;
-  redTeam: number;
-  scheduledAt: number;
-  status: number;
 }

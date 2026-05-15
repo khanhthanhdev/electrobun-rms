@@ -80,34 +80,14 @@ export const getDataDir = (): string => {
 };
 
 /**
- * Gets the database path.
- * Reads ELECTROBUN_DATA_DIR at call time (not module load) for test isolation.
+ * Legacy proxy export for backward compatibility - lazily resolves the
+ * underlying database via the getters above.
+ *
+ * WARNING: Using this directly at module load time will freeze the database.
+ * Prefer getDb() in repository code.
  */
-export const getDbPath = (): string => {
-  if (!_dbPath) {
-    getSqlite(); // Force initialization
-  }
-  if (!_dbPath) {
-    throw new Error("Database path was not initialized");
-  }
-  return _dbPath;
-};
-
-/**
- * Legacy exports for backward compatibility - these now call the lazy getters.
- * WARNING: Using these directly at module load time will freeze the database.
- * Prefer getDb() and getSqlite() in repository code.
- */
-export const sqlite = new Proxy<Database>({} as Database, {
-  get: (_, prop) => getSqlite()[prop as keyof Database],
-});
-
 export const db = new Proxy<AppDb>({} as AppDb, {
   get: (_, prop) => getDb()[prop as keyof AppDb],
 });
-
-// Keep DATA_DIR and DB_PATH for backward compatibility but they're now getter functions
-export const DATA_DIR = getDataDir();
-export const DB_PATH = getDbPath();
 
 export { schema };

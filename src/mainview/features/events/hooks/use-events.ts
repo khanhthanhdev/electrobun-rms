@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { EventItem } from "../../../shared/types/event";
-import { fetchEvents } from "../services/events-service";
+import { fetchEvents } from "../event-admin/events-service";
 
 interface UseEventsResult {
   events: EventItem[];

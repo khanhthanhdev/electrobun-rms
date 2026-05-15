@@ -1,5 +1,4 @@
 import {
-  type InferOutput,
   maxLength,
   minLength,
   number,
@@ -23,6 +22,3 @@ export const updateTeamBodySchema = object({
   city: optional(pipe(string(), maxLength(64))),
   country: optional(pipe(string(), maxLength(64))),
 });
-
-export type AddTeamBody = InferOutput<typeof addTeamBodySchema>;
-export type UpdateTeamBody = InferOutput<typeof updateTeamBodySchema>;

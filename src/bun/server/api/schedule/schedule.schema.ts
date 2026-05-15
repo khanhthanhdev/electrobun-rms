@@ -1,7 +1,6 @@
 import {
   array,
   boolean,
-  type InferOutput,
   minLength,
   minValue,
   number,
@@ -55,19 +54,3 @@ export const generateQualificationScheduleBodySchema = object({
 export const setScheduleActivationBodySchema = object({
   active: boolean(),
 });
-
-export type SavePracticeScheduleBody = InferOutput<
-  typeof savePracticeScheduleBodySchema
->;
-export type GeneratePracticeScheduleBody = InferOutput<
-  typeof generatePracticeScheduleBodySchema
->;
-export type GenerateQualificationScheduleBody = InferOutput<
-  typeof generateQualificationScheduleBodySchema
->;
-export type SaveQualificationScheduleBody = InferOutput<
-  typeof saveQualificationScheduleBodySchema
->;
-export type SetScheduleActivationBody = InferOutput<
-  typeof setScheduleActivationBodySchema
->;

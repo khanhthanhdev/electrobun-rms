@@ -13,8 +13,4 @@ export const applySyncChangeSetsToEventDb = (
   publishNotifications(eventCode, notifications);
 };
 
-export type {
-  EventTeamDirectoryEntry,
-  StagedSyncChangeSet,
-} from "../../application/dtos/sync";
-export { loadEventTeamDirectory } from "../../infrastructure/adapters/sync";
+export type { StagedSyncChangeSet } from "../../application/dtos/sync";

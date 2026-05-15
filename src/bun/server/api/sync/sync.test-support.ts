@@ -39,7 +39,7 @@ const notificationModule = await import(
   "../../infrastructure/services/sync-notification-publisher"
 );
 
-export const { DATA_DIR, db, schema } = dbModule;
+const { db, schema } = dbModule;
 export const { resetDatabase } = migrateModule;
 export const { issueAccessToken } = authServiceModule;
 export const { applySyncChangeSetsToEventDb } = syncEventDbModule;

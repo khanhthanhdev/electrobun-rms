@@ -1,5 +1,4 @@
 import {
-  type InferOutput,
   maxLength,
   minLength,
   number,
@@ -33,8 +32,6 @@ export const manualEventBodySchema = object({
   status: optional(number()),
 });
 
-export type ManualEventBody = InferOutput<typeof manualEventBodySchema>;
-
 export const updateEventBodySchema = object({
   eventName: pipe(string(), minLength(1), maxLength(256)),
   region: pipe(string(), minLength(1), maxLength(64)),
@@ -46,5 +43,3 @@ export const updateEventBodySchema = object({
   finals: optional(number()),
   status: optional(number()),
 });
-
-export type UpdateEventBody = InferOutput<typeof updateEventBodySchema>;

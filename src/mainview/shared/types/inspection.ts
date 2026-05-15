@@ -79,20 +79,6 @@ export interface InspectionDetailResponse {
   };
 }
 
-export interface InspectionPublicTeam {
-  status: InspectionStatus;
-  statusLabel: string;
-  teamName: string | null;
-  teamNumber: number;
-}
-
-export interface InspectionPublicStatusResponse {
-  eventCode: string;
-  statusCounts: Record<InspectionStatus, number>;
-  teams: InspectionPublicTeam[];
-  totalTeams: number;
-}
-
 export interface InspectionHistoryEntry {
   action: string;
   changedAt: string;

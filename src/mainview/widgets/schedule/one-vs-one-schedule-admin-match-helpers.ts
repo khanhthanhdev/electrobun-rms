@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import type {
   OneVsOneEditableMatch,
   OneVsOneSaveMatch,
@@ -49,16 +48,6 @@ export const resolveOneVsOneFirstBlockTiming = ({
     startTime,
     cycleTimeSeconds: firstBlock.cycleTimeMinutes * 60,
   };
-};
-
-export const updateOneVsOneCycleTime = (
-  setMatchBlocks: Dispatch<SetStateAction<MatchBlockState[]>>,
-  seconds: number
-): void => {
-  const minutes = Math.max(1, seconds) / 60;
-  setMatchBlocks((previousBlocks) =>
-    previousBlocks.map((block) => ({ ...block, cycleTimeMinutes: minutes }))
-  );
 };
 
 export const mapCsvMatchesToScheduleMatches = (

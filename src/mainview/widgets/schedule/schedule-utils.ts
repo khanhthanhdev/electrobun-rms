@@ -28,11 +28,6 @@ export const formatDateString = (timestamp: number): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
-export interface BlockCapacity {
-  durationMinutes: number;
-  matchesInBlock: number;
-}
-
 const MS_IN_MINUTE = 60_000;
 const MS_IN_SECOND = 1000;
 
@@ -150,37 +145,6 @@ export const computeMinimumBlockDurationMinutesForMatchCount = (
   }
 
   return upperBoundMinutes;
-};
-
-export const computeBlockCapacity = (
-  block: MatchBlockState,
-  scheduleDate: string,
-  fieldCount = 1,
-  fieldStartOffsetSeconds = 0
-): BlockCapacity => {
-  const startDate = new Date(`${scheduleDate}T${block.startTimeText}`);
-  const endDate = new Date(`${scheduleDate}T${block.endTimeText}`);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return { matchesInBlock: 0, durationMinutes: 0 };
-  }
-
-  const durationMs = endDate.getTime() - startDate.getTime();
-  const durationMinutes = Math.floor(durationMs / 60_000);
-
-  if (durationMs <= 0 || block.cycleTimeMinutes <= 0) {
-    return { matchesInBlock: 0, durationMinutes: Math.max(0, durationMinutes) };
-  }
-
-  return {
-    matchesInBlock: computeMatchCountForDurationMs(
-      durationMs,
-      block.cycleTimeMinutes,
-      fieldCount,
-      fieldStartOffsetSeconds
-    ),
-    durationMinutes,
-  };
 };
 
 export const buildInitialMatchBlocks = (

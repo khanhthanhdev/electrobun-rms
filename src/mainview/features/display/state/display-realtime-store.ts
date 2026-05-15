@@ -1,7 +1,4 @@
-import {
-  createRealtimeVersionStore,
-  type GenericRealtimeConnectionState,
-} from "../../../shared/state/create-realtime-version-store";
+import { createRealtimeVersionStore } from "../../../shared/state/create-realtime-version-store";
 
 export interface DisplayRealtimeChangeEvent {
   changedAt: string;
@@ -15,33 +12,13 @@ export interface DisplayRealtimeChangeEvent {
 const realtimeStore =
   createRealtimeVersionStore<DisplayRealtimeChangeEvent>("displayRealtime");
 
-export type DisplayRealtimeConnectionState = GenericRealtimeConnectionState;
-
 export const getDisplayRealtimeVersion = (eventCode: string): number =>
   realtimeStore.getVersion(eventCode);
-
-export const setDisplayRealtimeConnectionState = (
-  eventCode: string,
-  state: DisplayRealtimeConnectionState
-): void => {
-  realtimeStore.setConnectionState(eventCode, state);
-};
-
-export const setDisplayRealtimeError = (
-  eventCode: string,
-  message: string
-): void => {
-  realtimeStore.setError(eventCode, message);
-};
 
 export const applyDisplayRealtimeEvent = (
   event: DisplayRealtimeChangeEvent
 ): void => {
   realtimeStore.applyEvent(event);
-};
-
-export const resetDisplayRealtimeVersion = (eventCode: string): void => {
-  realtimeStore.resetVersion(eventCode);
 };
 
 export const subscribeToDisplayRealtimeVersion = (

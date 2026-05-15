@@ -2,9 +2,6 @@ import type { InferOutput } from "valibot";
 import type {
   displayIntentSchema,
   displaySceneModeSchema,
-  displayScenePayloadSchema,
-  displaySessionSnapshotSchema,
-  displayStreamEventSchema,
 } from "./display-schemas";
 
 /**
@@ -23,20 +20,3 @@ export type DisplayIntent = InferOutput<typeof displayIntentSchema>;
 export type DisplayMatchRef = InferOutput<
   typeof import("./display-schemas").displayMatchRefSchema
 >;
-
-/**
- * Display scene payload: typed scene-specific data.
- */
-export type DisplayScenePayload = InferOutput<typeof displayScenePayloadSchema>;
-
-/**
- * Display session snapshot: authoritative render state.
- */
-export type DisplaySessionSnapshot = InferOutput<
-  typeof displaySessionSnapshotSchema
->;
-
-/**
- * Display stream event: SSE envelope.
- */
-export type DisplayStreamEvent = InferOutput<typeof displayStreamEventSchema>;

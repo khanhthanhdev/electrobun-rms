@@ -36,16 +36,3 @@ export const DISPLAY_SCENE_IDS = [
   "bracket",
   "alliance-selection",
 ] as const;
-
-/**
- * TypeScript type for all valid display scene IDs.
- * Derived from the constant array for DRY compliance.
- */
-export type DisplaySceneId = (typeof DISPLAY_SCENE_IDS)[number];
-
-/**
- * Helper to validate if a string is a valid display scene ID.
- */
-export function isValidDisplaySceneId(value: string): value is DisplaySceneId {
-  return DISPLAY_SCENE_IDS.includes(value as DisplaySceneId);
-}

@@ -2,51 +2,42 @@ import { lazy } from "react";
 import { LoadingIndicator } from "@/shared/components/loading-indicator";
 import type { AuthUser, LoginCredentials } from "@/shared/types/auth";
 import type { EventItem } from "@/shared/types/event";
+import { decodePathSegment } from "./route-matcher";
 import {
+  AUDIENCE_DISPLAY_PATTERN,
+  CREATE_ACCOUNT_PATTERN,
+  CREATE_EVENT_PATTERN,
+  DEFAULT_ACCOUNTS_PATTERN,
+  EDIT_EVENT_PATTERN,
+  EVENT_CONTROL_PATTERN,
+  EVENT_DASHBOARD_PATTERN,
+  EVENT_DETAIL_PATTERN,
+  EVENT_REPORTS_PATTERN,
+  EVENT_TEAMS_PATTERN,
+  HEAD_REFEREE_PATTERN,
+  INSPECTION_DETAIL_PATTERN,
+  INSPECTION_EVENT_OVERRIDE_PATTERN,
+  INSPECTION_NOTES_PATTERN,
+  INSPECTION_TEAMS_PATTERN,
+  MANAGE_SERVER_PATTERN,
+  MANAGE_USER_DETAIL_PATTERN,
+  MANAGE_USERS_PATTERN,
+  MATCH_ALLIANCE_SCORESHEET_PATTERN,
+  MATCH_HISTORY_PATTERN,
+  MATCH_RESULTS_PATTERN,
+  MATCH_SCORESHEET_PATTERN,
+  PRACTICE_SCHEDULE_PATTERN,
+  PUBLIC_PRACTICE_SCHEDULE_PATTERN,
+  PUBLIC_QUALIFICATION_RANKINGS_PATTERN,
+  PUBLIC_QUALIFICATION_SCHEDULE_PATTERN,
+  QUALIFICATION_SCHEDULE_PATTERN,
   REFEREE_BLUE_SCORE_ENTRY_PATTERN,
+  REFEREE_BLUE_SCORING_PATTERN,
   REFEREE_RED_SCORE_ENTRY_PATTERN,
+  REFEREE_RED_SCORING_PATTERN,
 } from "./route-patterns";
 
-const EDIT_EVENT_PATTERN = /^\/event\/([^/]+)\/edit\/?$/;
-const EVENT_DASHBOARD_PATTERN = /^\/event\/([^/]+)\/dashboard\/?$/;
-const EVENT_CONTROL_PATTERN = /^\/event\/([^/]+)\/control\/?$/;
-const EVENT_REPORTS_PATTERN = /^\/event\/([^/]+)\/dashboard\/reports\/?$/;
-const EVENT_TEAMS_PATTERN = /^\/event\/([^/]+)\/dashboard\/teams\/?$/;
-const PRACTICE_SCHEDULE_PATTERN =
-  /^\/event\/([^/]+)\/dashboard\/schedule\/practice\/?$/;
-const QUALIFICATION_SCHEDULE_PATTERN =
-  /^\/event\/([^/]+)\/dashboard\/schedule\/quals\/?$/;
-const PUBLIC_PRACTICE_SCHEDULE_PATTERN = /^\/event\/([^/]+)\/practice\/?$/;
-const PUBLIC_QUALIFICATION_SCHEDULE_PATTERN = /^\/event\/([^/]+)\/qual\/?$/;
-const PUBLIC_QUALIFICATION_RANKINGS_PATTERN =
-  /^\/event\/([^/]+)\/qualification\/rankings\/?$/;
-const DEFAULT_ACCOUNTS_PATTERN =
-  /^\/event\/([^/]+)\/dashboard\/defaultaccounts\/?$/;
-const CREATE_EVENT_PATTERN = /^\/create\/event\/?$/;
 const SYNC_EVENT_PATTERN = /^\/sync\/event\/?$/;
-const CREATE_ACCOUNT_PATTERN = /^\/create\/account\/?$/;
-const EVENT_DETAIL_PATTERN = /^\/event\/([^/]+)\/?$/;
-const MANAGE_USERS_PATTERN =
-  /^(?:\/(?:user|users)\/manage|\/manage\/users)\/?$/;
-const MANAGE_USER_DETAIL_PATTERN =
-  /^(?:\/(?:user|users)\/manage\/([^/]+)|\/manage\/users\/([^/]+))\/?$/;
-const MANAGE_SERVER_PATTERN = /^\/manage\/server\/?$/;
-const INSPECTION_TEAMS_PATTERN = /^\/event\/([^/]+)\/inspection\/?$/;
-const INSPECTION_DETAIL_PATTERN = /^\/event\/([^/]+)\/inspection\/(\d+)\/?$/;
-const INSPECTION_NOTES_PATTERN = /^\/event\/([^/]+)\/inspection\/notes\/?$/;
-const INSPECTION_EVENT_OVERRIDE_PATTERN =
-  /^\/event\/([^/]+)\/inspection\/override\/?$/;
-const REFEREE_RED_SCORING_PATTERN =
-  /^\/event\/([^/]+)\/ref\/red\/scoring(?:\/([^/]+))?\/?$/;
-const REFEREE_BLUE_SCORING_PATTERN =
-  /^\/event\/([^/]+)\/ref\/blue\/scoring(?:\/([^/]+))?\/?$/;
-const HEAD_REFEREE_PATTERN = /^\/event\/([^/]+)\/hr(?:\/([^/]+))?\/?$/;
-const MATCH_RESULTS_PATTERN = /^\/event\/([^/]+)\/results\/?$/;
-const MATCH_HISTORY_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/history\/?$/;
-const MATCH_SCORESHEET_PATTERN = /^\/event\/([^/]+)\/match\/([^/]+)\/?$/;
-const MATCH_ALLIANCE_SCORESHEET_PATTERN =
-  /^\/event\/([^/]+)\/match\/([^/]+)\/(red|blue)\/?$/;
-const AUDIENCE_DISPLAY_PATTERN = /^\/event\/([^/]+)\/display\/?$/;
 
 const AudienceDisplayPage = lazy(() =>
   import("../pages/events/display/audience-display-page").then((module) => ({
@@ -235,14 +226,6 @@ const hasEventAdminRole = (user: AuthUser | null, eventCode: string): boolean =>
         (role.event === "*" || role.event === eventCode)
     )
   );
-
-const decodePathSegment = (value: string): string | null => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-};
 
 const RouteErrorPage = ({ message }: { message: string }): JSX.Element => (
   <main className="page-shell page-shell--center">

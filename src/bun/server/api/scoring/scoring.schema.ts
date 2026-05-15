@@ -1,12 +1,4 @@
-import {
-  type InferOutput,
-  maxValue,
-  minValue,
-  number,
-  object,
-  picklist,
-  pipe,
-} from "valibot";
+import { maxValue, minValue, number, object, picklist, pipe } from "valibot";
 
 export const saveMatchAllianceScoreBodySchema = object({
   matchType: picklist(["practice", "quals", "elims"]),
@@ -23,7 +15,11 @@ export const saveMatchAllianceScoreBodySchema = object({
     maxValue(Number.MAX_SAFE_INTEGER)
   ),
   aCenterFlags: pipe(number(), minValue(0), maxValue(Number.MAX_SAFE_INTEGER)),
-  bCenterFlagDown: pipe(number(), minValue(0), maxValue(Number.MAX_SAFE_INTEGER)),
+  bCenterFlagDown: pipe(
+    number(),
+    minValue(0),
+    maxValue(Number.MAX_SAFE_INTEGER)
+  ),
   bBaseFlagsDown: pipe(
     number(),
     minValue(0),
@@ -41,7 +37,3 @@ export const saveMatchAllianceScoreBodySchema = object({
     maxValue(Number.MAX_SAFE_INTEGER)
   ),
 });
-
-export type SaveMatchAllianceScoreBody = InferOutput<
-  typeof saveMatchAllianceScoreBodySchema
->;

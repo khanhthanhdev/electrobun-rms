@@ -45,11 +45,6 @@ const readNumberCell = (
   return typeof value === "number" ? value : defaultValue;
 };
 
-export const getMatchControlRealtimeVersion = (eventCode: string): number => {
-  ensureMatchControlRealtimeRow(eventCode);
-  return readNumberCell(eventCode, LATEST_VERSION_CELL_ID, 0);
-};
-
 export const getMatchControlRealtimeState = (
   eventCode: string
 ): MatchControlState | null => {

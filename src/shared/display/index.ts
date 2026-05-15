@@ -9,28 +9,12 @@
  * @see docs/display-control-workflow.md
  */
 
-export {
-  DISPLAY_SCENE_IDS,
-  type DisplaySceneId,
-  isValidDisplaySceneId,
-} from "./display-scene-ids";
-
 // Schemas
-export {
-  displayIntentSchema,
-  displayMatchRefSchema,
-  displaySceneModeSchema,
-  displayScenePayloadSchema,
-  displaySessionSnapshotSchema,
-  displayStreamEventSchema,
-} from "./display-schemas";
+export { displayIntentSchema } from "./display-schemas";
 
 // Types
 export type {
   DisplayIntent,
   DisplayMatchRef,
   DisplaySceneMode,
-  DisplayScenePayload,
-  DisplaySessionSnapshot,
-  DisplayStreamEvent,
 } from "./display-types";

@@ -9,13 +9,6 @@ import {
   type ScoringState,
 } from "../scoring-business-logic";
 
-export {
-  calcScoringTotal,
-  INITIAL_SCORING_STATE,
-  type ParkingState,
-  type ScoringState,
-} from "../scoring-business-logic";
-
 const ALLIANCE_COLOR: Record<"red" | "blue", string> = {
   red: "#dc2626",
   blue: "#0284c7",

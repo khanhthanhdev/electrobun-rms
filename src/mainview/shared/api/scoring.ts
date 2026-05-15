@@ -1,6 +1,5 @@
 import { requestJson } from "@/shared/api/http-client";
 import type {
-  MatchHistoryEventItem,
   MatchHistoryItem,
   MatchResultItem,
   MatchScoresheet,
@@ -90,20 +89,6 @@ export const fetchMatchResults = (
 ): Promise<MatchResultItem[]> =>
   requestJson<MatchResultItem[]>(
     `/events/${encodeURIComponent(eventCode)}/scoring/${matchType}/results`,
-    {
-      method: "GET",
-      token,
-    }
-  );
-
-export const fetchMatchHistory = (
-  eventCode: string,
-  matchType: MatchType,
-  matchNumber: number,
-  token: string | null
-): Promise<MatchHistoryEventItem[]> =>
-  requestJson<MatchHistoryEventItem[]>(
-    `/events/${encodeURIComponent(eventCode)}/scoring/${matchType}/${matchNumber}/history`,
     {
       method: "GET",
       token,

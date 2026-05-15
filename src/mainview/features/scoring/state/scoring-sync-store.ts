@@ -9,9 +9,6 @@ const realtimeStore =
 
 export type ScoringRealtimeConnectionState = GenericRealtimeConnectionState;
 
-export const getScoringRealtimeVersion = (eventCode: string): number =>
-  realtimeStore.getVersion(eventCode);
-
 export const setScoringRealtimeConnectionState = (
   eventCode: string,
   state: ScoringRealtimeConnectionState

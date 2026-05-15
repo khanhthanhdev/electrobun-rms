@@ -1,6 +1,5 @@
 import {
   array,
-  type InferOutput,
   maxLength,
   minLength,
   object,
@@ -36,10 +35,6 @@ export const updateUserBodySchema = object({
   passwordConfirm: pipe(string(), minLength(1), maxLength(128)),
   roles: array(createUserRoleSchema),
 });
-
-export type CreateUserBody = InferOutput<typeof createUserBodySchema>;
-export type CreateUserRole = InferOutput<typeof createUserRoleSchema>;
-export type UpdateUserBody = InferOutput<typeof updateUserBodySchema>;
 
 export function parseUsernameParam(username: string): string | null {
   return USERNAME_REGEX.test(username) ? username : null;

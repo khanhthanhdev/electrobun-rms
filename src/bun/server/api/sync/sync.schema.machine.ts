@@ -1,7 +1,6 @@
 import {
   array,
   boolean,
-  type InferOutput,
   literal,
   minLength,
   object,
@@ -47,10 +46,6 @@ export const machinePullResourceTypes = [
 ] as const;
 
 export const DEFAULT_ALLOWED_PUSH_RESOURCES = [...machinePushResourceTypes];
-export const DEFAULT_ALLOWED_PULL_RESOURCES = [...machinePullResourceTypes];
-
-export type MachinePushResourceType = (typeof machinePushResourceTypes)[number];
-export type MachinePullResourceType = (typeof machinePullResourceTypes)[number];
 
 const inspectionSchedulePushResourceSchema = object({
   resourceType: literal("inspection_schedule"),
@@ -118,31 +113,6 @@ export const pushSyncBatchRequestSchema = object({
     })
   ),
   resources: pipe(array(pushResourceSchema), minLength(1)),
-});
-
-// Machine API: Push Response
-export const pushSyncBatchResponseSchema = object({
-  batchId: string(),
-  status: picklist([
-    "validated",
-    "applied",
-    "pending_review",
-    "duplicate",
-    "rejected",
-    "failed",
-  ]),
-  changeSetId: optional(string()),
-  receivedAt: string(),
-  warnings: optional(
-    array(
-      object({
-        code: string(),
-        message: string(),
-        resourceType: optional(picklist(machinePushResourceTypes)),
-        recordKey: optional(string()),
-      })
-    )
-  ),
 });
 
 // Bootstrap Response Schemas
@@ -216,45 +186,12 @@ export const eventBootstrapResponseSchema = object({
   }),
 });
 
-// Admin API: Sync Client Schemas
-export const syncClientSchema = object({
-  id: string(),
-  eventKey: string(),
-  name: string(),
-  isActive: boolean(),
-  isRevoked: boolean(),
-  createdAt: string(),
-  expiresAt: optional(string()),
-  lastUsedAt: optional(string()),
-  allowedResources: array(picklist(machinePushResourceTypes)),
-});
-
 export const createSyncClientRequestSchema = object({
   season: string(),
   eventCode: string(),
   name: string(),
   expiresAt: optional(string()),
   allowedResources: optional(array(picklist(machinePushResourceTypes))),
-});
-
-export const createSyncClientResponseSchema = object({
-  client: syncClientSchema,
-  secret: string(),
-  warning: string(),
-});
-
-export const revokeSyncClientRequestSchema = object({
-  clientId: string(),
-});
-
-// Admin API: Policy Schemas
-export const syncPolicyResponseSchema = object({
-  eventKey: string(),
-  isSyncEnabled: boolean(),
-  reviewMode: picklist(["AUTO_ACCEPT", "MANUAL_REVIEW"]),
-  scheduleOwner: picklist(["WEB", "LOCAL_APP"]),
-  allowedPushResources: array(picklist(machinePushResourceTypes)),
-  updatedAt: string(),
 });
 
 export const updateSyncPolicyRequestSchema = object({
@@ -266,86 +203,8 @@ export const updateSyncPolicyRequestSchema = object({
   allowedPushResources: optional(array(picklist(machinePushResourceTypes))),
 });
 
-// Admin API: Batch Schemas
-export const syncBatchSummarySchema = object({
-  pushBatchId: string(),
-  changeSetId: optional(string()),
-  batchId: string(),
-  status: string(),
-  resourceCount: string(),
-  createdAt: string(),
-  reviewedAt: optional(string()),
-  reviewerId: optional(string()),
-});
-
-export const getSyncBatchResponseSchema = object({
-  pushBatchId: string(),
-  changeSetId: optional(string()),
-  batchId: string(),
-  status: string(),
-  eventKey: string(),
-  clientId: string(),
-  clientName: string(),
-  createdAt: string(),
-  reviewedAt: optional(string()),
-  reviewerId: optional(string()),
-  reviewReason: optional(string()),
-  resources: array(
-    object({
-      resourceType: picklist(machinePushResourceTypes),
-      recordCount: string(),
-      mode: picklist(["upsert", "replace_snapshot"]),
-    })
-  ),
-  warnings: array(
-    object({
-      code: string(),
-      message: string(),
-      resourceType: optional(picklist(machinePushResourceTypes)),
-      recordKey: optional(string()),
-    })
-  ),
-  diff: optional(
-    object({
-      added: array(object({})),
-      modified: array(object({})),
-      removed: array(object({})),
-    })
-  ),
-  rawPayload: optional(object({})),
-});
-
 export const reviewSyncBatchRequestSchema = object({
   changeSetId: string(),
   decision: picklist(["APPROVE", "APPROVED", "REJECT", "REJECTED"]),
   reason: optional(string()),
 });
-
-// Type Exports
-export type PushSyncBatchRequest = InferOutput<
-  typeof pushSyncBatchRequestSchema
->;
-export type PushSyncBatchResponse = InferOutput<
-  typeof pushSyncBatchResponseSchema
->;
-export type EventBootstrapResponse = InferOutput<
-  typeof eventBootstrapResponseSchema
->;
-export type SyncClient = InferOutput<typeof syncClientSchema>;
-export type CreateSyncClientRequest = InferOutput<
-  typeof createSyncClientRequestSchema
->;
-export type CreateSyncClientResponse = InferOutput<
-  typeof createSyncClientResponseSchema
->;
-export type SyncPolicyResponse = InferOutput<typeof syncPolicyResponseSchema>;
-export type UpdateSyncPolicyRequest = InferOutput<
-  typeof updateSyncPolicyRequestSchema
->;
-export type SyncBatchSummary = InferOutput<typeof syncBatchSummarySchema>;
-export type GetSyncBatchResponse = InferOutput<
-  typeof getSyncBatchResponseSchema
->;
-export type ReviewSyncBatchRequest = InferOutput<
-  typeof reviewSyncBatchRequestSchema
->;

@@ -1,4 +1,4 @@
-import { formatDate } from "@/shared/lib/date";
+import { formatDate } from "@/shared/utils/date";
 import type { EventItem } from "@/shared/types/event";
 import { EVENT_STATUS_LABELS } from "../constants/status-labels";
 
