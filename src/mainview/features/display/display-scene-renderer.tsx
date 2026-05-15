@@ -85,6 +85,7 @@ export const DisplaySceneRenderer = ({
         <DisplaySceneMatchWinner
           eventName={eventName}
           match={data.loadedMatch}
+          matchStartedAtMs={matchStartedAtMs}
         />
       );
     case "blank":

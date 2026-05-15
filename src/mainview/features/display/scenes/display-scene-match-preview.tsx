@@ -99,12 +99,7 @@ export const DisplaySceneMatchPreview = ({
           </p>
         </div>
 
-        <div className="display-match-preview-header-status">
-          <div className="display-sponsors-live-badge">
-            <span aria-hidden="true" className="display-sponsors-live-dot" />
-            <span>Live Feed</span>
-          </div>
-        </div>
+
       </header>
 
       <div className="display-sponsors-main display-match-preview-main">

@@ -135,12 +135,7 @@ export const DisplaySceneMatchStart = ({
             <span>{formatHeaderFieldLabel(match)}</span>
           </p>
         </div>
-        <div className="display-match-preview-header-status">
-          <div className="display-sponsors-live-badge">
-            <span aria-hidden="true" className="display-sponsors-live-dot" />
-            <span>{isCompleted ? "Match Complete" : "Live Feed"}</span>
-          </div>
-        </div>
+
       </header>
 
       <div className="display-sponsors-main display-match-start-main">

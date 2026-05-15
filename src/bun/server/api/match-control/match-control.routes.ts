@@ -41,6 +41,23 @@ const SSE_HEARTBEAT_MS = 20_000;
 
 const scoringRepository = new SQLiteScoringRepository();
 
+const isSameDisplayMatch = (
+  left: {
+    matchNumber: number;
+    matchType: string;
+  } | null,
+  right: {
+    matchNumber: number;
+    matchType: string;
+  } | null
+): boolean =>
+  Boolean(
+    left &&
+      right &&
+      left.matchNumber === right.matchNumber &&
+      left.matchType === right.matchType
+  );
+
 const publishCurrentMatchControlState = (
   eventCode: string
 ): MatchControlSyncEvent => {
@@ -457,13 +474,21 @@ matchControlRoutes.post(
       );
     }
 
+    const latestDisplay = displaySyncHub.getLatestEvent(eventCode);
+    const startedAtMs = isSameDisplayMatch(
+      latestDisplay?.activeMatch ?? null,
+      match
+    )
+      ? latestDisplay?.startedAtMs
+      : null;
+
     displaySyncHub.publish({
       activeMatch: match,
       eventCode,
       kind: "COMMAND_ISSUED",
       loadedMatch: null,
       mode: "match-winner",
-      startedAtMs: null,
+      startedAtMs: startedAtMs ?? null,
     });
 
     return c.json({ ok: true });

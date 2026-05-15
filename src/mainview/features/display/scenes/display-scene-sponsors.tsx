@@ -68,10 +68,7 @@ export const DisplaySceneSponsors = ({
         width={2534}
       />
       <SponsorHourglassIcon />
-      <div className="display-sponsors-live-badge">
-        <span aria-hidden="true" className="display-sponsors-live-dot" />
-        <span>Live Feed</span>
-      </div>
+
     </header>
 
     <div className="display-sponsors-main">

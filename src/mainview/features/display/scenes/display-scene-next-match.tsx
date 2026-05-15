@@ -46,31 +46,6 @@ const formatCountdownLabel = (
   return `${mins.padStart(2, "0")}:${secs ?? "00"}`;
 };
 
-const SponsorHourglassIcon = (): JSX.Element => (
-  <span aria-hidden="true" className="display-sponsors-hourglass">
-    <img
-      alt=""
-      className="display-sponsors-hourglass-outline"
-      height={28}
-      src={hourglassOutline}
-      width={20}
-    />
-    <img
-      alt=""
-      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--top"
-      height={2}
-      src={hourglassLine}
-      width={7}
-    />
-    <img
-      alt=""
-      className="display-sponsors-hourglass-line display-sponsors-hourglass-line--bottom"
-      height={2}
-      src={hourglassLine}
-      width={7}
-    />
-  </span>
-);
 
 export const DisplaySceneNextMatch = ({
   eventName,
@@ -92,11 +67,8 @@ export const DisplaySceneNextMatch = ({
           src={steamBrandLockup}
           width={2534}
         />
-        <SponsorHourglassIcon />
-        <div className="display-sponsors-live-badge">
-          <span aria-hidden="true" className="display-sponsors-live-dot" />
-          <span>Live Feed</span>
-        </div>
+      
+
       </header>
 
       <div className="display-sponsors-main display-next-match-main">
