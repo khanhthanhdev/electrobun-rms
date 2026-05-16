@@ -1,26 +1,7 @@
-import sponsorAivf from "@/assets/display-sponsors/sponsor-aivf.png";
-import sponsorSteam from "@/assets/display-sponsors/sponsor-steam.png";
-import sponsorUsEmbassy from "@/assets/display-sponsors/sponsor-us-embassy.png";
-
-import { DisplaySceneFooter } from "../components/display-scene-footer";
-import { DisplaySceneHeader } from "../components/display-scene-header";
+import { DisplaySceneLayout } from "../components/display-scene-layout";
+import { DisplaySceneSponsorLogos } from "../components/display-scene-sponsor-logos";
 import { formatTimer } from "../display-helpers";
 import { useNow } from "../use-now";
-
-const SPONSOR_LOGOS = [
-  {
-    alt: "U.S. Embassy Hanoi",
-    src: sponsorUsEmbassy,
-  },
-  {
-    alt: "AI for Vietnam Foundation",
-    src: sponsorAivf,
-  },
-  {
-    alt: "STEAM For Vietnam",
-    src: sponsorSteam,
-  },
-] as const;
 
 interface DisplaySceneNextMatchProps {
   eventName: string;
@@ -44,7 +25,6 @@ const formatCountdownLabel = (
   return `${mins.padStart(2, "0")}:${secs ?? "00"}`;
 };
 
-
 export const DisplaySceneNextMatch = ({
   eventName,
   nextMatchStartTime,
@@ -53,37 +33,21 @@ export const DisplaySceneNextMatch = ({
   const countdownLabel = formatCountdownLabel(nextMatchStartTime, now);
 
   return (
-    <section
-      aria-label={`${eventName} next match scene`}
-      className="display-sponsors-scene"
+    <DisplaySceneLayout
+      ariaLabel={`${eventName} next match scene`}
+      mainClassName="display-next-match-main"
+      title="Next Match"
     >
-      <DisplaySceneHeader title="Next Match" />
+      <DisplaySceneSponsorLogos className="display-next-match-logo-list" />
 
-      <div className="display-sponsors-main display-next-match-main">
-        <ul className="display-sponsors-logo-list display-next-match-logo-list">
-          {SPONSOR_LOGOS.map((sponsor) => (
-            <li className="display-sponsors-logo-item" key={sponsor.alt}>
-              <img
-                alt={sponsor.alt}
-                className="display-sponsors-logo"
-                height={400}
-                src={sponsor.src}
-                width={400}
-              />
-            </li>
-          ))}
-        </ul>
-
-        <div className="display-next-match-countdown-card">
-          <p className="display-next-match-countdown-label">
-            Tran dau tiep theo bat dau trong
-          </p>
-          <span className="display-next-match-countdown-time">
-            {countdownLabel}
-          </span>
-        </div>
+      <div className="display-next-match-countdown-card">
+        <p className="display-next-match-countdown-label">
+          Tran dau tiep theo bat dau trong
+        </p>
+        <span className="display-next-match-countdown-time">
+          {countdownLabel}
+        </span>
       </div>
-      <DisplaySceneFooter />
-    </section>
+    </DisplaySceneLayout>
   );
 };

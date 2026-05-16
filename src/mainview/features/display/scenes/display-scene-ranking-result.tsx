@@ -1,5 +1,4 @@
-import { DisplaySceneFooter } from "../components/display-scene-footer";
-import { DisplaySceneHeader } from "../components/display-scene-header";
+import { DisplaySceneLayout } from "../components/display-scene-layout";
 
 interface RankingRow {
   rank: number;
@@ -47,55 +46,49 @@ export const DisplaySceneRankingResult = ({
   const displayedRankings = rankings.slice(0, DISPLAYED_RANKING_COUNT);
 
   return (
-    <section
-      aria-label={`${eventName} ranking results scene`}
-      className="display-sponsors-scene display-ranking-result-scene"
+    <DisplaySceneLayout
+      ariaLabel={`${eventName} ranking results scene`}
+      className="display-ranking-result-scene"
+      mainClassName="display-ranking-main"
+      title="Rankings"
     >
-      <DisplaySceneHeader title="Rankings" />
+      <section className="display-ranking-card" aria-label="Team rankings">
+        <div aria-hidden="true" className="display-ranking-card-glow" />
 
-      <main className="display-sponsors-main display-ranking-main">
-        <section className="display-ranking-card" aria-label="Team rankings">
-          <div aria-hidden="true" className="display-ranking-card-glow" />
+        <div className="display-ranking-grid display-ranking-grid--header">
+          <span>Rank</span>
+          <span>Team</span>
+          <span>RS</span>
+          <span>Points</span>
+          <span>Base</span>
+          <span>Plays</span>
+        </div>
 
-          <div className="display-ranking-grid display-ranking-grid--header">
-            <span>Rank</span>
-            <span>Team</span>
-            <span>RS</span>
-            <span>Points</span>
-            <span>Base</span>
-            <span>Plays</span>
+        {displayedRankings.length > 0 ? (
+          <div className="display-ranking-list">
+            {displayedRankings.map((row) => (
+              <div className="display-ranking-grid" key={row.teamNumber}>
+                <span className={getRankClassName(row.rank)}>{row.rank}</span>
+                <span className="display-ranking-team-badge">
+                  {row.teamNumber}
+                </span>
+                <span className="display-ranking-value">
+                  {formatDecimal(row.rp)}
+                </span>
+                <span className="display-ranking-value display-ranking-value--strong">
+                  {formatDecimal(row.total)}
+                </span>
+                <span className="display-ranking-value">0.00</span>
+                <span className="display-ranking-plays-badge">
+                  {getPlays(row.wlt)}
+                </span>
+              </div>
+            ))}
           </div>
-
-          {displayedRankings.length > 0 ? (
-            <div className="display-ranking-list">
-              {displayedRankings.map((row) => (
-                <div className="display-ranking-grid" key={row.teamNumber}>
-                  <span className={getRankClassName(row.rank)}>
-                    {row.rank}
-                  </span>
-                  <span className="display-ranking-team-badge">
-                    {row.teamNumber}
-                  </span>
-                  <span className="display-ranking-value">
-                    {formatDecimal(row.rp)}
-                  </span>
-                  <span className="display-ranking-value display-ranking-value--strong">
-                    {formatDecimal(row.total)}
-                  </span>
-                  <span className="display-ranking-value">0.00</span>
-                  <span className="display-ranking-plays-badge">
-                    {getPlays(row.wlt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="display-ranking-empty">No rankings yet</div>
-          )}
-        </section>
-      </main>
-
-      <DisplaySceneFooter />
-    </section>
+        ) : (
+          <div className="display-ranking-empty">No rankings yet</div>
+        )}
+      </section>
+    </DisplaySceneLayout>
   );
 };

@@ -1,3 +1,5 @@
+import { DisplaySceneLayout } from "../components/display-scene-layout";
+
 interface DisplaySceneBlankProps {
   eventName: string;
 }
@@ -5,7 +7,10 @@ interface DisplaySceneBlankProps {
 export const DisplaySceneBlank = ({
   eventName,
 }: DisplaySceneBlankProps): JSX.Element => (
-  <div className="display-scene display-scene-blank display-scene-fullscreen">
-    {/* Blank scene - just background, no header or footer */}
-  </div>
+  <DisplaySceneLayout
+    ariaLabel={`${eventName} blank scene`}
+    className="display-scene-blank"
+    mainClassName="display-scene-center"
+    title={eventName}
+  />
 );

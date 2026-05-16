@@ -1,6 +1,6 @@
 import matchPreviewVsGraphic from "@/assets/display-sponsors/match-preview-vs.png";
 
-import { DisplaySceneFooter } from "../components/display-scene-footer";
+import { DisplaySceneLayout } from "../components/display-scene-layout";
 import { DisplaySceneMatchHeader } from "../components/display-scene-match-header";
 
 interface MatchPreviewData {
@@ -60,43 +60,42 @@ export const DisplaySceneMatchPreview = ({
   const headerMatchLabel = formatHeaderMatchLabel(match);
 
   return (
-    <section
-      aria-label={`${eventName} match preview scene`}
-      className="display-sponsors-scene display-match-preview-scene"
+    <DisplaySceneLayout
+      ariaLabel={`${eventName} match preview scene`}
+      className="display-match-preview-scene"
+      header={
+        <DisplaySceneMatchHeader
+          fieldNumber={match?.fieldNumber}
+          matchLabel={headerMatchLabel}
+        />
+      }
+      mainClassName="display-match-preview-main"
     >
-      <DisplaySceneMatchHeader
-        fieldNumber={match?.fieldNumber}
-        matchLabel={headerMatchLabel}
-      />
+      <div className="display-match-preview-stage">
+        <AlliancePreviewCard
+          alliance="Blue Alliance"
+          className="display-match-preview-card--blue"
+          teamName={match?.blueTeamName}
+          teamNumber={match?.blueTeam}
+        />
 
-      <div className="display-sponsors-main display-match-preview-main">
-        <div className="display-match-preview-stage">
-          <AlliancePreviewCard
-            alliance="Blue Alliance"
-            className="display-match-preview-card--blue"
-            teamName={match?.blueTeamName}
-            teamNumber={match?.blueTeam}
-          />
-
-          <div aria-hidden="true" className="display-match-preview-versus">
-            <img
-              alt=""
-              className="display-match-preview-versus-image"
-              height={667}
-              src={matchPreviewVsGraphic}
-              width={1084}
-            />
-          </div>
-
-          <AlliancePreviewCard
-            alliance="Red Alliance"
-            className="display-match-preview-card--red"
-            teamName={match?.redTeamName}
-            teamNumber={match?.redTeam}
+        <div aria-hidden="true" className="display-match-preview-versus">
+          <img
+            alt=""
+            className="display-match-preview-versus-image"
+            height={667}
+            src={matchPreviewVsGraphic}
+            width={1084}
           />
         </div>
+
+        <AlliancePreviewCard
+          alliance="Red Alliance"
+          className="display-match-preview-card--red"
+          teamName={match?.redTeamName}
+          teamNumber={match?.redTeam}
+        />
       </div>
-      <DisplaySceneFooter />
-    </section>
+    </DisplaySceneLayout>
   );
 };

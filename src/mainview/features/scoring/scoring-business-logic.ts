@@ -37,7 +37,7 @@ export const SCORING_TOTAL_LABEL = "Tổng điểm";
 
 export const PENALTY_SCORING_FIELD = {
   key: "bulletsInEnemyZone",
-  label: "Lúa đã cắm bị rơi",
+  label: "Lúa bị rơi",
   pts: "-1 điểm / cây",
 } as const satisfies {
   key: keyof ScoringState;

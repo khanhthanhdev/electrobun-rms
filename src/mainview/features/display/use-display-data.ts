@@ -25,6 +25,7 @@ export interface ScoreBreakdown {
   b: number;
   c: number;
   d: number;
+  penalty: number;
   total: number;
 }
 
@@ -141,6 +142,7 @@ const toScoreBreakdown = (
     scoreC: number;
     scoreD: number;
     scoreTotal: number;
+    cOpponentBackfieldBullets: number;
   } | null
 ): ScoreBreakdown | null => {
   if (!item) {
@@ -152,6 +154,7 @@ const toScoreBreakdown = (
     b: item.scoreB,
     c: item.scoreC,
     d: item.scoreD,
+    penalty: item.cOpponentBackfieldBullets,
     total: item.scoreTotal,
   };
 };

@@ -1,5 +1,6 @@
 import matchPreviewTrophyIcon from "@/assets/display-sponsors/match-preview-trophy-icon.svg";
 import {
+  PENALTY_SCORING_FIELD,
   SCORE_BREAKDOWN_ROWS,
   SCORING_TOTAL_LABEL,
 } from "@/features/scoring/scoring-business-logic";
@@ -18,6 +19,19 @@ const formatScore = (score: number): string => String(Math.max(0, score));
 const WINNER_BREAKDOWN_ROWS = SCORE_BREAKDOWN_ROWS.filter(
   ({ key }) => key !== "b"
 );
+
+const WINNER_DISPLAY_ROWS = [
+  ...WINNER_BREAKDOWN_ROWS,
+  { key: "penalty" as const, label: PENALTY_SCORING_FIELD.label },
+];
+
+const formatBreakdownScore = (
+  key: keyof ScoreBreakdown,
+  value: number | undefined
+): string => {
+  const score = value ?? 0;
+  return key === "penalty" && score > 0 ? `-${score}` : String(score);
+};
 
 const ScoreBadge = ({
   alliance,
@@ -52,16 +66,20 @@ export const DisplayWinnerBreakdown = ({
     aria-label="Match score details"
     className="display-winner-breakdown"
   >
-    {WINNER_BREAKDOWN_ROWS.map(({ key, label }) => (
+    {WINNER_DISPLAY_ROWS.map(({ key, label }) => (
       <div className="display-winner-breakdown-row" key={key}>
         <div className="display-winner-breakdown-cell display-winner-breakdown-cell--red">
-          <ScoreBadge alliance="red">{red?.[key] ?? 0}</ScoreBadge>
+          <ScoreBadge alliance="red">
+            {formatBreakdownScore(key, red?.[key])}
+          </ScoreBadge>
         </div>
         <DisplayScoreLabel className="display-winner-breakdown-label">
           {label}
         </DisplayScoreLabel>
         <div className="display-winner-breakdown-cell display-winner-breakdown-cell--blue">
-          <ScoreBadge alliance="blue">{blue?.[key] ?? 0}</ScoreBadge>
+          <ScoreBadge alliance="blue">
+            {formatBreakdownScore(key, blue?.[key])}
+          </ScoreBadge>
         </div>
       </div>
     ))}

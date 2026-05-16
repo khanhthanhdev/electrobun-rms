@@ -1245,8 +1245,6 @@
   font-size: 1.25rem;
 }
 
-
-
 /* Match winner */
 .display-winner-scene {
   --winner-red: #e74c3c;
@@ -1875,6 +1873,8 @@
   display: flex;
   flex: 1;
   flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   min-height: 0;
   padding: clamp(1rem, 2vh, 2rem) clamp(1.5rem, 4vw, 5rem);
 }

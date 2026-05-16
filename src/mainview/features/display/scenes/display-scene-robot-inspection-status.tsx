@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { InspectionStatus } from "@/shared/types/inspection";
-import { DisplaySceneFooter } from "../components/display-scene-footer";
-import { DisplaySceneHeader } from "../components/display-scene-header";
+import { DisplaySceneLayout } from "../components/display-scene-layout";
 
 interface InspectionTeamRow {
   status: InspectionStatus;
@@ -142,39 +141,32 @@ export const DisplaySceneRobotInspectionStatus = ({
   }, [teams.length, teamsKey]);
 
   return (
-    <section
-      aria-label={`${eventName} robot inspection status scene`}
+    <DisplaySceneLayout
+      ariaLabel={`${eventName} robot inspection status scene`}
       className="display-inspection-scene"
+      mainClassName="display-inspection-main"
+      title="Robot Inspection"
     >
-      <DisplaySceneHeader title="Robot Inspection" />
-
-      <main className="display-inspection-main">
-        <div className="display-inspection-table-container">
-          <div className="display-inspection-table-scroll" ref={scrollRef}>
-            <div className="display-inspection-table-grid">
-              {renderInspectionTable(leftTeams, "No teams")}
-              {renderInspectionTable(rightTeams)}
-            </div>
+      <div className="display-inspection-table-container">
+        <div className="display-inspection-table-scroll" ref={scrollRef}>
+          <div className="display-inspection-table-grid">
+            {renderInspectionTable(leftTeams, "No teams")}
+            {renderInspectionTable(rightTeams)}
           </div>
         </div>
+      </div>
 
-        <div className="display-inspection-legend">
-          <span className="display-inspection-legend-title">Status Key:</span>
-          {STATUS_LEGEND.map((item) => (
+      <div className="display-inspection-legend">
+        <span className="display-inspection-legend-title">Status Key:</span>
+        {STATUS_LEGEND.map((item) => (
+          <span className="display-inspection-legend-item" key={item.status}>
             <span
-              className="display-inspection-legend-item"
-              key={item.status}
-            >
-              <span
-                className={`display-inspection-legend-dot display-inspection-legend-dot--${item.className}`}
-              />
-              {item.label}
-            </span>
-          ))}
-        </div>
-      </main>
-
-      <DisplaySceneFooter />
-    </section>
+              className={`display-inspection-legend-dot display-inspection-legend-dot--${item.className}`}
+            />
+            {item.label}
+          </span>
+        ))}
+      </div>
+    </DisplaySceneLayout>
   );
 };

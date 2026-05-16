@@ -1,5 +1,4 @@
-import { DisplaySceneFooter } from "../components/display-scene-footer";
-import { DisplaySceneHeader } from "../components/display-scene-header";
+import { DisplaySceneLayout } from "../components/display-scene-layout";
 import type { ScoreBreakdown } from "../use-display-data";
 import {
   DisplayWinnerAllianceCard,
@@ -38,50 +37,46 @@ export const DisplaySceneMatchWinner = ({
   const redWon = !isTie && redScore > blueScore;
   const blueWon = !isTie && blueScore > redScore;
   return (
-    <section
-      aria-label={`${eventName} match results scene`}
-      className="display-sponsors-scene display-winner-scene"
+    <DisplaySceneLayout
+      ariaLabel={`${eventName} match results scene`}
+      className="display-winner-scene"
+      mainClassName="display-winner-main"
+      title={formatHeaderMatchLabel(match)}
     >
-      <DisplaySceneHeader title={formatHeaderMatchLabel(match)} />
+      <div className="display-winner-content">
+        <div className="display-winner-score-row">
+          <DisplayWinnerAllianceCard
+            alliance="red"
+            isTie={isTie}
+            isWinner={redWon}
+            score={redScore}
+            teamName={match?.redTeamName}
+            teamNumber={match?.redTeam}
+          />
 
-      <main className="display-sponsors-main display-winner-main">
-        <div className="display-winner-content">
-          <div className="display-winner-score-row">
-            <DisplayWinnerAllianceCard
-              alliance="red"
-              isTie={isTie}
-              isWinner={redWon}
-              score={redScore}
-              teamName={match?.redTeamName}
-              teamNumber={match?.redTeam}
-            />
-
-            <div aria-hidden="true" className="display-winner-divider">
-              <span className="display-winner-divider-line display-winner-divider-line--red" />
-              <span className="display-winner-divider-dot" />
-              <span className="display-winner-divider-line display-winner-divider-line--blue" />
-            </div>
-
-            <DisplayWinnerAllianceCard
-              alliance="blue"
-              isTie={isTie}
-              isWinner={blueWon}
-              score={blueScore}
-              teamName={match?.blueTeamName}
-              teamNumber={match?.blueTeam}
-            />
+          <div aria-hidden="true" className="display-winner-divider">
+            <span className="display-winner-divider-line display-winner-divider-line--red" />
+            <span className="display-winner-divider-dot" />
+            <span className="display-winner-divider-line display-winner-divider-line--blue" />
           </div>
 
-          <DisplayWinnerBreakdown
-            blue={match?.blueBreakdown ?? null}
-            blueScore={blueScore}
-            red={match?.redBreakdown ?? null}
-            redScore={redScore}
+          <DisplayWinnerAllianceCard
+            alliance="blue"
+            isTie={isTie}
+            isWinner={blueWon}
+            score={blueScore}
+            teamName={match?.blueTeamName}
+            teamNumber={match?.blueTeam}
           />
         </div>
-      </main>
 
-      <DisplaySceneFooter />
-    </section>
+        <DisplayWinnerBreakdown
+          blue={match?.blueBreakdown ?? null}
+          blueScore={blueScore}
+          red={match?.redBreakdown ?? null}
+          redScore={redScore}
+        />
+      </div>
+    </DisplaySceneLayout>
   );
 };
