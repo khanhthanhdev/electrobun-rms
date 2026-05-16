@@ -2,7 +2,6 @@ import type { DisplayMatchRef } from "@shared/display";
 import type { MatchControlState } from "@shared/match-control";
 import { MATCH_DURATION_SECONDS } from "@shared/match-control";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { publishDisplayCommand } from "@/features/display/display-command-channel";
 import {
   fetchMatchControlState,
   getMatchControlRealtimeState,
@@ -30,7 +29,7 @@ import type {
 } from "../../../shared/types/match-control";
 import { ControlActiveMatchPanel } from "./control-active-match-panel";
 import { ControlScheduleTable } from "./control-schedule-table";
-import { getSceneForAction } from "./display-action-to-scene-map";
+import { MatchControlSettingsPanel } from "./match-control-settings-panel";
 
 interface EventControlPageProps {
   eventCode: string;
@@ -318,221 +317,6 @@ const ActionBar = ({
         </div>
       ) : null}
     </>
-  );
-};
-
-const MATCH_CONTROL_SETTINGS_KEY = "match-control-settings";
-
-interface MatchControlSettings {
-  allowExtRandomization: boolean;
-  enableHrControl: boolean;
-  enablePenaltyTablets: boolean;
-  flipAlliances: boolean;
-  requireRefInit: boolean;
-  useLiveScoring: boolean;
-}
-
-const DEFAULT_SETTINGS: MatchControlSettings = {
-  allowExtRandomization: false,
-  enableHrControl: false,
-  enablePenaltyTablets: false,
-  flipAlliances: false,
-  requireRefInit: false,
-  useLiveScoring: true,
-};
-
-const loadMatchControlSettings = (): MatchControlSettings => {
-  try {
-    const raw = localStorage.getItem(MATCH_CONTROL_SETTINGS_KEY);
-    if (!raw) {
-      return DEFAULT_SETTINGS;
-    }
-    const parsed = JSON.parse(raw) as Partial<MatchControlSettings>;
-    return { ...DEFAULT_SETTINGS, ...parsed };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-};
-
-const saveMatchControlSettings = (s: MatchControlSettings): void => {
-  try {
-    localStorage.setItem(MATCH_CONTROL_SETTINGS_KEY, JSON.stringify(s));
-  } catch {
-    /* ignore */
-  }
-};
-
-const SettingsPanel = ({
-  eventCode,
-  token,
-}: {
-  eventCode: string;
-  token: string | null;
-}): JSX.Element => {
-  const [settings, setSettings] = useState<MatchControlSettings>(
-    loadMatchControlSettings
-  );
-
-  useEffect(() => {
-    saveMatchControlSettings(settings);
-  }, [settings]);
-
-  const update = useCallback(
-    (key: keyof MatchControlSettings, value: boolean) => {
-      setSettings((prev) => ({ ...prev, [key]: value }));
-    },
-    []
-  );
-
-  return (
-    <div className="match-control-settings-panel">
-      <div className="match-control-settings-group">
-        <h3 className="match-control-settings-group-title">
-          Live Scoring Options
-        </h3>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">Use Live Scoring</span>
-          <input
-            checked={settings.useLiveScoring}
-            onChange={(e) => update("useLiveScoring", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">
-            Require Referee Init Submit Before Start
-          </span>
-          <input
-            checked={settings.requireRefInit}
-            onChange={(e) => update("requireRefInit", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">
-            Enable Penalty Referee Tablets
-          </span>
-          <input
-            checked={settings.enablePenaltyTablets}
-            onChange={(e) => update("enablePenaltyTablets", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">
-            Enable HR Match Control (Beta)
-          </span>
-          <input
-            checked={settings.enableHrControl}
-            onChange={(e) => update("enableHrControl", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">
-            Allow External Randomization
-          </span>
-          <input
-            checked={settings.allowExtRandomization}
-            onChange={(e) => update("allowExtRandomization", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-      </div>
-
-      <div className="match-control-settings-group">
-        <h3 className="match-control-settings-group-title">
-          Control Page Appearance
-        </h3>
-        <div className="match-control-setting-row">
-          <span className="match-control-setting-label">Flip Alliances</span>
-          <input
-            checked={settings.flipAlliances}
-            onChange={(e) => update("flipAlliances", e.target.checked)}
-            type="checkbox"
-          />
-        </div>
-      </div>
-
-      <div className="match-control-settings-group">
-        <h3 className="match-control-settings-group-title">
-          Set Audience Display
-        </h3>
-        <p className="match-control-setting-hint">
-          Switch the audience display to these modes (same browser/device).
-        </p>
-        <div className="match-control-display-buttons">
-          <button
-            className="button"
-            onClick={() =>
-              publishDisplayCommand(
-                eventCode,
-                { mode: getSceneForAction("show-blank") },
-                token
-              )
-            }
-            type="button"
-          >
-            Show Blank Screen
-          </button>
-          <button
-            className="button"
-            onClick={() =>
-              publishDisplayCommand(
-                eventCode,
-                { mode: getSceneForAction("show-ranking") },
-                token
-              )
-            }
-            type="button"
-          >
-            Show Ranks &amp; Results
-          </button>
-          <button
-            className="button"
-            onClick={() =>
-              publishDisplayCommand(
-                eventCode,
-                { mode: getSceneForAction("show-inspection") },
-                token
-              )
-            }
-            type="button"
-          >
-            Show Inspection Status
-          </button>
-          <button
-            className="button"
-            onClick={() =>
-              publishDisplayCommand(
-                eventCode,
-                {
-                  mode: getSceneForAction("show-message"),
-                  message: "Wait for next match",
-                },
-                token
-              )
-            }
-            type="button"
-          >
-            Show Message
-          </button>
-          <button
-            className="button"
-            onClick={() =>
-              publishDisplayCommand(
-                eventCode,
-                { mode: getSceneForAction("show-sponsors") },
-                token
-              )
-            }
-            type="button"
-          >
-            Show Sponsors
-          </button>
-        </div>
-      </div>
-    </div>
   );
 };
 
@@ -1317,7 +1101,7 @@ export const EventControlPage = ({
             ) : null}
 
             {selectedTab === "settings" ? (
-              <SettingsPanel eventCode={eventCode} token={token} />
+              <MatchControlSettingsPanel eventCode={eventCode} token={token} />
             ) : null}
           </>
         )}

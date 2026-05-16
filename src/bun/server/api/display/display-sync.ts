@@ -3,7 +3,10 @@ import { InMemorySyncHub } from "../../infrastructure/services/in-memory-sync-hu
 
 export const DISPLAY_SYNC_EVENT_NAME = "display.command" as const;
 
-export type DisplaySyncChangeKind = "COMMAND_ISSUED" | "SCORE_UPDATE";
+export type DisplaySyncChangeKind =
+  | "COMMAND_ISSUED"
+  | "DISPLAY_SETTINGS_UPDATED"
+  | "SCORE_UPDATE";
 
 export type DisplaySyncEventKind = DisplaySyncChangeKind | "SNAPSHOT_HINT";
 
@@ -121,4 +124,12 @@ export const publishDisplayScoreUpdate = (
     kind: "SCORE_UPDATE",
     matchNumber: source.matchNumber,
     matchType: source.matchType,
+  });
+
+export const publishDisplaySettingsUpdate = (
+  eventCode: string
+): DisplaySyncEvent =>
+  displaySyncHub.publish({
+    eventCode,
+    kind: "DISPLAY_SETTINGS_UPDATED",
   });

@@ -147,6 +147,28 @@ describe("display command sync service", () => {
     });
   });
 
+  it("accepts display settings update events as display refresh triggers", () => {
+    expect(
+      parseScoreUpdateEvent(
+        JSON.stringify({
+          changedAt: "2026-04-03T12:00:00.000Z",
+          eventCode: "S4V1",
+          kind: "DISPLAY_SETTINGS_UPDATED",
+          matchNumber: null,
+          matchType: null,
+          version: 6,
+        })
+      )
+    ).toEqual({
+      changedAt: "2026-04-03T12:00:00.000Z",
+      eventCode: "S4V1",
+      kind: "DISPLAY_SETTINGS_UPDATED",
+      matchNumber: null,
+      matchType: null,
+      version: 6,
+    });
+  });
+
   it("returns null for invalid score update payloads", () => {
     const validPayload = {
       changedAt: "2026-04-03T12:00:00.000Z",

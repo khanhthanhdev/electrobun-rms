@@ -1,4 +1,8 @@
-import type { DisplayMatchRef } from "@shared/display";
+import {
+  DEFAULT_DISPLAY_TEXT_SETTINGS,
+  type DisplayMatchRef,
+  type DisplayTextSettings,
+} from "@shared/display";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMatchControlData } from "@/features/events/control";
 import { fetchQualificationRankings } from "@/features/events/rankings";
@@ -14,6 +18,8 @@ import type { InspectionStatus } from "@/shared/types/inspection";
 import type { MatchControlData } from "@/shared/types/match-control";
 import type { MatchScoresheet, MatchType } from "@/shared/types/scoring";
 import type { DisplaySceneMode } from "./display-scene-types";
+import { subscribeToDisplaySettingsRefresh } from "./display-settings-refresh-event";
+import { fetchDisplayTextSettings } from "./display-text-settings-service";
 import { useDisplayRealtimeRefresh } from "./hooks/use-display-realtime-refresh";
 
 interface FetchEventResponse {
@@ -52,6 +58,7 @@ export interface DisplayData {
   } | null;
   matchesPlayed: string;
   nextMatchStartTime: number | null;
+  textSettings: DisplayTextSettings;
   rankings: Array<{
     rank: number;
     teamNumber: number;
@@ -75,6 +82,7 @@ const emptyDisplayData: DisplayData = {
   loadedMatch: null,
   matchesPlayed: "",
   nextMatchStartTime: null,
+  textSettings: DEFAULT_DISPLAY_TEXT_SETTINGS,
   rankings: [],
 };
 
@@ -241,6 +249,7 @@ const fetchAllDisplaySources = (
     PromiseSettledResult<EventItem | null>,
     PromiseSettledResult<MatchControlData>,
     PromiseSettledResult<EventQualificationRankingsResponse | null>,
+    PromiseSettledResult<DisplayTextSettings>,
     PromiseSettledResult<{
       teams: Array<{
         teamName?: string | null;
@@ -254,6 +263,9 @@ const fetchAllDisplaySources = (
     fetchEventPublic(eventCode),
     fetchMatchControlData(eventCode, token),
     fetchQualificationRankings(eventCode, token, Date.now()),
+    fetchDisplayTextSettings(eventCode).catch(
+      () => DEFAULT_DISPLAY_TEXT_SETTINGS
+    ),
     token
       ? fetchInspectionTeams(eventCode, token, "").catch(() =>
           fetchPublicInspectionStatus(eventCode).catch(() => ({ teams: [] }))
@@ -329,7 +341,7 @@ export const useDisplayData = (
   const load = useCallback(async () => {
     const rid = ++requestIdRef.current;
 
-    const [eventRes, controlRes, rankingsRes, inspectionRes] =
+    const [eventRes, controlRes, rankingsRes, settingsRes, inspectionRes] =
       await fetchAllDisplaySources(eventCode, token);
 
     if (rid !== requestIdRef.current) {
@@ -339,6 +351,8 @@ export const useDisplayData = (
     const event = unwrapSettled(eventRes);
     const control = unwrapSettled(controlRes);
     const rankingsData = unwrapSettled(rankingsRes);
+    const textSettings =
+      unwrapSettled(settingsRes) ?? DEFAULT_DISPLAY_TEXT_SETTINGS;
     const inspectionData = unwrapSettled(inspectionRes);
     const sceneMatch = resolveDisplaySceneMatch(control, {
       activeMatch,
@@ -360,11 +374,24 @@ export const useDisplayData = (
       loadedMatch: loadedSceneMatch,
       matchesPlayed: toMatchesPlayed(rankingsData),
       nextMatchStartTime: toNextMatchStartTime(control),
+      textSettings,
       rankings: toRankings(rankingsData),
     });
   }, [eventCode, activeMatch, loadedMatch, sceneMode, token]);
 
+  const loadTextSettings = useCallback(async () => {
+    const textSettings = await fetchDisplayTextSettings(eventCode).catch(
+      () => DEFAULT_DISPLAY_TEXT_SETTINGS
+    );
+    setData((prev) => ({ ...prev, textSettings }));
+  }, [eventCode]);
+
   useDisplayRealtimeRefresh(eventCode, load);
+
+  useEffect(
+    () => subscribeToDisplaySettingsRefresh(eventCode, loadTextSettings),
+    [eventCode, loadTextSettings]
+  );
 
   useEffect(() => {
     load();

@@ -404,6 +404,34 @@
   color: var(--foreground);
 }
 
+.match-control-setting-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.match-control-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  width: min(100%, 34rem);
+}
+
+.match-control-setting-field input,
+.match-control-setting-field select {
+  width: min(100%, 34rem);
+  padding: var(--space-2) var(--space-3);
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.match-control-setting-field input[type="color"] {
+  width: 4.5rem;
+  min-height: 2.5rem;
+  padding: var(--space-1);
+}
+
 .match-control-setting-actions {
   display: flex;
   gap: var(--space-2);

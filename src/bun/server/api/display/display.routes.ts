@@ -106,7 +106,8 @@ displayRoutes.get("/:eventCode/display/stream", (c) => {
 
     const unsubscribe = displaySyncHub.subscribe(eventCode, (event) => {
       const writer =
-        event.kind === "SCORE_UPDATE"
+        event.kind === "SCORE_UPDATE" ||
+        event.kind === "DISPLAY_SETTINGS_UPDATED"
           ? writeScoreUpdateEvent
           : writeDisplaySyncEvent;
       enqueueWrite((streamApi) => writer(streamApi, event));

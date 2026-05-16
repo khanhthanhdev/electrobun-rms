@@ -296,13 +296,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 clamp(1rem, 3vw, 4rem);
   font-family: "Inter", var(--font-sans);
   font-size: clamp(1rem, 1.4vw, 1.45rem);
   font-weight: 900;
   line-height: 1.1;
   color: #0a0930;
   letter-spacing: -0.03em;
-  white-space: nowrap;
+  text-align: center;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 
@@ -316,14 +318,14 @@
 .display-scene-header-title {
   margin: 0;
   font-family: "Inter", var(--font-sans);
-  font-size: clamp(2rem, 3.35vw, 4rem);
+  font-size: clamp(1.5rem, 3vw, 4rem);
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.05;
   color: #ffffff;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   text-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.58);
 }
 
@@ -675,24 +677,6 @@
     drop-shadow(0 0 2.75rem rgba(80, 205, 255, 0.45));
 }
 
-.display-match-preview-scene .display-sponsors-footer-content {
-  padding-inline: clamp(1.25rem, 2vw, 3rem);
-}
-
-.display-match-preview-scene .display-sponsors-footer-logo-list {
-  gap: clamp(0.35rem, 0.5vw, 0.65rem);
-}
-
-.display-match-preview-scene .display-sponsors-footer-logo {
-  height: clamp(2.75rem, 3.6vw, 4.375rem);
-}
-
-.display-match-preview-scene .display-sponsors-footer-title {
-  font-size: clamp(2.05rem, 2.95vw, 3.15rem);
-  color: #1f2430;
-  letter-spacing: -0.04em;
-}
-
 @media (max-width: 900px) {
   .display-sponsors-header {
     padding-inline: 1.25rem;
@@ -868,9 +852,6 @@
     width: min(100%, 12rem);
   }
 
-  .display-match-preview-scene .display-sponsors-footer-title {
-    font-size: 1.4rem;
-  }
 }
 
 .display-scene-header-row {
@@ -1150,24 +1131,6 @@
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.3em;
-}
-
-.display-match-start-scene .display-sponsors-footer-content {
-  padding-inline: clamp(1.25rem, 2vw, 3rem);
-}
-
-.display-match-start-scene .display-sponsors-footer-logo-list {
-  gap: clamp(0.35rem, 0.5vw, 0.65rem);
-}
-
-.display-match-start-scene .display-sponsors-footer-logo {
-  height: clamp(2.75rem, 3.6vw, 4.375rem);
-}
-
-.display-match-start-scene .display-sponsors-footer-title {
-  font-size: clamp(1.9rem, 2.8vw, 3rem);
-  color: #1f2430;
-  letter-spacing: -0.025em;
 }
 
 @media (max-width: 900px) {
@@ -1643,24 +1606,6 @@
   text-align: center;
   letter-spacing: 0;
   background: transparent;
-}
-
-.display-winner-scene .display-sponsors-footer-content {
-  padding-inline: clamp(1.25rem, 2vw, 3rem);
-}
-
-.display-winner-scene .display-sponsors-footer-logo-list {
-  gap: clamp(0.35rem, 0.5vw, 0.65rem);
-}
-
-.display-winner-scene .display-sponsors-footer-logo {
-  height: clamp(2.75rem, 3.6vw, 4.375rem);
-}
-
-.display-winner-scene .display-sponsors-footer-title {
-  font-size: clamp(1.9rem, 2.8vw, 3rem);
-  color: #1f2430;
-  letter-spacing: -0.025em;
 }
 
 @media (max-width: 900px) {

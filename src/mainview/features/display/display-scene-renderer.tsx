@@ -1,5 +1,6 @@
 import type { DisplayMatchRef } from "@shared/display";
 import type { DisplaySceneMode } from "./display-scene-types";
+import { DisplayTextSettingsProvider } from "./display-text-settings-context";
 import { DisplaySceneBlank } from "./scenes/display-scene-blank";
 import { DisplaySceneMatchPreview } from "./scenes/display-scene-match-preview";
 import { DisplaySceneMatchStart } from "./scenes/display-scene-match-start";
@@ -37,86 +38,97 @@ export const DisplaySceneRenderer = ({
   });
   const eventName = data.eventName || eventCode;
 
-  switch (sceneMode) {
-    case "next-match":
-      return (
-        <DisplaySceneNextMatch
-          eventName={eventName}
-          nextMatchStartTime={data.nextMatchStartTime}
-        />
-      );
-    case "match-preview":
-      return (
-        <DisplaySceneMatchPreview
-          eventName={eventName}
-          match={
-            data.loadedMatch
-              ? {
-                  matchName: data.loadedMatch.matchName,
-                  fieldNumber: data.loadedMatch.fieldNumber,
-                  redTeam: data.loadedMatch.redTeam,
-                  redTeamName: data.loadedMatch.redTeamName,
-                  blueTeam: data.loadedMatch.blueTeam,
-                  blueTeamName: data.loadedMatch.blueTeamName,
-                }
-              : null
-          }
-        />
-      );
-    case "match-start":
-      return (
-        <DisplaySceneMatchStart
-          eventName={eventName}
-          match={data.loadedMatch}
-          matchStartedAtMs={matchStartedAtMs}
-        />
-      );
-    case "match-complete":
-      return (
-        <DisplaySceneMatchStart
-          eventName={eventName}
-          isCompleted
-          match={data.loadedMatch}
-          matchStartedAtMs={matchStartedAtMs}
-        />
-      );
-    case "match-winner":
-      return (
-        <DisplaySceneMatchWinner
-          eventName={eventName}
-          match={data.loadedMatch}
-          matchStartedAtMs={matchStartedAtMs}
-        />
-      );
-    case "blank":
-      return <DisplaySceneBlank eventName={eventName} />;
-    case "ranking-result":
-      return (
-        <DisplaySceneRankingResult
-          eventName={eventName}
-          matchesPlayed={data.matchesPlayed}
-          rankings={data.rankings}
-        />
-      );
-    case "robot-inspection-status":
-      return (
-        <DisplaySceneRobotInspectionStatus
-          eventName={eventName}
-          teams={data.inspectionTeams}
-        />
-      );
-    case "text-notification":
-      return (
-        <DisplaySceneTextNotification eventName={eventName} message={message} />
-      );
-    case "sponsors":
-      return <DisplaySceneSponsors eventName={eventName} />;
-    default:
-      return (
-        <DisplaySceneNextMatch
-          eventName={eventName}
-          nextMatchStartTime={data.nextMatchStartTime}
-        />
-      );
-  }
+  const renderScene = (): JSX.Element => {
+    switch (sceneMode) {
+      case "next-match":
+        return (
+          <DisplaySceneNextMatch
+            eventName={eventName}
+            nextMatchStartTime={data.nextMatchStartTime}
+          />
+        );
+      case "match-preview":
+        return (
+          <DisplaySceneMatchPreview
+            eventName={eventName}
+            match={
+              data.loadedMatch
+                ? {
+                    matchName: data.loadedMatch.matchName,
+                    fieldNumber: data.loadedMatch.fieldNumber,
+                    redTeam: data.loadedMatch.redTeam,
+                    redTeamName: data.loadedMatch.redTeamName,
+                    blueTeam: data.loadedMatch.blueTeam,
+                    blueTeamName: data.loadedMatch.blueTeamName,
+                  }
+                : null
+            }
+          />
+        );
+      case "match-start":
+        return (
+          <DisplaySceneMatchStart
+            eventName={eventName}
+            match={data.loadedMatch}
+            matchStartedAtMs={matchStartedAtMs}
+          />
+        );
+      case "match-complete":
+        return (
+          <DisplaySceneMatchStart
+            eventName={eventName}
+            isCompleted
+            match={data.loadedMatch}
+            matchStartedAtMs={matchStartedAtMs}
+          />
+        );
+      case "match-winner":
+        return (
+          <DisplaySceneMatchWinner
+            eventName={eventName}
+            match={data.loadedMatch}
+            matchStartedAtMs={matchStartedAtMs}
+          />
+        );
+      case "blank":
+        return <DisplaySceneBlank eventName={eventName} />;
+      case "ranking-result":
+        return (
+          <DisplaySceneRankingResult
+            eventName={eventName}
+            matchesPlayed={data.matchesPlayed}
+            rankings={data.rankings}
+          />
+        );
+      case "robot-inspection-status":
+        return (
+          <DisplaySceneRobotInspectionStatus
+            eventName={eventName}
+            teams={data.inspectionTeams}
+          />
+        );
+      case "text-notification":
+        return (
+          <DisplaySceneTextNotification
+            eventName={eventName}
+            message={message}
+          />
+        );
+      case "sponsors":
+        return <DisplaySceneSponsors eventName={eventName} />;
+      default:
+        return (
+          <DisplaySceneNextMatch
+            eventName={eventName}
+            nextMatchStartTime={data.nextMatchStartTime}
+          />
+        );
+    }
+  };
+
+  return (
+    <DisplayTextSettingsProvider settings={data.textSettings}>
+      {renderScene()}
+    </DisplayTextSettingsProvider>
+  );
 };

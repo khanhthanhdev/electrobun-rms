@@ -3,7 +3,7 @@ import { createRealtimeVersionStore } from "../../../shared/state/create-realtim
 export interface DisplayRealtimeChangeEvent {
   changedAt: string;
   eventCode: string;
-  kind: "SCORE_UPDATE";
+  kind: "DISPLAY_SETTINGS_UPDATED" | "SCORE_UPDATE";
   matchNumber: number | null;
   matchType: string | null;
   version: number;

@@ -28,7 +28,7 @@ export class DisplayCommandRealtimeFatalError extends Error {}
 export interface ScoreUpdateEvent {
   changedAt: string;
   eventCode: string;
-  kind: "SCORE_UPDATE";
+  kind: "DISPLAY_SETTINGS_UPDATED" | "SCORE_UPDATE";
   matchNumber: number | null;
   matchType: string | null;
   version: number;
@@ -107,7 +107,7 @@ export const parseScoreUpdateEvent = (
     typeof version !== "number" ||
     !Number.isInteger(version) ||
     version < 0 ||
-    kind !== "SCORE_UPDATE"
+    !(kind === "SCORE_UPDATE" || kind === "DISPLAY_SETTINGS_UPDATED")
   ) {
     return null;
   }
@@ -130,7 +130,7 @@ export const parseScoreUpdateEvent = (
   return {
     changedAt: event.changedAt as string,
     eventCode: event.eventCode as string,
-    kind: kind as "SCORE_UPDATE",
+    kind: kind as "DISPLAY_SETTINGS_UPDATED" | "SCORE_UPDATE",
     matchNumber: matchNumber as number | null,
     matchType: matchType as string | null,
     version: version as number,

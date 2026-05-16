@@ -10,6 +10,7 @@ import {
   DEFAULT_DISPLAY_SCENE,
   type DisplaySceneMode,
 } from "./display-scene-types";
+import { notifyDisplaySettingsRefresh } from "./display-settings-refresh-event";
 import { applyDisplayRealtimeEvent } from "./state/display-realtime-store";
 
 export interface DisplayCommandState {
@@ -77,6 +78,10 @@ export const useDisplayCommand = (
         applyCommand(cmd, setState);
       },
       onScoreUpdate: (event: ScoreUpdateEvent) => {
+        if (event.kind === "DISPLAY_SETTINGS_UPDATED") {
+          notifyDisplaySettingsRefresh(event.eventCode);
+          return;
+        }
         applyDisplayRealtimeEvent(event);
       },
       onConnectionStateChange: () => {

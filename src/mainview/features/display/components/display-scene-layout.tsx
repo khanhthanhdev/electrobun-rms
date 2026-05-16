@@ -1,3 +1,4 @@
+import { useDisplayTextSettings } from "../display-text-settings-context";
 import { DisplaySceneFooter } from "./display-scene-footer";
 import { DisplaySceneHeader } from "./display-scene-header";
 
@@ -19,17 +20,29 @@ export const DisplaySceneLayout = ({
   header,
   mainClassName = "",
   title,
-}: DisplaySceneLayoutProps): JSX.Element => (
-  <section
-    aria-label={ariaLabel}
-    className={`display-sponsors-scene ${className}`.trim()}
-  >
-    {header ?? (title ? <DisplaySceneHeader title={title} /> : null)}
+}: DisplaySceneLayoutProps): JSX.Element => {
+  const settings = useDisplayTextSettings();
+  const customHeader =
+    settings.headerMode === "custom" && settings.customHeaderText
+      ? settings.customHeaderText
+      : null;
 
-    <main className={`display-sponsors-main ${mainClassName}`.trim()}>
-      {children}
-    </main>
+  return (
+    <section
+      aria-label={ariaLabel}
+      className={`display-sponsors-scene ${className}`.trim()}
+    >
+      {customHeader ? (
+        <DisplaySceneHeader title={customHeader} />
+      ) : (
+        (header ?? (title ? <DisplaySceneHeader title={title} /> : null))
+      )}
 
-    {footer ?? <DisplaySceneFooter />}
-  </section>
-);
+      <main className={`display-sponsors-main ${mainClassName}`.trim()}>
+        {children}
+      </main>
+
+      {footer ?? <DisplaySceneFooter />}
+    </section>
+  );
+};
