@@ -13,7 +13,7 @@ import { MatchScoresheetEmbed } from "./match-scoresheet-embed";
 interface ControlActiveMatchPanelProps {
   activeMatch: ControlMatchRow | null;
   activeMatchRef: MatchRef | null;
-  activeState: "idle" | "in_progress" | "completed";
+  activeState: "idle" | "in_progress" | "paused" | "completed";
   eventCode: string;
   timeRemaining: number;
   token: string | null;
@@ -92,7 +92,7 @@ export const ControlActiveMatchPanel = ({
     blueSaveState.isSubmitting;
 
   const isActiveMatch =
-    activeState === "in_progress" &&
+    (activeState === "in_progress" || activeState === "paused") &&
     matchRefEquals(toMatchRef(selectedMatch), activeMatchRef);
   const matchLabel = `M${selectedMatch.matchNumber}`;
   const fieldLabel = `Field ${selectedMatch.fieldNumber}`;

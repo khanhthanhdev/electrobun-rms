@@ -41,6 +41,7 @@ describe("display command sync service", () => {
       loadedMatch,
       message: null,
       mode: "match-start",
+      pausedRemainingMs: null,
       startedAtMs: 12_345,
     });
   });
@@ -56,6 +57,7 @@ describe("display command sync service", () => {
           loadedMatch,
           message: null,
           mode: "match-preview",
+          pausedRemainingMs: 90_000,
           startedAtMs: null,
           version: 7,
         })
@@ -65,6 +67,7 @@ describe("display command sync service", () => {
       loadedMatch,
       message: null,
       mode: "match-preview",
+      pausedRemainingMs: 90_000,
       startedAtMs: null,
     });
   });
@@ -99,6 +102,7 @@ describe("display command sync service", () => {
       loadedMatch: null,
       message: null,
       mode: "match-start",
+      pausedRemainingMs: null,
       startedAtMs: null,
     });
   });

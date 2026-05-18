@@ -42,6 +42,7 @@ interface DisplaySyncEventPayload {
   loadedMatch?: unknown;
   message: string | null;
   mode: DisplaySceneMode | null;
+  pausedRemainingMs: number | null;
   startedAtMs: number | null;
   version: number;
 }
@@ -61,8 +62,15 @@ export const parseDisplaySyncEvent = (
   }
 
   const payload = parsed as DisplaySyncEventPayload;
-  const { activeMatch, kind, loadedMatch, message, mode, startedAtMs } =
-    payload;
+  const {
+    activeMatch,
+    kind,
+    loadedMatch,
+    message,
+    mode,
+    pausedRemainingMs,
+    startedAtMs,
+  } = payload;
 
   if (kind === "SNAPSHOT_HINT" && mode === null) {
     return null;
@@ -77,6 +85,7 @@ export const parseDisplaySyncEvent = (
     loadedMatch,
     message,
     mode,
+    pausedRemainingMs,
     startedAtMs,
   });
 };

@@ -110,6 +110,8 @@ export const postMatchControlTransition = (
     | "show-preview"
     | "show-match"
     | "start"
+    | "pause"
+    | "resume"
     | "abort"
     | "commit",
   expectedVersion: number

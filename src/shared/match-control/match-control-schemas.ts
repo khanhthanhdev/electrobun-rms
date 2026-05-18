@@ -32,6 +32,7 @@ export const loadedStateSchema = union([
 export const activeStateSchema = union([
   literal("IDLE"),
   literal("IN_PROGRESS"),
+  literal("PAUSED"),
   literal("COMPLETED"),
 ]);
 
@@ -46,6 +47,7 @@ export const matchControlStateSchema = object({
   activeMatch: nullable(displayMatchRefSchema),
   activeState: activeStateSchema,
   activeStartedAtMs: nullable(number()),
+  activePausedRemainingMs: nullable(number()),
 });
 
 /**

@@ -50,6 +50,8 @@ export const displayIntentSchema = object({
   message: optional(nullable(string())),
   /** Timestamp when match started (for match-start scene) */
   startedAtMs: optional(nullable(number())),
+  /** Frozen remaining time while match timer is paused */
+  pausedRemainingMs: optional(nullable(number())),
   /** Currently loaded match selected on the control page */
   loadedMatch: optional(nullable(displayMatchRefSchema)),
   /** Currently active match selected on the control page */

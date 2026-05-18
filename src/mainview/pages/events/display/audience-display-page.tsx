@@ -16,6 +16,7 @@ export const AudienceDisplayPage = ({
     mode: sceneMode,
     matchStartedAtMs,
     message,
+    pausedRemainingMs,
   } = useDisplayCommand(eventCode, token);
 
   return (
@@ -26,6 +27,7 @@ export const AudienceDisplayPage = ({
         loadedMatch={loadedMatch}
         matchStartedAtMs={matchStartedAtMs}
         message={message}
+        pausedRemainingMs={pausedRemainingMs}
         sceneMode={sceneMode}
         token={token}
       />

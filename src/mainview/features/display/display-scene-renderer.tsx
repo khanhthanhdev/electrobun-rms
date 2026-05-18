@@ -18,6 +18,7 @@ interface DisplaySceneRendererProps {
   loadedMatch: DisplayMatchRef | null;
   matchStartedAtMs: number | null;
   message: string;
+  pausedRemainingMs: number | null;
   sceneMode: DisplaySceneMode;
   token: string | null;
 }
@@ -27,6 +28,7 @@ export const DisplaySceneRenderer = ({
   eventCode,
   loadedMatch,
   matchStartedAtMs,
+  pausedRemainingMs,
   sceneMode,
   message,
   token,
@@ -71,6 +73,7 @@ export const DisplaySceneRenderer = ({
             eventName={eventName}
             match={data.loadedMatch}
             matchStartedAtMs={matchStartedAtMs}
+            pausedRemainingMs={pausedRemainingMs}
           />
         );
       case "match-complete":
@@ -80,6 +83,7 @@ export const DisplaySceneRenderer = ({
             isCompleted
             match={data.loadedMatch}
             matchStartedAtMs={matchStartedAtMs}
+            pausedRemainingMs={pausedRemainingMs}
           />
         );
       case "match-winner":

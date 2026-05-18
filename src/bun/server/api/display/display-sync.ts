@@ -20,6 +20,7 @@ export interface DisplaySyncEvent {
   matchType: string | null;
   message: string | null;
   mode: DisplaySceneMode | null;
+  pausedRemainingMs: number | null;
   startedAtMs: number | null;
   version: number;
 }
@@ -33,6 +34,7 @@ export interface PublishDisplaySyncEventInput {
   matchType?: string | null;
   message?: string | null;
   mode?: DisplaySceneMode | null;
+  pausedRemainingMs?: number | null;
   startedAtMs?: number | null;
 }
 
@@ -75,6 +77,7 @@ export const displaySyncHub: DisplaySyncPublisher = {
         matchType: input.matchType ?? null,
         message: input.message ?? null,
         mode: input.mode ?? null,
+        pausedRemainingMs: input.pausedRemainingMs ?? null,
         startedAtMs: input.startedAtMs ?? null,
         version,
       };
@@ -109,6 +112,7 @@ export const createDisplaySnapshotHintEvent = (
   matchType: latest?.matchType ?? null,
   message: latest?.message ?? null,
   mode: latest?.mode ?? null,
+  pausedRemainingMs: latest?.pausedRemainingMs ?? null,
   startedAtMs: latest?.startedAtMs ?? null,
   version,
 });

@@ -68,6 +68,7 @@ export const createMatchControlSnapshotHintEvent = (
     activeMatch: null,
     activeState: "IDLE",
     activeStartedAtMs: null,
+    activePausedRemainingMs: null,
   },
   version,
 });

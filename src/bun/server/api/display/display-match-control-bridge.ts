@@ -67,6 +67,7 @@ export const publishDisplayFromMatchControl = (
       break;
 
     case "START":
+    case "RESUME":
       displaySyncHub.publish({
         eventCode: state.eventCode,
         kind: "COMMAND_ISSUED",
@@ -74,6 +75,19 @@ export const publishDisplayFromMatchControl = (
         loadedMatch: null,
         activeMatch: state.activeMatch,
         startedAtMs: state.activeStartedAtMs,
+        pausedRemainingMs: null,
+      });
+      break;
+
+    case "PAUSE":
+      displaySyncHub.publish({
+        eventCode: state.eventCode,
+        kind: "COMMAND_ISSUED",
+        mode: "match-start",
+        loadedMatch: null,
+        activeMatch: state.activeMatch,
+        startedAtMs: state.activeStartedAtMs,
+        pausedRemainingMs: state.activePausedRemainingMs,
       });
       break;
 
@@ -85,6 +99,7 @@ export const publishDisplayFromMatchControl = (
         loadedMatch: null,
         activeMatch: state.activeMatch,
         startedAtMs: state.activeStartedAtMs,
+        pausedRemainingMs: null,
       });
       break;
 

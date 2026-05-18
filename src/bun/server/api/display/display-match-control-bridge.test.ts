@@ -22,6 +22,7 @@ const completedState: MatchControlState = {
   },
   activeState: "COMPLETED",
   activeStartedAtMs: 123_456,
+  activePausedRemainingMs: null,
 };
 
 describe("display match-control bridge", () => {

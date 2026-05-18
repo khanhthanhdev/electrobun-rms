@@ -45,7 +45,7 @@ type ControlTab =
   | "settings";
 
 type LoadedMatchState = "idle" | "loaded" | "preview" | "ready";
-type ActiveMatchState = "idle" | "in_progress" | "completed";
+type ActiveMatchState = "idle" | "in_progress" | "paused" | "completed";
 
 const MATCH_TYPE_LABELS: Record<ControlMatchType, string> = {
   practice: "Practice",
@@ -77,12 +77,14 @@ const LOADED_STATE_CSS: Record<LoadedMatchState, string> = {
 const ACTIVE_STATE_LABELS: Record<ActiveMatchState, string> = {
   idle: "",
   in_progress: "In Progress",
+  paused: "Paused",
   completed: "Complete",
 };
 
 const ACTIVE_STATE_CSS: Record<ActiveMatchState, string> = {
   idle: "",
   in_progress: "match-control-status-badge--in-progress",
+  paused: "match-control-status-badge--ready",
   completed: "match-control-status-badge--completed",
 };
 
@@ -186,6 +188,8 @@ const ActionBar = ({
   onAbort,
   onCommit,
   onLoadNext,
+  onPause,
+  onResume,
   onShowMatch,
   onShowPreview,
   onStartMatch,
@@ -197,6 +201,8 @@ const ActionBar = ({
   onAbort: () => void;
   onCommit: () => void;
   onLoadNext: () => void;
+  onPause: () => void;
+  onResume: () => void;
   onShowMatch: () => void;
   onShowPreview: () => void;
   onStartMatch: () => void;
@@ -204,6 +210,7 @@ const ActionBar = ({
 }): JSX.Element => {
   const [showAbortDialog, setShowAbortDialog] = useState(false);
   const isInProgress = activeState === "in_progress";
+  const isPaused = activeState === "paused";
   const canLoadNextAction = canLoadNext && activeState === "idle";
   const canUnload = loadedState !== "idle" && activeState === "idle";
   const canPreview = loadedState === "loaded";
@@ -248,14 +255,23 @@ const ActionBar = ({
           >
             Show Match
           </button>
-          {isInProgress ? (
-            <button
-              className="button match-control-action-btn--abort"
-              onClick={() => setShowAbortDialog(true)}
-              type="button"
-            >
-              Abort Match
-            </button>
+          {isInProgress || isPaused ? (
+            <>
+              <button
+                className="button"
+                onClick={isPaused ? onResume : onPause}
+                type="button"
+              >
+                {isPaused ? "Resume" : "Pause"}
+              </button>
+              <button
+                className="button match-control-action-btn--abort"
+                onClick={() => setShowAbortDialog(true)}
+                type="button"
+              >
+                Abort Match
+              </button>
+            </>
           ) : (
             <button
               className={`button ${canStart ? "match-control-action-btn--start" : ""}`}
@@ -541,6 +557,7 @@ export const EventControlPage = ({
     ? (serverState.activeState.toLowerCase() as ActiveMatchState)
     : "idle";
   const activeStartedAtMs = serverState?.activeStartedAtMs ?? null;
+  const activePausedRemainingMs = serverState?.activePausedRemainingMs ?? null;
 
   // Convert server DisplayMatchRef → MatchRef for row resolution
   const loadedMatchRef = useMemo<MatchRef | null>(() => {
@@ -567,14 +584,16 @@ export const EventControlPage = ({
   const [timeRemaining, setTimeRemaining] = useState(MATCH_DURATION_SECONDS);
 
   useEffect(() => {
-    if (activeState === "in_progress" && activeStartedAtMs) {
+    if (activeState === "paused" && activePausedRemainingMs !== null) {
+      setTimeRemaining(Math.ceil(activePausedRemainingMs / 1000));
+    } else if (activeState === "in_progress" && activeStartedAtMs) {
       setTimeRemaining(
         computeTimeRemaining(activeStartedAtMs, MATCH_DURATION_SECONDS)
       );
     } else if (activeState === "idle") {
       setTimeRemaining(MATCH_DURATION_SECONDS);
     }
-  }, [activeState, activeStartedAtMs]);
+  }, [activeState, activeStartedAtMs, activePausedRemainingMs]);
 
   useEffect(() => {
     if (activeState !== "in_progress" || timeRemaining <= 0) {
@@ -771,6 +790,24 @@ export const EventControlPage = ({
         applyServerState(res.state);
         setSelectedTab("active");
       })
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
+
+  const handlePauseMatch = useCallback(() => {
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(eventCode, token, "pause", versionRef.current)
+      .then((res) => applyServerState(res.state))
+      .catch(handleTransitionError);
+  }, [eventCode, token, applyServerState, handleTransitionError]);
+
+  const handleResumeMatch = useCallback(() => {
+    if (!token) {
+      return;
+    }
+    postMatchControlTransition(eventCode, token, "resume", versionRef.current)
+      .then((res) => applyServerState(res.state))
       .catch(handleTransitionError);
   }, [eventCode, token, applyServerState, handleTransitionError]);
 
@@ -1012,6 +1049,8 @@ export const EventControlPage = ({
           onAbort={handleAbortMatch}
           onCommit={handleCommitMatch}
           onLoadNext={handleLoadNextMatch}
+          onPause={handlePauseMatch}
+          onResume={handleResumeMatch}
           onShowMatch={handleShowMatch}
           onShowPreview={handleShowPreview}
           onStartMatch={handleStartMatch}

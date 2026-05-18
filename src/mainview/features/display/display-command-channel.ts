@@ -23,6 +23,7 @@ interface NormalizableDisplayCommand {
   loadedMatch?: unknown;
   message?: unknown;
   mode: DisplayCommand["mode"];
+  pausedRemainingMs?: unknown;
   startedAtMs?: unknown;
 }
 
@@ -85,6 +86,10 @@ export const normalizeDisplayCommand = (
   loadedMatch: parseDisplayMatchRef(command.loadedMatch) ?? null,
   message: typeof command.message === "string" ? command.message : null,
   mode: command.mode,
+  pausedRemainingMs:
+    typeof command.pausedRemainingMs === "number"
+      ? command.pausedRemainingMs
+      : null,
   startedAtMs:
     typeof command.startedAtMs === "number" ? command.startedAtMs : null,
 });
@@ -98,6 +103,7 @@ export const createDisplayCommandRequestBody = (
     loadedMatch: normalized.loadedMatch,
     message: normalized.message,
     mode: normalized.mode,
+    pausedRemainingMs: normalized.pausedRemainingMs,
     startedAtMs: normalized.startedAtMs,
   };
 };

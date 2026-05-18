@@ -14,6 +14,8 @@ export type MatchControlCommand =
   | { type: "SHOW_PREVIEW"; expectedVersion: number }
   | { type: "SHOW_MATCH"; expectedVersion: number }
   | { type: "START"; expectedVersion: number }
+  | { type: "PAUSE"; expectedVersion: number }
+  | { type: "RESUME"; expectedVersion: number }
   | { type: "AUTO_COMPLETE" }
   | { type: "ABORT"; expectedVersion: number }
   | { type: "COMMIT"; expectedVersion: number };
@@ -60,6 +62,7 @@ const defaultState = (eventCode: string): MatchControlState => ({
   activeMatch: null,
   activeState: "IDLE",
   activeStartedAtMs: null,
+  activePausedRemainingMs: null,
 });
 
 const assertStateInvariants = (
@@ -79,9 +82,13 @@ const assertStateInvariants = (
   }
 
   if (state.activeState === "IDLE") {
-    if (state.activeMatch !== null || state.activeStartedAtMs !== null) {
+    if (
+      state.activeMatch !== null ||
+      state.activeStartedAtMs !== null ||
+      state.activePausedRemainingMs !== null
+    ) {
       throw new Error(
-        `Match control invariant failed (${context}): activeState=IDLE requires activeMatch=null and activeStartedAtMs=null.`
+        `Match control invariant failed (${context}): activeState=IDLE requires activeMatch=null, activeStartedAtMs=null, and activePausedRemainingMs=null.`
       );
     }
     return;
@@ -96,6 +103,24 @@ const assertStateInvariants = (
   if (state.activeStartedAtMs === null) {
     throw new Error(
       `Match control invariant failed (${context}): activeState=${state.activeState} requires activeStartedAtMs.`
+    );
+  }
+
+  if (
+    state.activeState === "PAUSED" &&
+    state.activePausedRemainingMs === null
+  ) {
+    throw new Error(
+      `Match control invariant failed (${context}): activeState=PAUSED requires activePausedRemainingMs.`
+    );
+  }
+
+  if (
+    state.activeState !== "PAUSED" &&
+    state.activePausedRemainingMs !== null
+  ) {
+    throw new Error(
+      `Match control invariant failed (${context}): activePausedRemainingMs is only valid while activeState=PAUSED.`
     );
   }
 
@@ -336,8 +361,57 @@ const applyStartTransition = (
     activeMatch: state.loadedMatch,
     activeState: "IN_PROGRESS",
     activeStartedAtMs: Date.now(),
+    activePausedRemainingMs: null,
   };
   return persistTransitionState(eventCode, next, `START:${eventCode}`);
+};
+
+const applyPauseTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "IN_PROGRESS") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot pause: activeState="${state.activeState}".`
+    );
+  }
+
+  clearAutoCompleteTimer(eventCode);
+  const startedAtMs = state.activeStartedAtMs;
+  if (startedAtMs === null) {
+    return toInvalidTransitionError(state, "Cannot pause without a start time.");
+  }
+  const elapsed = Date.now() - startedAtMs;
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    activeState: "PAUSED",
+    activePausedRemainingMs: Math.max(0, MATCH_DURATION_MS - elapsed),
+  };
+  return persistTransitionState(eventCode, next, `PAUSE:${eventCode}`);
+};
+
+const applyResumeTransition = (
+  eventCode: string,
+  state: MatchControlState
+): TransitionResult | TransitionError => {
+  if (state.activeState !== "PAUSED") {
+    return toInvalidTransitionError(
+      state,
+      `Cannot resume: activeState="${state.activeState}".`
+    );
+  }
+
+  const remaining = state.activePausedRemainingMs ?? 0;
+  const next: MatchControlState = {
+    ...state,
+    version: 0,
+    activeState: "IN_PROGRESS",
+    activeStartedAtMs: Date.now() - (MATCH_DURATION_MS - remaining),
+    activePausedRemainingMs: null,
+  };
+  return persistTransitionState(eventCode, next, `RESUME:${eventCode}`);
 };
 
 const applyAutoCompleteTransition = (
@@ -355,6 +429,7 @@ const applyAutoCompleteTransition = (
     ...state,
     version: 0,
     activeState: "COMPLETED",
+    activePausedRemainingMs: null,
   };
   return persistTransitionState(eventCode, next, `AUTO_COMPLETE:${eventCode}`);
 };
@@ -363,7 +438,7 @@ const applyAbortTransition = (
   eventCode: string,
   state: MatchControlState
 ): TransitionResult | TransitionError => {
-  if (state.activeState !== "IN_PROGRESS") {
+  if (state.activeState !== "IN_PROGRESS" && state.activeState !== "PAUSED") {
     return toInvalidTransitionError(
       state,
       `Cannot abort: activeState="${state.activeState}".`
@@ -379,6 +454,7 @@ const applyAbortTransition = (
     activeMatch: null,
     activeState: "IDLE",
     activeStartedAtMs: null,
+    activePausedRemainingMs: null,
   };
   return persistTransitionState(eventCode, next, `ABORT:${eventCode}`);
 };
@@ -401,6 +477,7 @@ const applyCommitTransition = (
     activeMatch: null,
     activeState: "IDLE",
     activeStartedAtMs: null,
+    activePausedRemainingMs: null,
   };
   return persistTransitionState(eventCode, next, `COMMIT:${eventCode}`);
 };
@@ -427,6 +504,10 @@ export const applyTransition = (
       return applyShowMatchTransition(eventCode, state);
     case "START":
       return applyStartTransition(eventCode, state);
+    case "PAUSE":
+      return applyPauseTransition(eventCode, state);
+    case "RESUME":
+      return applyResumeTransition(eventCode, state);
     case "AUTO_COMPLETE":
       return applyAutoCompleteTransition(eventCode, state);
     case "ABORT":

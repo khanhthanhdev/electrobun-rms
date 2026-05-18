@@ -19,6 +19,7 @@ export interface DisplayCommandState {
   matchStartedAtMs: number | null;
   message: string;
   mode: DisplaySceneMode;
+  pausedRemainingMs: number | null;
 }
 
 const applyCommand = (
@@ -31,6 +32,7 @@ const applyCommand = (
     matchStartedAtMs: cmd.startedAtMs ?? null,
     message: cmd.message ?? "",
     mode: cmd.mode,
+    pausedRemainingMs: cmd.pausedRemainingMs ?? null,
   });
 };
 
@@ -54,6 +56,7 @@ export const useDisplayCommand = (
     mode: DEFAULT_DISPLAY_SCENE,
     matchStartedAtMs: null,
     message: "",
+    pausedRemainingMs: null,
   });
 
   const tokenRef = useRef(token);

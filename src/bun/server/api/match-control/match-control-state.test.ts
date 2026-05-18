@@ -197,6 +197,68 @@ describe("match control state transitions", () => {
     }
   });
 
+  it("pauses and resumes an in-progress match", () => {
+    const eventCode = nextEventCode("pause_resume");
+
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
+
+    const pause = applyTransition(
+      eventCode,
+      { type: "PAUSE", expectedVersion: 0 },
+      0
+    );
+    expect("state" in pause).toBe(true);
+    if ("state" in pause) {
+      expect(pause.state.activeState).toBe("PAUSED");
+      expect(pause.state.activePausedRemainingMs).toBeGreaterThan(0);
+    }
+
+    const resume = applyTransition(
+      eventCode,
+      { type: "RESUME", expectedVersion: 0 },
+      0
+    );
+    expect("state" in resume).toBe(true);
+    if ("state" in resume) {
+      expect(resume.state.activeState).toBe("IN_PROGRESS");
+      expect(resume.state.activePausedRemainingMs).toBeNull();
+      expect(typeof resume.state.activeStartedAtMs).toBe("number");
+    }
+  });
+
+  it("allows ABORT while a match is paused", () => {
+    const eventCode = nextEventCode("pause_abort");
+
+    applyTransition(
+      eventCode,
+      { type: "LOAD", expectedVersion: 0, match: createMatchRef(1) },
+      0
+    );
+    applyTransition(eventCode, { type: "SHOW_PREVIEW", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "SHOW_MATCH", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "START", expectedVersion: 0 }, 0);
+    applyTransition(eventCode, { type: "PAUSE", expectedVersion: 0 }, 0);
+
+    const abort = applyTransition(
+      eventCode,
+      { type: "ABORT", expectedVersion: 0 },
+      0
+    );
+    expect("state" in abort).toBe(true);
+    if ("state" in abort) {
+      expect(abort.state.activeState).toBe("IDLE");
+      expect(abort.state.activePausedRemainingMs).toBeNull();
+      expect(abort.state.loadedState).toBe("LOADED");
+    }
+  });
+
   it("unloads a staged match and resets loaded slot to IDLE", () => {
     const eventCode = nextEventCode("unload");
 

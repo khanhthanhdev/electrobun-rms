@@ -165,8 +165,14 @@ displayRoutes.post("/:eventCode/display/command", requireAuth, async (c) => {
     );
   }
 
-  const { activeMatch, loadedMatch, message, mode, startedAtMs } =
-    bodyResult.output;
+  const {
+    activeMatch,
+    loadedMatch,
+    message,
+    mode,
+    pausedRemainingMs,
+    startedAtMs,
+  } = bodyResult.output;
 
   if (BLOCKED_LIFECYCLE_MODES.has(mode)) {
     return c.json(
@@ -178,11 +184,11 @@ displayRoutes.post("/:eventCode/display/command", requireAuth, async (c) => {
     );
   }
 
-  if (loadedMatch || activeMatch || startedAtMs) {
+  if (loadedMatch || activeMatch || startedAtMs || pausedRemainingMs) {
     return c.json(
       {
         error:
-          "Match lifecycle fields (loadedMatch, activeMatch, startedAtMs) must go through /match-control/* routes.",
+          "Match lifecycle fields (loadedMatch, activeMatch, startedAtMs, pausedRemainingMs) must go through /match-control/* routes.",
       },
       400
     );
@@ -195,6 +201,7 @@ displayRoutes.post("/:eventCode/display/command", requireAuth, async (c) => {
     loadedMatch: loadedMatch ?? null,
     message: message ?? null,
     mode,
+    pausedRemainingMs: pausedRemainingMs ?? null,
     startedAtMs: startedAtMs ?? null,
   });
 

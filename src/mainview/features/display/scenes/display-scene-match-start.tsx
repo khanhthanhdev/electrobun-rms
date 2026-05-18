@@ -29,6 +29,7 @@ interface DisplaySceneMatchStartProps {
   isCompleted?: boolean;
   match?: MatchStartData | null;
   matchStartedAtMs?: number | null;
+  pausedRemainingMs?: number | null;
 }
 
 const formatHeaderMatchLabel = (
@@ -92,13 +93,16 @@ export const DisplaySceneMatchStart = ({
   isCompleted = false,
   match,
   matchStartedAtMs,
+  pausedRemainingMs,
 }: DisplaySceneMatchStartProps): JSX.Element => {
   const now = useNow(1000);
   const elapsedMs = matchStartedAtMs ? now.getTime() - matchStartedAtMs : 0;
   const elapsed = Math.max(0, Math.floor(elapsedMs / 1000));
   const timeRemaining = isCompleted
     ? 0
-    : Math.max(0, MATCH_DURATION_SECONDS - elapsed);
+    : pausedRemainingMs !== null && pausedRemainingMs !== undefined
+      ? Math.max(0, Math.ceil(pausedRemainingMs / 1000))
+      : Math.max(0, MATCH_DURATION_SECONDS - elapsed);
   const redScore = match?.redScore ?? 0;
   const blueScore = match?.blueScore ?? 0;
   const redBreakdown = match?.redBreakdown ?? null;

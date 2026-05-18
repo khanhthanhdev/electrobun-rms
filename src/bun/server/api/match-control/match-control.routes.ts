@@ -110,7 +110,7 @@ const handleTransition = (
       : undefined;
   publishDisplayFromMatchControl(published.state, trigger, bridgeContext);
 
-  if (trigger === "START") {
+  if (trigger === "START" || trigger === "RESUME") {
     scheduleAutoComplete(
       eventCode,
       () => matchControlSyncHub.getCurrentVersion(eventCode),
@@ -400,6 +400,8 @@ createTransitionRoute("unload", "UNLOAD");
 createTransitionRoute("show-preview", "SHOW_PREVIEW");
 createTransitionRoute("show-match", "SHOW_MATCH");
 createTransitionRoute("start", "START");
+createTransitionRoute("pause", "PAUSE");
+createTransitionRoute("resume", "RESUME");
 createTransitionRoute("abort", "ABORT");
 createTransitionRoute("commit", "COMMIT");
 
